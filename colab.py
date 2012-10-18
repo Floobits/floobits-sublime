@@ -13,12 +13,12 @@ import sublime
 import sublime_plugin
 from lib import diff_match_patch as dmp
 
-settings = sublime.load_settings('coLab.sublime-settings')
+settings = sublime.load_settings('Floobits.sublime-settings')
 
 COLAB_DIR = ""
 def reload_settings():
     global COLAB_DIR
-    COLAB_DIR = settings.get('share_dir', '~/.colab/share')
+    COLAB_DIR = settings.get('share_dir', '~/.floobits/share')
 
 settings.add_on_change('share_dir', reload_settings)
 reload_settings()
@@ -274,8 +274,8 @@ class JoinChannelCommand(sublime_plugin.TextCommand):
         #self.panel('hawro')
 
     def on_input(self, channel):
-        print('chanel: %s' % channel)
-        sublime.status_message('colab chanel: %s' % (channel))
+        print('channel: %s' % channel)
+        sublime.status_message('channel: %s' % (channel))
 
     def active_view(self):
         return self.view

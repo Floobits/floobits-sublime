@@ -3,10 +3,10 @@
   "mnemonic": "t",
   "id": "tools",
   "children": [{
-    "id": "colabmenu",
-    "caption": "coLab",
+    "id": "floobitsmenu",
+    "caption": "Floobits",
     "children": [{
-      "id": "colab_channel_menu",
+      "id": "floobits_channel_menu",
       "caption": "Select Channel",
       "command": "join_channel"
     }]
@@ -21,18 +21,18 @@
     "mnemonic": "P",
     "id": "package-settings",
     "children":[{
-      "caption": "coLab",
+      "caption": "Floobits",
       "children": [{
         "command": "open_file",
         "args": {
-          "file": "${packages}/coLab/colab.sublime-settings"
+          "file": "${packages}/Floobits/Floobits.sublime-settings"
         },
         "caption": "Settings – Default"
       },
       {
         "command": "open_file",
         "args": {
-          "file": "${packages}/User/colab.sublime-settings"
+          "file": "${packages}/User/Floobits.sublime-settings"
         },
         "caption": "Settings – User"
       },
