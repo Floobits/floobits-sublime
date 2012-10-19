@@ -69,12 +69,16 @@ class DMP(object):
         return dmp.diff_match_patch().patch_make(self.previous, self.current)
 
     def to_json(self):
-        print "patch", self.patch()
+        patch = self.patch()
+        if len(patch) == 0:
+            return None
+        patch_str = str(patch[0])
+        print "patch:", patch_str
         return json.dumps({
                 'uid': str(self.buffer_id),
                 'md5': hashlib.md5(self.current).hexdigest(),
                 'path': self.path,
-                'patch': [str(x) for x in self.patch()]
+                'patch': patch_str
             })
 
 
@@ -161,6 +165,9 @@ class AgentConnection(object):
         if _out:
             for patch in self.get_patches():
                 p = patch.to_json()
+                if p is None:
+                    print "patch is empty. not sending"
+                    continue
                 print('writing a patch', p)
                 self.sock.sendall(p + '\n')
                 PATCH_Q.task_done()
