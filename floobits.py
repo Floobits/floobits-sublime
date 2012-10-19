@@ -72,6 +72,8 @@ class DMP(object):
         patch = self.patch()
         if len(patch) == 0:
             return None
+        elif len(patch) > 1:
+            print "WTF!? there are %s patches" % len(patch)
         patch_str = str(patch[0])
         print "patch:", patch_str
         return json.dumps({
