@@ -169,6 +169,7 @@ class AgentConnection(object):
                 p = patch.to_json()
                 if p is None:
                     print "patch is empty. not sending"
+                    PATCH_Q.task_done()
                     continue
                 print('writing a patch', p)
                 self.sock.sendall(p + '\n')
