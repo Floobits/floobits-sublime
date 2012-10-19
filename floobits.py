@@ -18,7 +18,7 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 COLAB_DIR = ""
 def reload_settings():
     global COLAB_DIR
-    COLAB_DIR = settings.get('share_dir', '~/.floobits/share')
+    COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
 
 settings.add_on_change('share_dir', reload_settings)
 reload_settings()
@@ -99,7 +99,7 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.sock.connect(('127.0.0.1', 12345))
+            self.sock.connect(('floobits.com', 3148))
         except socket.error:
             self.reconnect()
             return
