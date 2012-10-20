@@ -20,7 +20,7 @@ def reload_settings():
     global COLAB_DIR
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
 
-settings.add_on_change('share_dir', reload_settings)
+settings.add_on_change('', reload_settings)
 reload_settings()
 
 PATCH_Q = Queue.Queue()
@@ -100,18 +100,30 @@ class AgentConnection(object):
 
     def reconnect(self):
         self.sock = None
+        print "reconnecting..."
         sublime.set_timeout(self.connect, 100)
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.sock.connect(('floobits.com', 3148))
+            self.sock.connect(('127.0.0.1', 3148))
         except socket.error:
             self.reconnect()
             return
         self.sock.setblocking(0)
         print('connected, calling select')
         self.select()
+        self.auth()
+
+    def auth(self):
+        username = settings.get('username')
+        secret = settings.get('secret')
+        room = settings.get('room')
+        self.sock.sendall(json.dumps({
+            'username': username,
+            'secret': secret,
+            'room': room
+        }) + '\n')
 
     def get_patches(self):
         while True:
