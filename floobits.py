@@ -144,17 +144,20 @@ class AgentConnection(object):
 
     def protocol(self, req):
         self.buf += req
-        patches = []
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
                 break
-            patches.append(before)
+            data = json.loads(before)
+            action = data['action']
+            if action == 'patch':
+                # TODO: we should do this in a separate thread
+                Listener.apply_patch(data)
+            elif action == 'get_buf':
+                Listener.update_buf(data['path'], data['buf'])
+            else:
+                print "unknown action!", action
             self.buf = after
-        if patches:
-            Listener.apply_patches(patches)
-        else:
-            print "No patches in", req
 
     def select(self):
         if not self.sock:
@@ -223,47 +226,59 @@ class Listener(sublime_plugin.EventListener):
         sublime.set_timeout(Listener.push, 100)
 
     @staticmethod
-    def apply_patches(jsons):
-        for line in jsons:
-            patch_data = json.loads(line)
-            path = get_full_path(patch_data['path'])
-            view = get_view_from_path(path)
-            if not view:
-                window = sublime.active_window()
-                view = window.open_file(path)
-            DMP = dmp.diff_match_patch()
-            if len(patch_data['patch']) == 0:
-                print "no patches to apply"
-                return
-            print "patch is", patch_data['patch']
-            dmp_patch = DMP.patch_fromText(patch_data['patch'])
-            # TODO: run this in a separate thread
-            old_text = text(view)
-            print "old text:", old_text
-            t = DMP.patch_apply(dmp_patch, old_text)
-            print "t is ", t
-            if t[1][0]:
-                cur_hash = hashlib.md5(t[0]).hexdigest()
-                if cur_hash != patch_data['md5']:
-                    print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
-                    # TODO: request whole file from server
-                region = sublime.Region(0, view.size())
-                print "region", region
-                MODIFIED_EVENTS.put(1)
-                pos = view.sel()
-                try:
-                    edit = view.begin_edit()
-                    view.replace(edit, region, str(t[0]))
-                finally:
-                    view.end_edit(edit)
-                '''
-                if len(pos) > 0:
-                    view.sel().add(sublime.Region(pos[0], 0))
-                else:
-                    view.sel().clear()
-                '''
+    def apply_patch(patch_data):
+        path = get_full_path(patch_data['path'])
+        view = get_view_from_path(path)
+        if not view:
+            window = sublime.active_window()
+            view = window.open_file(path)
+        DMP = dmp.diff_match_patch()
+        if len(patch_data['patch']) == 0:
+            print "no patches to apply"
+            return
+        print "patch is", patch_data['patch']
+        dmp_patch = DMP.patch_fromText(patch_data['patch'])
+        # TODO: run this in a separate thread
+        old_text = text(view)
+        print "old text:", old_text
+        t = DMP.patch_apply(dmp_patch, old_text)
+        print "t is ", t
+        if t[1][0]:
+            cur_hash = hashlib.md5(t[0]).hexdigest()
+            if cur_hash != patch_data['md5']:
+                print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
+                # TODO: request whole file from server
+            region = sublime.Region(0, view.size())
+            print "region", region
+            MODIFIED_EVENTS.put(1)
+            pos = view.sel()
+            try:
+                edit = view.begin_edit()
+                view.replace(edit, region, str(t[0]))
+            finally:
+                view.end_edit(edit)
+            '''
+            if len(pos) > 0:
+                view.sel().add(sublime.Region(pos[0], 0))
             else:
-                print "failed to patch"
+                view.sel().clear()
+            '''
+        else:
+            print "failed to patch"
+
+    def update_buf(self, path, text):
+        path = get_full_path(path)
+        view = get_view_from_path(path)
+        if not view:
+            window = sublime.active_window()
+            view = window.open_file(path)
+        region = sublime.Region(0, view.size())
+        MODIFIED_EVENTS.put(1)
+        try:
+            edit = view.begin_edit()
+            view.replace(edit, region, text)
+        finally:
+            view.end_edit(edit)
 
     def id(self, view):
         return view.buffer_id()
