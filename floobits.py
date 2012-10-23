@@ -13,6 +13,8 @@ import sublime
 import sublime_plugin
 from lib import diff_match_patch as dmp
 
+__VERSION__ = '0.01'
+
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 COLAB_DIR = ""
@@ -122,7 +124,8 @@ class AgentConnection(object):
         self.sock.sendall(json.dumps({
             'username': username,
             'secret': secret,
-            'room': room
+            'room': room,
+            'version': __VERSION__
         }) + '\n')
 
     def get_patches(self):
