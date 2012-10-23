@@ -26,7 +26,7 @@ def reload_settings():
 settings.add_on_change('', reload_settings)
 reload_settings()
 
-PATCH_Q = Queue.Queue()
+SOCKET_Q = Queue.Queue()
 BUF_STATE = collections.defaultdict(str)
 MODIFIED_EVENTS = Queue.Queue()
 
@@ -94,18 +94,22 @@ class AgentConnection(object):
     def __init__(self):
         self.sock = None
         self.buf = ""
+        self.reconnect_delay = 1
 
     @staticmethod
     def put(item):
-        PATCH_Q.put(item)
-        qsize = PATCH_Q.qsize()
+        SOCKET_Q.put(item)
+        qsize = SOCKET_Q.qsize()
         if qsize > 0:
             print('%s items in q' % qsize)
 
     def reconnect(self):
         self.sock = None
         print "reconnecting..."
-        sublime.set_timeout(self.connect, 100)
+        self.reconnect_delay *= 1.5
+        if self.reconnect_delay > 50: # 5 seconds
+            self.reconnect_delay = 50
+        sublime.set_timeout(self.connect, int(100 * self.reconnect_delay))
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,6 +120,7 @@ class AgentConnection(object):
             return
         self.sock.setblocking(0)
         print('connected, calling select')
+        self.reconnect_delay = 1
         self.select()
         self.auth()
 
@@ -123,17 +128,17 @@ class AgentConnection(object):
         username = settings.get('username')
         secret = settings.get('secret')
         room = settings.get('room')
-        self.sock.sendall(json.dumps({
+        self.put(json.dumps({
             'username': username,
             'secret': secret,
             'room': room,
             'version': __VERSION__
-        }) + '\n')
+        }))
 
     def get_patches(self):
         while True:
             try:
-                yield PATCH_Q.get_nowait()
+                yield SOCKET_Q.get_nowait()
             except Queue.Empty:
                 break
 
@@ -182,15 +187,14 @@ class AgentConnection(object):
             self.protocol(buf)
 
         if _out:
-            for patch in self.get_patches():
-                p = patch.to_json()
+            for p in self.get_patches():
                 if p is None:
                     print "patch is empty. not sending"
-                    PATCH_Q.task_done()
+                    SOCKET_Q.task_done()
                     continue
                 print('writing a patch', p)
                 self.sock.sendall(p + '\n')
-                PATCH_Q.task_done()
+                SOCKET_Q.task_done()
 
         sublime.set_timeout(self.select, 100)
 
@@ -214,7 +218,7 @@ class Listener(sublime_plugin.EventListener):
             patch = DMP(view)
             #update the current copy of the buffer
             BUF_STATE[buf_id] = patch.current
-            PATCH_Q.put(patch)
+            SOCKET_Q.put(patch.to_json())
 
         sublime.set_timeout(Listener.push, 100)
 
