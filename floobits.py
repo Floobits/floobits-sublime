@@ -230,7 +230,7 @@ class Listener(sublime_plugin.EventListener):
                 print "no patches to apply"
                 return
             print "patch is", patch_data['patch']
-            dmp_patch = DMP.patch_fromText(patch_data['patch'][0])
+            dmp_patch = DMP.patch_fromText(patch_data['patch'])
             # TODO: run this in a separate thread
             old_text = text(view)
             print "old text:", old_text
