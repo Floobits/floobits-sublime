@@ -20,6 +20,7 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 COLAB_DIR = ""
 def reload_settings():
     global COLAB_DIR
+    # TODO: if there's no slash, append a slash
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
 
 settings.add_on_change('', reload_settings)
@@ -237,17 +238,20 @@ class Listener(sublime_plugin.EventListener):
             t = DMP.patch_apply(dmp_patch, old_text)
             print "t is ", t
             if t[1][0]:
+                cur_hash = hashlib.md5(t[0]).hexdigest()
+                if cur_hash != patch_data['md5']:
+                    print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
+                    # TODO: request whole file from server
                 region = sublime.Region(0, view.size())
                 print "region", region
                 MODIFIED_EVENTS.put(1)
+                pos = view.sel()
                 try:
                     edit = view.begin_edit()
                     view.replace(edit, region, str(t[0]))
                 finally:
                     view.end_edit(edit)
-                cur_hash = hashlib.md5(t[0]).hexdigest()
-                if cur_hash != patch_data['md5']:
-                    print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
+                    view.sel().add(sublime.Region(*pos))
             else:
                 print "failed to patch"
 
@@ -268,6 +272,7 @@ class Listener(sublime_plugin.EventListener):
         print 'clone', self.name(view)
 
     def on_modified(self, view):
+        print view.sel()
         try:
             MODIFIED_EVENTS.get_nowait()
         except Queue.Empty:
