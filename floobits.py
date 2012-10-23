@@ -83,7 +83,8 @@ class DMP(object):
                 'uid': str(self.buffer_id),
                 'md5': hashlib.md5(self.current).hexdigest(),
                 'path': self.path,
-                'patch': patch_str
+                'patch': patch_str,
+                'action': 'patch'
             })
 
 
