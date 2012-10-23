@@ -252,7 +252,10 @@ class Listener(sublime_plugin.EventListener):
                     view.replace(edit, region, str(t[0]))
                 finally:
                     view.end_edit(edit)
-                    view.sel().add(sublime.Region(*pos))
+                    if len(pos) > 0:
+                        view.sel().add(sublime.Region(*pos))
+                    else:
+                        view.sel().clear()
             else:
                 print "failed to patch"
 
