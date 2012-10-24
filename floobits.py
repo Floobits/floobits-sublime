@@ -84,7 +84,7 @@ class DMP(object):
                 'md5': hashlib.md5(self.current).hexdigest(),
                 'path': self.path,
                 'patch': patch_str,
-                'action': 'patch'
+                'name': 'patch'
             })
 
 
@@ -149,14 +149,14 @@ class AgentConnection(object):
             if not sep:
                 break
             data = json.loads(before)
-            action = data['action']
-            if action == 'patch':
+            name = data['name']
+            if name == 'patch':
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
-            elif action == 'get_buf':
+            elif name == 'get_buf':
                 Listener.update_buf(data['path'], data['buf'])
             else:
-                print "unknown action!", action
+                print "unknown name!", name
             self.buf = after
 
     def select(self):
