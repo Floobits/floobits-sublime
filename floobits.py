@@ -185,17 +185,16 @@ class AgentConnection(object):
                 except socket.error:
                     break
             if not buf:
-                print "buf is empty. reconnecting..."
+                print "buf is empty"
                 return self.reconnect()
             self.protocol(buf)
 
         if _out:
             for p in self.get_patches():
                 if p is None:
-                    print "patch is empty. not sending"
                     SOCKET_Q.task_done()
                     continue
-                print('writing a patch', p)
+                print('writing patch', p)
                 self.sock.sendall(p + '\n')
                 SOCKET_Q.task_done()
 
@@ -240,7 +239,6 @@ class Listener(sublime_plugin.EventListener):
         dmp_patch = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         old_text = text(view)
-        print "old text:", old_text
         t = DMP.patch_apply(dmp_patch, old_text)
         print "t is ", t
         if t[1][0]:
@@ -294,7 +292,6 @@ class Listener(sublime_plugin.EventListener):
         print 'clone', self.name(view)
 
     def on_modified(self, view):
-        print view.sel()
         try:
             MODIFIED_EVENTS.get_nowait()
         except Queue.Empty:
@@ -314,7 +311,6 @@ class Listener(sublime_plugin.EventListener):
             return
         p = unfuck_path(view.file_name() or view.name())
         print "file_name %s view name %s p %s" % (view.file_name(), view.name(), p)
-        print p
         if p.find(COLAB_DIR, 0, len(COLAB_DIR)) == 0:
             self.views_changed.append(view)
         else:
