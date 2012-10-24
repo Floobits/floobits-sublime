@@ -114,7 +114,7 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.sock.connect(('127.0.0.1', 3148))
+            self.sock.connect(('floobits.com', 3148))
         except socket.error:
             self.reconnect()
             return
@@ -249,20 +249,17 @@ class Listener(sublime_plugin.EventListener):
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
                 # TODO: request whole file from server
             region = sublime.Region(0, view.size())
-            print "region", region
             MODIFIED_EVENTS.put(1)
-            pos = view.sel()
+            selections = [x for x in view.sel()]
             try:
                 edit = view.begin_edit()
                 view.replace(edit, region, str(t[0]))
             finally:
                 view.end_edit(edit)
-            '''
-            if len(pos) > 0:
-                view.sel().add(sublime.Region(pos[0], 0))
-            else:
-                view.sel().clear()
-            '''
+            view.sel().clear()
+            for sel in selections:
+                print "re-adding selection", sel
+                view.sel().add(sel)
         else:
             print "failed to patch"
 
