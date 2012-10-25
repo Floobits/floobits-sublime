@@ -1,4 +1,4 @@
-
+# coding: utf-8
 import Queue
 import threading
 import socket
@@ -247,7 +247,7 @@ class Listener(sublime_plugin.EventListener):
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
                 return Listener.get_buf(patch_data['path'])
             else:
-                Listener.update_buf(patch_data['path'], str(t[0]))
+                Listener.update_buf(patch_data['path'], str(t[0]), view, window)
         else:
             print "failed to patch"
             return Listener.get_buf(patch_data['path'])
@@ -274,7 +274,7 @@ class Listener(sublime_plugin.EventListener):
         MODIFIED_EVENTS.put(1)
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, text)
+            view.replace(edit, region, text.decode("utf-8"))
         finally:
             view.end_edit(edit)
         view.sel().clear()
