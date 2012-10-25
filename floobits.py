@@ -247,7 +247,7 @@ class Listener(sublime_plugin.EventListener):
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
                 return Listener.get_buf(patch_data['path'])
             else:
-                Listener.update_buf(patch_data['path'], str(t[0]), view, window)
+                Listener.update_buf(patch_data['path'], str(t[0]), view)
         else:
             print "failed to patch"
             return Listener.get_buf(patch_data['path'])
@@ -261,17 +261,19 @@ class Listener(sublime_plugin.EventListener):
         SOCKET_Q.put(json.dumps(req))
 
     @staticmethod
-    def update_buf(path, text, view=None, window=None):
+    def update_buf(path, text, view=None):
         path = get_full_path(path)
-        if not window:
-            window = sublime.active_window()
         if not view:
             view = get_view_from_path(path)
         if not view:
+            # maybe we should create a new window? I don't know
+            window = sublime.active_window()
             view = window.open_file(path)
         region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
+        # so we don't send a patch back to the server for this
+        BUF_STATE[view.buffer_id()] = text.decode("utf-8")
         try:
             edit = view.begin_edit()
             view.replace(edit, region, text.decode("utf-8"))
