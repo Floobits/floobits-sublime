@@ -261,15 +261,17 @@ class Listener(sublime_plugin.EventListener):
         SOCKET_Q.put(json.dumps(req))
 
     @staticmethod
-    def update_buf(path, text):
+    def update_buf(path, text, view=None, window=None):
         path = get_full_path(path)
-        view = get_view_from_path(path)
-        if not view:
+        if not window:
             window = sublime.active_window()
+        if not view:
+            view = get_view_from_path(path)
+        if not view:
             view = window.open_file(path)
         region = sublime.Region(0, view.size())
-        MODIFIED_EVENTS.put(1)
         selections = [x for x in view.sel()]
+        MODIFIED_EVENTS.put(1)
         try:
             edit = view.begin_edit()
             view.replace(edit, region, text)
