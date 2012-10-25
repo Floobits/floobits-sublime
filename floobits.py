@@ -245,21 +245,23 @@ class Listener(sublime_plugin.EventListener):
             cur_hash = hashlib.md5(t[0]).hexdigest()
             if cur_hash != patch_data['md5']:
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
-                return self.get_buf(patch_data['path'])
+                return Listener.get_buf(patch_data['path'])
             else:
-                self.update_buf(patch_data['path'], str(t[0]))
+                Listener.update_buf(patch_data['path'], str(t[0]))
         else:
             print "failed to patch"
-            return self.get_buf(patch_data['path'])
+            return Listener.get_buf(patch_data['path'])
 
-    def get_buf(self, path):
+    @staticmethod
+    def get_buf(path):
         req = {
             'name': 'get_buf',
             'path': path
         }
-        SOCKET_Q.put(req)
+        SOCKET_Q.put(json.dumps(req))
 
-    def update_buf(self, path, text):
+    @staticmethod
+    def update_buf(path, text):
         path = get_full_path(path)
         view = get_view_from_path(path)
         if not view:
@@ -270,7 +272,7 @@ class Listener(sublime_plugin.EventListener):
         selections = [x for x in view.sel()]
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, str(t[0]))
+            view.replace(edit, region, text)
         finally:
             view.end_edit(edit)
         view.sel().clear()
