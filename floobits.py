@@ -94,7 +94,7 @@ class AgentConnection(object):
     def __init__(self):
         self.sock = None
         self.buf = ""
-        self.reconnect_delay = 1
+        self.reconnect_delay = 100
 
     @staticmethod
     def put(item):
@@ -105,11 +105,11 @@ class AgentConnection(object):
 
     def reconnect(self):
         self.sock = None
-        print "reconnecting..."
         self.reconnect_delay *= 1.5
-        if self.reconnect_delay > 50: # 5 seconds
-            self.reconnect_delay = 50
-        sublime.set_timeout(self.connect, int(100 * self.reconnect_delay))
+        if self.reconnect_delay > 5000: # 5 seconds
+            self.reconnect_delay = 5000
+        print "reconnecting in", self.reconnect_delay, ""
+        sublime.set_timeout(self.connect, int(self.reconnect_delay))
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -245,21 +245,19 @@ class Listener(sublime_plugin.EventListener):
             cur_hash = hashlib.md5(t[0]).hexdigest()
             if cur_hash != patch_data['md5']:
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
-                # TODO: request whole file from server
-            region = sublime.Region(0, view.size())
-            MODIFIED_EVENTS.put(1)
-            selections = [x for x in view.sel()]
-            try:
-                edit = view.begin_edit()
-                view.replace(edit, region, str(t[0]))
-            finally:
-                view.end_edit(edit)
-            view.sel().clear()
-            for sel in selections:
-                print "re-adding selection", sel
-                view.sel().add(sel)
+                return self.get_buf(patch_data['path'])
+            else:
+                self.update_buf(patch_data['path'], str(t[0]))
         else:
             print "failed to patch"
+            return self.get_buf(patch_data['path'])
+
+    def get_buf(self, path):
+        req = {
+            'name': 'get_buf',
+            'path': path
+        }
+        SOCKET_Q.put(req)
 
     def update_buf(self, path, text):
         path = get_full_path(path)
@@ -269,11 +267,16 @@ class Listener(sublime_plugin.EventListener):
             view = window.open_file(path)
         region = sublime.Region(0, view.size())
         MODIFIED_EVENTS.put(1)
+        selections = [x for x in view.sel()]
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, text)
+            view.replace(edit, region, str(t[0]))
         finally:
             view.end_edit(edit)
+        view.sel().clear()
+        for sel in selections:
+            print "re-adding selection", sel
+            view.sel().add(sel)
 
     def id(self, view):
         return view.buffer_id()
