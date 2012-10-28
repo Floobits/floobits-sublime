@@ -204,7 +204,6 @@ class AgentConnection(object):
 
 class Listener(sublime_plugin.EventListener):
     views_changed = []
-    url = 'http://fixtheco.de:3149/patch/'
     uid_to_buf_id = {}
 
     @staticmethod
