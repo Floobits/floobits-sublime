@@ -20,8 +20,9 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 COLAB_DIR = ""
 def reload_settings():
     global COLAB_DIR
-    # TODO: if there's no slash, append a slash
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
+    if COLAB_DIR[-1] != '/':
+        COLAB_DIR += '/'
 
 settings.add_on_change('', reload_settings)
 reload_settings()
@@ -324,6 +325,7 @@ class Listener(sublime_plugin.EventListener):
             self.views_changed.append(view)
         else:
             print "%s isn't in %s. not sending patch" % (COLAB_DIR, p)
+
 
 class JoinRoomCommand(sublime_plugin.TextCommand):
     def run(self, *args, **kwargs):
