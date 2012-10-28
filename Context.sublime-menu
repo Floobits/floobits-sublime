@@ -1,4 +1,4 @@
 [{
-  "caption": "Floobits::select channel",
-  "command": "join_channel"
+  "caption": "Floobits::select room",
+  "command": "join_room"
 }]

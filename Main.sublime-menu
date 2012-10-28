@@ -6,9 +6,9 @@
     "id": "floobitsmenu",
     "caption": "Floobits",
     "children": [{
-      "id": "floobits_channel_menu",
-      "caption": "Select Channel",
-      "command": "join_channel"
+      "id": "floobits_room_menu",
+      "caption": "Select Room",
+      "command": "join_room"
     }]
   }]
 },

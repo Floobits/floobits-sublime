@@ -325,14 +325,14 @@ class Listener(sublime_plugin.EventListener):
         else:
             print "%s isn't in %s. not sending patch" % (COLAB_DIR, p)
 
-class JoinChannelCommand(sublime_plugin.TextCommand):
+class JoinRoomCommand(sublime_plugin.TextCommand):
     def run(self, *args, **kwargs):
-        self.get_window().show_input_panel("Channel", "", self.on_input, None, None)
+        self.get_window().show_input_panel("Room", "", self.on_input, None, None)
         #self.panel('hawro')
 
-    def on_input(self, channel):
-        print('channel: %s' % channel)
-        sublime.status_message('channel: %s' % (channel))
+    def on_input(self, room):
+        print('room: %s' % room)
+        sublime.status_message('room: %s' % (room))
 
     def active_view(self):
         return self.view
