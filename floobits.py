@@ -31,7 +31,7 @@ reload_settings()
 SOCKET_Q = Queue.Queue()
 BUF_STATE = collections.defaultdict(str)
 MODIFIED_EVENTS = Queue.Queue()
-
+BUF_IDS_TO_VIEWS = {}
 
 def get_full_path(p):
     full_path = os.path.join(COLAB_DIR, p)
@@ -61,14 +61,20 @@ def get_view_from_path(path):
 
 class DMP(object):
     def __init__(self, view):
-        self.buffer_id = view.buffer_id()
-        #to rel path
+        self.buf_id = None
+        self.vb_id = view.buffer_id()
+        # to rel path
         self.path = view.file_name()[len(COLAB_DIR):]
         self.current = text(view)
-        self.previous = BUF_STATE[self.buffer_id]
+        self.previous = BUF_STATE[self.vb_id]
+        for buf_id, vb_id in BUF_IDS_TO_VIEWS.iteritems():
+            if vb_id == self.vb_id:
+                self.buf_id = buf_id
+        if not self.buf_id:
+            print("SHIIIIIIIIT")
 
     def __str__(self):
-        return "%s - %s" % (self.path, self.buffer_id)
+        return "%s - %s - %s" % (self.buf_id, self.path, self.vb_id)
 
     def patch(self):
         return dmp.diff_match_patch().patch_make(self.previous, self.current)
@@ -82,7 +88,7 @@ class DMP(object):
         patch_str = str(patch[0])
         print "patch:", patch_str
         return json.dumps({
-                'uid': str(self.buffer_id),
+                'id': str(self.buf_id),
                 'md5': hashlib.md5(self.current).hexdigest(),
                 'path': self.path,
                 'patch': patch_str,
@@ -161,7 +167,12 @@ class AgentConnection(object):
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
             elif name == 'get_buf':
-                Listener.update_buf(data['path'], data['buf'])
+                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'])
+            elif name == 'room_info':
+                # TODO: do something with tree, owner, and users
+                for buf_id, buf in data['bufs'].iteritems():
+                    print("updating buf", buf['id'])
+                    Listener.update_buf(buf['id'], buf['path'], buf['buf'], buf['md5'])
             else:
                 print "unknown name!", name
             self.buf = after
@@ -210,7 +221,6 @@ class AgentConnection(object):
 
 class Listener(sublime_plugin.EventListener):
     views_changed = []
-    uid_to_buf_id = {}
 
     @staticmethod
     def push():
@@ -218,25 +228,28 @@ class Listener(sublime_plugin.EventListener):
         while Listener.views_changed:
             view = Listener.views_changed.pop()
 
-            buf_id = view.buffer_id()
-            if buf_id in reported:
+            vb_id = view.buffer_id()
+            if vb_id in reported:
                 continue
 
-            reported.add(buf_id)
+            reported.add(vb_id)
             patch = DMP(view)
             #update the current copy of the buffer
-            BUF_STATE[buf_id] = patch.current
+            BUF_STATE[vb_id] = patch.current
             SOCKET_Q.put(patch.to_json())
 
         sublime.set_timeout(Listener.push, 100)
 
     @staticmethod
     def apply_patch(patch_data):
+        buf_id = patch_data['id']
         path = get_full_path(patch_data['path'])
-        view = get_view_from_path(path)
+        view = BUF_IDS_TO_VIEWS.get(buf_id)
         if not view:
+            # maybe we should create a new window? I don't know
             window = sublime.active_window()
             view = window.open_file(path)
+            BUF_IDS_TO_VIEWS[buf_id] = view
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
             print "no patches to apply"
@@ -251,30 +264,32 @@ class Listener(sublime_plugin.EventListener):
             cur_hash = hashlib.md5(t[0]).hexdigest()
             if cur_hash != patch_data['md5']:
                 print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
-                return Listener.get_buf(patch_data['path'])
+                # TODO: do something better than erasing local changes
+                return Listener.get_buf(buf_id)
             else:
-                Listener.update_buf(patch_data['path'], str(t[0]), view)
+                Listener.update_buf(buf_id, patch_data['path'], str(t[0]), cur_hash, view)
         else:
             print "failed to patch"
-            return Listener.get_buf(patch_data['path'])
+            return Listener.get_buf(buf_id)
 
     @staticmethod
-    def get_buf(path):
+    def get_buf(buf_id):
         req = {
             'name': 'get_buf',
-            'path': path
+            'id': buf_id
         }
         SOCKET_Q.put(json.dumps(req))
 
     @staticmethod
-    def update_buf(path, text, view=None):
+    def update_buf(buf_id, path, text, md5, view=None):
         path = get_full_path(path)
         if not view:
-            view = get_view_from_path(path)
+            view = BUF_IDS_TO_VIEWS.get(buf_id)
         if not view:
             # maybe we should create a new window? I don't know
             window = sublime.active_window()
             view = window.open_file(path)
+            BUF_IDS_TO_VIEWS[buf_id] = view
         region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
@@ -321,15 +336,22 @@ class Listener(sublime_plugin.EventListener):
         print 'activated', self.name(view)
 
     def add(self, view):
+        vb_id = view.buffer_id();
+        # This could probably be more efficient
+        if BUF_IDS_TO_VIEWS.values().count(vb_id) > 0:
+            print("view is in BUF_IDS_TO_VIEWS. sending patch")
+            self.views_changed.append(view)
+        else:
+            print("view isn't in BUF_IDS_TO_VIEWS. not sending patch")
         if view.is_scratch():
             print('is scratch')
             return
-        p = unfuck_path(view.file_name() or view.name())
-        print "file_name %s view name %s p %s" % (view.file_name(), view.name(), p)
-        if p.find(COLAB_DIR, 0, len(COLAB_DIR)) == 0:
-            self.views_changed.append(view)
-        else:
-            print "%s isn't in %s. not sending patch" % (COLAB_DIR, p)
+#        p = unfuck_path(view.file_name() or view.name())
+#        print "file_name %s view name %s p %s" % (view.file_name(), view.name(), p)
+#        if p.find(COLAB_DIR, 0, len(COLAB_DIR)) == 0:
+#            self.views_changed.append(view)
+#        else:
+#            print "%s isn't in %s. not sending patch" % (COLAB_DIR, p)
 
 
 class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
