@@ -8,6 +8,7 @@ import json
 import collections
 import os.path
 import hashlib
+import traceback
 
 import sublime
 import sublime_plugin
@@ -112,8 +113,9 @@ class AgentConnection(object):
         print "reconnecting in", self.reconnect_delay, ""
         sublime.set_timeout(self.connect, int(self.reconnect_delay))
 
-    def connect(self, room):
-        self.room = room
+    def connect(self, room=None):
+        if room:
+            self.room = room
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.sock.connect(('floobits.com', 3148))
@@ -133,6 +135,7 @@ class AgentConnection(object):
             'username': username,
             'secret': secret,
             'room': self.room,
+            'room_owner': username,
             'version': __VERSION__
         }))
 
@@ -343,6 +346,8 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
                 AGENT.connect(room)
             except Exception as e:
                 print e
+                tb = traceback.format_exc()
+                print tb
 
         thread = threading.Thread(target=run_agent)
         thread.start()
