@@ -7,8 +7,8 @@
     "caption": "Floobits",
     "children": [{
       "id": "floobits_room_menu",
-      "caption": "Select Room",
-      "command": "join_room"
+      "caption": "Join Room",
+      "command": "prompt_join_room"
     }]
   }]
 },

@@ -112,7 +112,8 @@ class AgentConnection(object):
         print "reconnecting in", self.reconnect_delay, ""
         sublime.set_timeout(self.connect, int(self.reconnect_delay))
 
-    def connect(self):
+    def connect(self, room):
+        self.room = room
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.sock.connect(('floobits.com', 3148))
@@ -128,11 +129,10 @@ class AgentConnection(object):
     def auth(self):
         username = settings.get('username')
         secret = settings.get('secret')
-        room = settings.get('room')
         self.put(json.dumps({
             'username': username,
             'secret': secret,
-            'room': room,
+            'room': self.room,
             'version': __VERSION__
         }))
 
@@ -326,77 +326,27 @@ class Listener(sublime_plugin.EventListener):
             print "%s isn't in %s. not sending patch" % (COLAB_DIR, p)
 
 
-class JoinRoomCommand(sublime_plugin.TextCommand):
+class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
-        self.get_window().show_input_panel("Room", "", self.on_input, None, None)
-        #self.panel('hawro')
+        self.window.show_input_panel("Join room:", "", self.on_input, None, None)
 
     def on_input(self, room):
-        print('room: %s' % room)
-        sublime.status_message('room: %s' % (room))
+        print('room:', room)
+        self.window.active_view().run_command("join_room", {"room": room})
 
-    def active_view(self):
-        return self.view
 
-    def is_enabled(self):
-        return True
+class JoinRoomCommand(sublime_plugin.TextCommand):
+    def run(self, edit, room):
+        def run_agent():
+            global AGENT
+            try:
+                AGENT.connect(room)
+            except Exception as e:
+                print e
 
-    def get_file_name(self):
-        return os.path.basename(self.view.file_name())
+        thread = threading.Thread(target=run_agent)
+        thread.start()
 
-    def get_working_dir(self):
-        return os.path.dirname(self.view.file_name())
-
-    def get_window(self):
-        # Fun discovery: if you switch tabs while a command is working,
-        # self.view.window() is None. (Admittedly this is a consequence
-        # of my deciding to do async command processing... but, hey,
-        # got to live with that now.)
-        # I did try tracking the window used at the start of the command
-        # and using it instead of view.window() later, but that results
-        # panels on a non-visible window, which is especially useless in
-        # the case of the quick panel.
-        # So, this is not necessarily ideal, but it does work.
-        return self.view.window() or sublime.active_window()
-
-    def _output_to_view(self, output_file, output, clear=False, syntax="Packages/JavaScript/JavaScript.tmLanguage"):
-        output_file.set_syntax_file(syntax)
-        edit = output_file.begin_edit()
-        if clear:
-            region = sublime.Region(0, self.output_view.size())
-            output_file.erase(edit, region)
-        output_file.insert(edit, 0, output)
-        output_file.end_edit(edit)
-
-    def scratch(self, output, title=False, **kwargs):
-        scratch_file = self.get_window().new_file()
-        if title:
-            scratch_file.set_name(title)
-        scratch_file.set_scratch(True)
-        self._output_to_view(scratch_file, output, **kwargs)
-        scratch_file.set_read_only(True)
-        return scratch_file
-
-    def panel(self, output, **kwargs):
-        if not hasattr(self, 'output_view'):
-            self.output_view = self.get_window().get_output_panel("git")
-        self.output_view.set_read_only(False)
-        self._output_to_view(self.output_view, output, clear=True, **kwargs)
-        self.output_view.set_read_only(True)
-        self.get_window().run_command("show_panel", {"panel": "output.git"})
-
-    def quick_panel(self, *args, **kwargs):
-        self.get_window().show_quick_panel(*args, **kwargs)
 
 Listener.push()
-
-
-def run_agent():
-    try:
-        agent = AgentConnection()
-        agent.connect()
-    except Exception as e:
-        print e
-
-thread = threading.Thread(target=run_agent)
-thread.start()
+AGENT = AgentConnection()

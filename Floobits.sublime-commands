@@ -1,6 +1,6 @@
 [
     {
-        "caption": "Join Room",
-        "command": "JoinRoom"
+        "command": "join_room",
+        "caption": "Join Room"
     }
 ]
