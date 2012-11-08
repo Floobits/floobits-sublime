@@ -67,8 +67,8 @@ class DMP(object):
         self.path = view.file_name()[len(COLAB_DIR):]
         self.current = text(view)
         self.previous = BUF_STATE[self.vb_id]
-        for buf_id, vb_id in BUF_IDS_TO_VIEWS.iteritems():
-            if vb_id == self.vb_id:
+        for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
+            if view.buffer_id() == self.vb_id:
                 self.buf_id = buf_id
         if not self.buf_id:
             print("SHIIIIIIIIT")
@@ -338,11 +338,11 @@ class Listener(sublime_plugin.EventListener):
     def add(self, view):
         vb_id = view.buffer_id();
         # This could probably be more efficient
-        if BUF_IDS_TO_VIEWS.values().count(vb_id) > 0:
-            print("view is in BUF_IDS_TO_VIEWS. sending patch")
-            self.views_changed.append(view)
-        else:
-            print("view isn't in BUF_IDS_TO_VIEWS. not sending patch")
+        for buf_id, v in BUF_IDS_TO_VIEWS.iteritems():
+            if v.buffer_id() == vb_id:
+                print("view is in BUF_IDS_TO_VIEWS. sending patch")
+                self.views_changed.append(view)
+                break
         if view.is_scratch():
             print('is scratch')
             return
