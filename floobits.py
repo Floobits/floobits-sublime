@@ -97,6 +97,10 @@ class AgentConnection(object):
         self.sock = None
         self.buf = ""
         self.reconnect_delay = 100
+        self.host = settings.get("host", "floobits.com")
+        self.port = settings.get("port", 3148)
+        self.username = settings.get('username')
+        self.secret = settings.get('secret')
 
     @staticmethod
     def put(item):
@@ -118,7 +122,7 @@ class AgentConnection(object):
             self.room = room
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.sock.connect(('floobits.com', 3148))
+            self.sock.connect((self.host, self.port))
         except socket.error:
             self.reconnect()
             return
@@ -129,15 +133,14 @@ class AgentConnection(object):
         self.auth()
 
     def auth(self):
-        username = settings.get('username')
-        secret = settings.get('secret')
         self.put(json.dumps({
-            'username': username,
-            'secret': secret,
+            'username': self.username,
+            'secret': self.secret,
             'room': self.room,
-            'room_owner': username,
+            'room_owner': self.username,
             'version': __VERSION__
         }))
+        # TODO: room_owner can be different from username
 
     def get_patches(self):
         while True:
