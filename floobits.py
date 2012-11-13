@@ -35,6 +35,7 @@ SOCKET_Q = Queue.Queue()
 BUF_STATE = collections.defaultdict(str)
 MODIFIED_EVENTS = Queue.Queue()
 BUF_IDS_TO_VIEWS = {}
+READ_ONLY = False
 
 
 def get_full_path(p):
@@ -163,6 +164,7 @@ class AgentConnection(object):
                 break
 
     def protocol(self, req):
+        global READ_ONLY
         self.buf += req
         while True:
             before, sep, after = self.buf.partition('\n')
@@ -177,6 +179,10 @@ class AgentConnection(object):
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'])
             elif name == 'room_info':
                 # TODO: do something with tree, owner, and users
+                perms = data['perms']
+                if "patch" not in perms:
+                    print("We don't have patch permission. Setting buffers to read-only")
+                    READ_ONLY = True
                 for buf_id, buf in data['bufs'].iteritems():
                     print("updating buf", buf['id'])
                     Listener.update_buf(buf['id'], buf['path'], buf['buf'], buf['md5'])
@@ -296,6 +302,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def update_buf(buf_id, path, text, md5, view=None):
+        global READ_ONLY
         path = get_full_path(path)
         if not view:
             view = BUF_IDS_TO_VIEWS.get(buf_id)
@@ -318,6 +325,9 @@ class Listener(sublime_plugin.EventListener):
         for sel in selections:
             print "re-adding selection", sel
             view.sel().add(sel)
+        view.set_read_only(READ_ONLY)
+        if READ_ONLY:
+            view.set_status("Floobits", "You don't have write permission. Buffer is read-only.")
 
     def id(self, view):
         return view.buffer_id()
