@@ -9,6 +9,7 @@ import collections
 import os.path
 import hashlib
 import traceback
+from datetime import datetime
 
 import sublime
 import sublime_plugin
@@ -291,6 +292,8 @@ class Listener(sublime_plugin.EventListener):
         else:
             print "failed to patch"
             return Listener.get_buf(buf_id)
+        now = datetime.now()
+        view.set_status("Floobits", "Changed by %s at %s" % (patch_data['username'], now.strftime("%H:%M")))
 
     @staticmethod
     def get_buf(buf_id):
