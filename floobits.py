@@ -64,6 +64,7 @@ def get_view_from_path(path):
 
 
 class DMP(object):
+
     def __init__(self, view):
         self.buf_id = None
         self.vb_id = view.buffer_id()
@@ -145,6 +146,7 @@ class AgentConnection(object):
         self.auth()
 
     def auth(self):
+        # TODO: room_owner can be different from username
         self.put(json.dumps({
             'username': self.username,
             'secret': self.secret,
@@ -152,7 +154,6 @@ class AgentConnection(object):
             'room_owner': self.username,
             'version': __VERSION__
         }))
-        # TODO: room_owner can be different from username
 
     def get_patches(self):
         while True:
@@ -179,6 +180,10 @@ class AgentConnection(object):
                 for buf_id, buf in data['bufs'].iteritems():
                     print("updating buf", buf['id'])
                     Listener.update_buf(buf['id'], buf['path'], buf['buf'], buf['md5'])
+            elif name == 'join':
+                print "%s joined the room" % data['username']
+            elif name == 'part':
+                print "%s left the room" % data['username']
             else:
                 print "unknown name!", name
             self.buf = after
@@ -300,7 +305,7 @@ class Listener(sublime_plugin.EventListener):
             view = window.open_file(path)
             BUF_IDS_TO_VIEWS[buf_id] = view
         region = sublime.Region(0, view.size())
-        selections = [x for x in view.sel()]
+        selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
         # so we don't send a patch back to the server for this
         BUF_STATE[view.buffer_id()] = text.decode("utf-8")
@@ -364,6 +369,7 @@ class Listener(sublime_plugin.EventListener):
 
 
 class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
+
     def run(self, *args, **kwargs):
         self.window.show_input_panel("Join room:", "", self.on_input, None, None)
 
@@ -373,7 +379,9 @@ class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
 
 class JoinRoomCommand(sublime_plugin.TextCommand):
+
     def run(self, edit, room):
+
         def run_agent():
             global AGENT
             try:
