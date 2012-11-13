@@ -19,6 +19,8 @@ __VERSION__ = '0.01'
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 COLAB_DIR = ""
+
+
 def reload_settings():
     global COLAB_DIR
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
@@ -28,10 +30,12 @@ def reload_settings():
 settings.add_on_change('', reload_settings)
 reload_settings()
 
+
 SOCKET_Q = Queue.Queue()
 BUF_STATE = collections.defaultdict(str)
 MODIFIED_EVENTS = Queue.Queue()
 BUF_IDS_TO_VIEWS = {}
+
 
 def get_full_path(p):
     full_path = os.path.join(COLAB_DIR, p)
@@ -67,6 +71,7 @@ class DMP(object):
         self.path = view.file_name()[len(COLAB_DIR):]
         self.current = text(view)
         self.previous = BUF_STATE[self.vb_id]
+        self.md5_before = hashlib.md5(self.previous).hexdigest()
         for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
             if view.buffer_id() == self.vb_id:
                 self.buf_id = buf_id
@@ -88,12 +93,13 @@ class DMP(object):
         patch_str = str(patch[0])
         print "patch:", patch_str
         return json.dumps({
-                'id': str(self.buf_id),
-                'md5': hashlib.md5(self.current).hexdigest(),
-                'path': self.path,
-                'patch': patch_str,
-                'name': 'patch'
-            })
+            'id': str(self.buf_id),
+            'md5_after': hashlib.md5(self.current).hexdigest(),
+            'md5_before': self.md5_before,
+            'path': self.path,
+            'patch': patch_str,
+            'name': 'patch'
+        })
 
 
 class AgentConnection(object):
@@ -118,7 +124,7 @@ class AgentConnection(object):
     def reconnect(self):
         self.sock = None
         self.reconnect_delay *= 1.5
-        if self.reconnect_delay > 5000: # 5 seconds
+        if self.reconnect_delay > 5000:
             self.reconnect_delay = 5000
         print "reconnecting in", self.reconnect_delay, ""
         sublime.set_timeout(self.connect, int(self.reconnect_delay))
@@ -258,12 +264,15 @@ class Listener(sublime_plugin.EventListener):
         dmp_patch = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         old_text = text(view)
+        md5_before = hashlib.md5(old_text).hexdigest()
+        if md5_before != patch_data['md5_before']:
+            print "starting md5s don't match. this is dangerous!"
         t = DMP.patch_apply(dmp_patch, old_text)
         print "t is ", t
         if t[1][0]:
             cur_hash = hashlib.md5(t[0]).hexdigest()
-            if cur_hash != patch_data['md5']:
-                print "new hash %s != expected %s" % (cur_hash, patch_data['md5'])
+            if cur_hash != patch_data['md5_after']:
+                print "new hash %s != expected %s" % (cur_hash, patch_data['md5_after'])
                 # TODO: do something better than erasing local changes
                 return Listener.get_buf(buf_id)
             else:
@@ -336,7 +345,7 @@ class Listener(sublime_plugin.EventListener):
         print 'activated', self.name(view)
 
     def add(self, view):
-        vb_id = view.buffer_id();
+        vb_id = view.buffer_id()
         # This could probably be more efficient
         for buf_id, v in BUF_IDS_TO_VIEWS.iteritems():
             if v.buffer_id() == vb_id:
