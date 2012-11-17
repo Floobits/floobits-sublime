@@ -11,14 +11,14 @@
 
 If you'd rather create a symlink instead of copy/moving, run something like:
 
-    ln -s ~/code/collab-sublime-text-2 ~/Library/Application\ Support/Sublime\ Text\ 2/Packages/Floobits
+    ln -s ~/code/sublime-text-2-plugin ~/Library/Application\ Support/Sublime\ Text\ 2/Packages/Floobits
 
 # Configuration
 
 Create a Floobits.sublime-settings file and fill in the following info:
 
     {
-      "share_dir": "/Users/ggreer/code/collab-sublime-text-2/shared/",
+      "share_dir": "/Users/ggreer/code/sublime-text-2-plugin/shared/",
       "username": "ggreer",
       "secret": "1234",
       "room": "test"
