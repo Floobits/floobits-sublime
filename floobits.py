@@ -326,7 +326,7 @@ class Listener(sublime_plugin.EventListener):
             view.replace(edit, region, text.decode("utf-8"))
         finally:
             view.end_edit(edit)
-        sublime.set_timeout(lambda :view.set_viewport_position(viewport_position), 0)
+        sublime.set_timeout(lambda :view.set_viewport_position(viewport_position, False), 0)
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
