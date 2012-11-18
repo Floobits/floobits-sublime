@@ -304,7 +304,6 @@ class Listener(sublime_plugin.EventListener):
         selections = [x for x in view.sel()]  # deep copy
         # so we don't send a patch back to the server for this
         BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
-
         for patch in t[2]:
             offset = patch[0]
             length = patch[1]
@@ -319,6 +318,7 @@ class Listener(sublime_plugin.EventListener):
             finally:
                 view.end_edit(edit)
 
+        view.sel().clear()
         for sel in selections:
             print "re-adding selection", sel
             view.sel().add(sel)
@@ -357,7 +357,7 @@ class Listener(sublime_plugin.EventListener):
             view.replace(edit, region, text.decode("utf-8"))
         finally:
             view.end_edit(edit)
-        sublime.set_timeout(lambda :view.set_viewport_position(viewport_position, False), 0)
+        sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
