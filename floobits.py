@@ -13,6 +13,7 @@ from datetime import datetime
 
 import sublime
 import sublime_plugin
+import dmp_monkey
 from lib import diff_match_patch as dmp
 
 __VERSION__ = '0.01'
@@ -65,7 +66,7 @@ def get_view_from_path(path):
     return None
 
 
-class DMP(object):
+class DMPTransport(object):
 
     def __init__(self, view):
         self.buf_id = None
@@ -251,7 +252,7 @@ class Listener(sublime_plugin.EventListener):
                 continue
 
             reported.add(vb_id)
-            patch = DMP(view)
+            patch = DMPTransport(view)
             #update the current copy of the buffer
             BUF_STATE[vb_id] = patch.current
             SOCKET_Q.put(patch.to_json())
@@ -281,6 +282,7 @@ class Listener(sublime_plugin.EventListener):
             print "starting md5s don't match. this is dangerous!"
         t = DMP.patch_apply(dmp_patch, old_text)
         print "t is ", t
+        print t[2]
         if t[1][0]:
             cur_hash = hashlib.md5(t[0]).hexdigest()
             if cur_hash != patch_data['md5_after']:
