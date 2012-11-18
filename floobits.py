@@ -282,7 +282,6 @@ class Listener(sublime_plugin.EventListener):
         if md5_before != patch_data['md5_before']:
             print "starting md5s don't match. this is dangerous!"
         t = DMP.patch_apply(dmp_patch, old_text)
-#        print "t is ", t
         print t[1], t[2]
         if t[1][0]:
             cur_hash = hashlib.md5(t[0]).hexdigest()
@@ -291,7 +290,22 @@ class Listener(sublime_plugin.EventListener):
                 # TODO: do something better than erasing local changes
                 return Listener.get_buf(buf_id)
             else:
-                Listener.update_buf(buf_id, patch_data['path'], str(t[0]), cur_hash, view)
+                region = sublime.Region(t[2][0][0], t[2][0][0] + t[2][0][1])
+                print region
+                print "replacing", view.substr(region), "with", t[2][0][2].decode("utf-8")
+                selections = [x for x in view.sel()]  # deep copy
+                MODIFIED_EVENTS.put(1)
+                # so we don't send a patch back to the server for this
+                BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
+                try:
+                    edit = view.begin_edit()
+                    view.replace(edit, region, t[2][0][2].decode("utf-8"))
+                finally:
+                    view.end_edit(edit)
+                for sel in selections:
+                    print "re-adding selection", sel
+                    view.sel().add(sel)
+#                Listener.update_buf(buf_id, patch_data['path'], str(t[0]), cur_hash, view)
         else:
             print "failed to patch"
             return Listener.get_buf(buf_id)

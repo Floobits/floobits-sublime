@@ -29,7 +29,7 @@ def patch_apply(self, patches, text):
     results = []
     positions = []
     for patch in patches:
-        position = ()
+        position = [3, 0, ""]
         expected_loc = patch.start2 + delta
         text1 = self.diff_text1(patch.diffs)
         end_loc = -1
@@ -49,7 +49,6 @@ def patch_apply(self, patches, text):
         if start_loc == -1:
             # No match found.  :(
             results.append(False)
-            position = (-1, 0)
             # Subtract the delta for this failed patch from subsequent patches.
             delta -= patch.length2 - patch.length1
         else:
@@ -62,11 +61,13 @@ def patch_apply(self, patches, text):
                 text2 = text[start_loc: end_loc + self.Match_MaxBits]
             if text1 == text2:
                 # Perfect match, just shove the replacement text in.
+                print "perfect match"
                 replacement_str = self.diff_text2(patch.diffs)
                 text = (text[:start_loc] + replacement_str +
                             text[start_loc + len(text1):])
-                position = (start_loc, len(replacement_str) - len(text1))
+                position = [start_loc, len(text1), str(replacement_str)]
             else:
+                print "imperfect match"
                 # Imperfect match.
                 # Run a diff to get a framework of equivalent indices.
                 diffs = self.diff_main(text1, text2, False)
@@ -75,27 +76,41 @@ def patch_apply(self, patches, text):
                     self.Patch_DeleteThreshold):
                     # The end points match, but the content is unacceptably bad.
                     results[-1] = False
-                    position = (-1, 0)
                 else:
                     self.diff_cleanupSemanticLossless(diffs)
                     index1 = 0
-                    patch_len = 0
+                    delete_len = 0
+                    inserted_text = ""
                     for (op, data) in patch.diffs:
                         if op != self.DIFF_EQUAL:
                             index2 = self.diff_xIndex(diffs, index1)
                         if op == self.DIFF_INSERT:  # Insertion
                             text = text[:start_loc + index2] + data + text[start_loc +
                                                                            index2:]
-                            patch_len += len(data)
+                            inserted_text += data
                         elif op == self.DIFF_DELETE:  # Deletion
                             diff_index = self.diff_xIndex(diffs, index1 + len(data))
                             text = text[:start_loc + index2] + text[start_loc +
                                 diff_index:]
-                            patch_len += (index2 - diff_index)
+                            delete_len += (diff_index - index2)
                         if op != self.DIFF_DELETE:
                             index1 += len(data)
-                    position = (start_loc, patch_len)
+                    print "cleaned up sematic lossless"
+                    position = [start_loc, delete_len, inserted_text]
+
+        print "before", position
+        if position[0] < 4:
+            position[1] -= 4 - position[0]
+            position[2] = position[2][4 - position[0]:]
+            position[0] = 0
+        else:
+            position[0] -= 4
+#        elif len(text) - position[0] < 4:
+#            extra_bytes = len(text) - position[0]
+#            position[1] -= extra_bytes
+#            position[2] = position[2][:-1 * extra_bytes]
         positions.append(position)
+        print "pos", position
     # Strip the padding off.
     text = text[len(nullPadding):-len(nullPadding)]
     print "returning patches. null padding is", len(nullPadding)
