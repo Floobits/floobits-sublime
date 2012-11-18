@@ -194,12 +194,13 @@ class AgentConnection(object):
                 print "%s joined the room" % data['username']
             elif name == 'part':
                 print "%s left the room" % data['username']
-                region_key = 'floobits-highlight-' + data['user_id']
+                region_key = 'floobits-highlight-%s' % (data['user_id'])
                 for window in sublime.windows():
                     for view in window.views():
                         view.erase_regions(region_key)
             elif name == 'highlight':
-                Listener.highlight(data['id'], data['user_id'], data['username'], data['ranges'])
+                region_key = 'floobits-highlight-%s' % (data['user_id'])
+                Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
             else:
                 print "unknown name!", name
             self.buf = after
@@ -248,6 +249,7 @@ class AgentConnection(object):
 
 class Listener(sublime_plugin.EventListener):
     views_changed = []
+    selection_changed = []
 
     @staticmethod
     def push():
@@ -264,6 +266,8 @@ class Listener(sublime_plugin.EventListener):
             #update the current copy of the buffer
             BUF_STATE[vb_id] = patch.current
             SOCKET_Q.put(patch.to_json())
+
+        reported = set()
 
         sublime.set_timeout(Listener.push, 100)
 
@@ -377,15 +381,13 @@ class Listener(sublime_plugin.EventListener):
         if READ_ONLY:
             view.set_status("Floobits", "You don't have write permission. Buffer is read-only.")
 
-    def highlight(self, buf_id, user_id, username, ranges):
+    def highlight(self, buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
-        region_key = 'floobits-highlight-' + user_id
         view.erase_regions(region_key)
-        view.add_regions(region_key, regions, 'floobits.highlight', 'dot', sublime.DRAW_OUTLINED)
-
+        view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
 
     def id(self, view):
         return view.buffer_id()
@@ -410,6 +412,9 @@ class Listener(sublime_plugin.EventListener):
             self.add(view)
         else:
             MODIFIED_EVENTS.task_done()
+
+    def on_selection_modified(self, view):
+        self.selection_changed.append(view)
 
     def on_activated(self, view):
         if view.is_scratch():
@@ -461,7 +466,6 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
 
         thread = threading.Thread(target=run_agent)
         thread.start()
-
 
 Listener.push()
 AGENT = AgentConnection()
