@@ -275,40 +275,53 @@ class Listener(sublime_plugin.EventListener):
             print "no patches to apply"
             return
         print "patch is", patch_data['patch']
-        dmp_patch = DMP.patch_fromText(patch_data['patch'])
+        dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         old_text = text(view)
         md5_before = hashlib.md5(old_text).hexdigest()
         if md5_before != patch_data['md5_before']:
             print "starting md5s don't match. this is dangerous!"
-        t = DMP.patch_apply(dmp_patch, old_text)
-        print t[1], t[2]
-        if t[1][0]:
-            cur_hash = hashlib.md5(t[0]).hexdigest()
-            if cur_hash != patch_data['md5_after']:
-                print "new hash %s != expected %s" % (cur_hash, patch_data['md5_after'])
-                # TODO: do something better than erasing local changes
-                return Listener.get_buf(buf_id)
-            else:
-                region = sublime.Region(t[2][0][0], t[2][0][0] + t[2][0][1])
-                print region
-                print "replacing", view.substr(region), "with", t[2][0][2].decode("utf-8")
-                selections = [x for x in view.sel()]  # deep copy
-                MODIFIED_EVENTS.put(1)
-                # so we don't send a patch back to the server for this
-                BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
-                try:
-                    edit = view.begin_edit()
-                    view.replace(edit, region, t[2][0][2].decode("utf-8"))
-                finally:
-                    view.end_edit(edit)
-                for sel in selections:
-                    print "re-adding selection", sel
-                    view.sel().add(sel)
-#                Listener.update_buf(buf_id, patch_data['path'], str(t[0]), cur_hash, view)
-        else:
+
+        t = DMP.patch_apply(dmp_patches, old_text)
+
+        clean_patch = True
+        for applied_patch in t[1]:
+            if applied_patch == False:
+                clean_patch = False
+                break
+
+        if not clean_patch:
             print "failed to patch"
             return Listener.get_buf(buf_id)
+
+        cur_hash = hashlib.md5(t[0]).hexdigest()
+        if cur_hash != patch_data['md5_after']:
+            print "new hash %s != expected %s" % (cur_hash, patch_data['md5_after'])
+            # TODO: do something better than erasing local changes
+            return Listener.get_buf(buf_id)
+
+        selections = [x for x in view.sel()]  # deep copy
+        # so we don't send a patch back to the server for this
+        BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
+
+        for patch in t[2]:
+            offset = patch[0]
+            length = patch[1]
+            patch_text = patch[2]
+            region = sublime.Region(offset, offset + length)
+            print region
+            print "replacing", view.substr(region), "with", patch_text.decode("utf-8")
+            MODIFIED_EVENTS.put(1)
+            try:
+                edit = view.begin_edit()
+                view.replace(edit, region, patch_text.decode("utf-8"))
+            finally:
+                view.end_edit(edit)
+
+        for sel in selections:
+            print "re-adding selection", sel
+            view.sel().add(sel)
+
         now = datetime.now()
         view.set_status("Floobits", "Changed by %s at %s" % (patch_data['username'], now.strftime("%H:%M")))
 
