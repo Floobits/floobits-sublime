@@ -14,6 +14,7 @@ from datetime import datetime
 import sublime
 import sublime_plugin
 import dmp_monkey
+dmp_monkey.monkey_patch()
 from lib import diff_match_patch as dmp
 
 __VERSION__ = '0.01'
@@ -281,8 +282,8 @@ class Listener(sublime_plugin.EventListener):
         if md5_before != patch_data['md5_before']:
             print "starting md5s don't match. this is dangerous!"
         t = DMP.patch_apply(dmp_patch, old_text)
-        print "t is ", t
-        print t[2]
+#        print "t is ", t
+        print t[1], t[2]
         if t[1][0]:
             cur_hash = hashlib.md5(t[0]).hexdigest()
             if cur_hash != patch_data['md5_after']:
@@ -349,6 +350,7 @@ class Listener(sublime_plugin.EventListener):
 
     def on_load(self, view):
         print 'load', self.name(view)
+        view.run_command("join_room", {"room": "test"})
 
     def on_clone(self, view):
         self.add(view)

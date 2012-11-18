@@ -58,14 +58,14 @@ def patch_apply(self, patches, text):
             delta = start_loc - expected_loc
             if end_loc == -1:
                 text2 = text[start_loc: start_loc + len(text1)]
-                position = (start_loc, len(text1))
             else:
                 text2 = text[start_loc: end_loc + self.Match_MaxBits]
-                position = (start_loc, end_loc + self.Match_MaxBits - start_loc)
             if text1 == text2:
                 # Perfect match, just shove the replacement text in.
-                text = (text[:start_loc] + self.diff_text2(patch.diffs) +
+                replacement_str = self.diff_text2(patch.diffs)
+                text = (text[:start_loc] + replacement_str +
                             text[start_loc + len(text1):])
+                position = (start_loc, len(replacement_str) - len(text1))
             else:
                 # Imperfect match.
                 # Run a diff to get a framework of equivalent indices.
@@ -95,10 +95,11 @@ def patch_apply(self, patches, text):
                         if op != self.DIFF_DELETE:
                             index1 += len(data)
                     position = (start_loc, patch_len)
-            positions.append(position)
+        positions.append(position)
     # Strip the padding off.
     text = text[len(nullPadding):-len(nullPadding)]
-    print "returning patches"
+    print "returning patches. null padding is", len(nullPadding)
     return (text, results, positions)
 
-dmp.diff_match_patch.patch_apply = patch_apply
+def monkey_patch():
+    dmp.diff_match_patch.patch_apply = patch_apply
