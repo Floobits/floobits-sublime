@@ -377,7 +377,6 @@ class Listener(sublime_plugin.EventListener):
 
     def on_load(self, view):
         print 'load', self.name(view)
-        view.run_command("join_room", {"room": "test"})
 
     def on_clone(self, view):
         self.add(view)
