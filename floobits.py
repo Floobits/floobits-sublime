@@ -304,11 +304,13 @@ class Listener(sublime_plugin.EventListener):
         selections = [x for x in view.sel()]  # deep copy
         # so we don't send a patch back to the server for this
         BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
+        regions = []
         for patch in t[2]:
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
+            regions.append(region)
             print region
             print "replacing", view.substr(region), "with", patch_text.decode("utf-8")
             MODIFIED_EVENTS.put(1)
@@ -317,8 +319,10 @@ class Listener(sublime_plugin.EventListener):
                 view.replace(edit, region, patch_text.decode("utf-8"))
             finally:
                 view.end_edit(edit)
-
         view.sel().clear()
+        region_key = 'floobits-patch-' + patch_data['username']
+        view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
+        sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
             print "re-adding selection", sel
             view.sel().add(sel)
