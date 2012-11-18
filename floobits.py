@@ -86,16 +86,17 @@ class DMPTransport(object):
     def __str__(self):
         return "%s - %s - %s" % (self.buf_id, self.path, self.vb_id)
 
-    def patch(self):
+    def patches(self):
         return dmp.diff_match_patch().patch_make(self.previous, self.current)
 
     def to_json(self):
-        patch = self.patch()
-        if len(patch) == 0:
+        patches = self.patches()
+        if len(patches) == 0:
             return None
-        elif len(patch) > 1:
-            print "WTF!? there are %s patches" % len(patch)
-        patch_str = str(patch[0])
+        print "sending %s patches" % len(patches)
+        patch_str = ""
+        for patch in patches:
+            patch_str += str(patch)
         print "patch:", patch_str
         return json.dumps({
             'id': str(self.buf_id),
