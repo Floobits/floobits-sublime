@@ -314,6 +314,8 @@ class Listener(sublime_plugin.EventListener):
             window = sublime.active_window()
             view = window.open_file(path)
             BUF_IDS_TO_VIEWS[buf_id] = view
+        visible_region = view.visible_region()
+        viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
@@ -324,7 +326,9 @@ class Listener(sublime_plugin.EventListener):
             view.replace(edit, region, text.decode("utf-8"))
         finally:
             view.end_edit(edit)
+        sublime.set_timeout(lambda :view.set_viewport_position(viewport_position), 0)
         view.sel().clear()
+        view.show(visible_region, False)
         for sel in selections:
             print "re-adding selection", sel
             view.sel().add(sel)
