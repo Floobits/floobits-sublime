@@ -194,6 +194,12 @@ class AgentConnection(object):
                 print "%s joined the room" % data['username']
             elif name == 'part':
                 print "%s left the room" % data['username']
+                region_key = 'floobits-highlight-' + data['user_id']
+                for window in sublime.windows():
+                    for view in window.views():
+                        view.erase_regions(region_key)
+            elif name == 'highlight':
+                Listener.highlight(data['id'], data['user_id'], data['username'], data['ranges'])
             else:
                 print "unknown name!", name
             self.buf = after
@@ -370,6 +376,16 @@ class Listener(sublime_plugin.EventListener):
         view.set_read_only(READ_ONLY)
         if READ_ONLY:
             view.set_status("Floobits", "You don't have write permission. Buffer is read-only.")
+
+    def highlight(self, buf_id, user_id, username, ranges):
+        view = BUF_IDS_TO_VIEWS.get(buf_id)
+        regions = []
+        for r in ranges:
+            regions.append(sublime.Region(*r))
+        region_key = 'floobits-highlight-' + user_id
+        view.erase_regions(region_key)
+        view.add_regions(region_key, regions, 'floobits.highlight', 'dot', sublime.DRAW_OUTLINED)
+
 
     def id(self, view):
         return view.buffer_id()
