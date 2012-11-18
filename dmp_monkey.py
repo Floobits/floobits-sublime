@@ -17,6 +17,7 @@ def patch_apply(self, patches, text):
     # Deep copy the patches so that no changes are made to originals.
     patches = self.patch_deepCopy(patches)
 
+    text_len = len(text)
     nullPadding = self.patch_addPadding(patches)
     text = nullPadding + text + nullPadding
     self.patch_splitMax(patches)
@@ -105,10 +106,13 @@ def patch_apply(self, patches, text):
             position[0] = 0
         else:
             position[0] -= 4
-#        elif len(text) - position[0] < 4:
-#            extra_bytes = len(text) - position[0]
-#            position[1] -= extra_bytes
-#            position[2] = position[2][:-1 * extra_bytes]
+
+        extra_bytes = len(text) - position[0] - len(position[2])
+        print extra_bytes, "extra bytes"
+        if extra_bytes <= 4:
+            position[1] -= extra_bytes
+            position[2] = position[2][:-1 * extra_bytes]
+
         positions.append(position)
         print "pos", position
     # Strip the padding off.
