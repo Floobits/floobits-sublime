@@ -267,7 +267,19 @@ class Listener(sublime_plugin.EventListener):
             BUF_STATE[vb_id] = patch.current
             SOCKET_Q.put(patch.to_json())
 
-        reported = set()
+        while Listener.selection_changed:
+            view = Listener.selection_changed.pop()
+            vb_id = view.buffer_id()
+            if vb_id in reported:
+                continue
+
+            reported.add(vb_id)
+            sel = view.sel()
+            SOCKET_Q.put(json.dumps({
+              'id': str(vb_id),
+              'name': 'highlight',
+              'ranges': [[x.a, x.b] for x in sel]
+            }))
 
         sublime.set_timeout(Listener.push, 100)
 
