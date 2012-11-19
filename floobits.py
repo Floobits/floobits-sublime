@@ -119,6 +119,7 @@ class AgentConnection(object):
         self.port = settings.get("port", 3148)
         self.username = settings.get('username')
         self.secret = settings.get('secret')
+        self.authed = False
 
     @staticmethod
     def put(item):
@@ -131,6 +132,7 @@ class AgentConnection(object):
 
     def reconnect(self):
         self.sock = None
+        self.authed = False
         self.reconnect_delay *= 1.5
         if self.reconnect_delay > 5000:
             self.reconnect_delay = 5000
@@ -153,6 +155,9 @@ class AgentConnection(object):
         self.auth()
 
     def auth(self):
+        global SOCKET_Q
+        # TODO: we shouldn't throw away all of this
+        SOCKET_Q = Queue.Queue()
         # TODO: room_owner can be different from username
         self.put(json.dumps({
             'username': self.username,
@@ -192,6 +197,7 @@ class AgentConnection(object):
                 for buf_id, buf in data['bufs'].iteritems():
                     print("updating buf", buf['id'])
                     Listener.update_buf(buf['id'], buf['path'], buf['buf'], buf['md5'])
+                self.authed = True
             elif name == 'join':
                 print "%s joined the room" % data['username']
             elif name == 'part':
