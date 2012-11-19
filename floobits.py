@@ -122,7 +122,9 @@ class AgentConnection(object):
 
     @staticmethod
     def put(item):
-        SOCKET_Q.put(item)
+        if not item:
+            return
+        SOCKET_Q.put(item + '\n')
         qsize = SOCKET_Q.qsize()
         if qsize > 0:
             print('%s items in q' % qsize)
@@ -240,8 +242,8 @@ class AgentConnection(object):
                 if p is None:
                     SOCKET_Q.task_done()
                     continue
-                print('writing patch', p)
-                self.sock.sendall(p + '\n')
+                print('writing patch: %s' % p)
+                self.sock.sendall(p)
                 SOCKET_Q.task_done()
 
         sublime.set_timeout(self.select, 100)
@@ -265,7 +267,7 @@ class Listener(sublime_plugin.EventListener):
             patch = DMPTransport(view)
             #update the current copy of the buffer
             BUF_STATE[vb_id] = patch.current
-            SOCKET_Q.put(patch.to_json())
+            agent.put(patch.to_json())
 
         while Listener.selection_changed:
             view = Listener.selection_changed.pop()
@@ -275,11 +277,12 @@ class Listener(sublime_plugin.EventListener):
 
             reported.add(vb_id)
             sel = view.sel()
-            SOCKET_Q.put(json.dumps({
+            highlight_json = json.dumps({
               'id': str(vb_id),
               'name': 'highlight',
               'ranges': [[x.a, x.b] for x in sel]
-            }))
+            })
+            agent.put(highlight_json)
 
         sublime.set_timeout(Listener.push, 100)
 
@@ -358,7 +361,7 @@ class Listener(sublime_plugin.EventListener):
             'name': 'get_buf',
             'id': buf_id
         }
-        SOCKET_Q.put(json.dumps(req))
+        agent.put(json.dumps(req))
 
     @staticmethod
     def update_buf(buf_id, path, text, md5, view=None):
@@ -468,9 +471,9 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
     def run(self, edit, room):
 
         def run_agent():
-            global AGENT
+            global agent
             try:
-                AGENT.connect(room)
+                agent.connect(room)
             except Exception as e:
                 print e
                 tb = traceback.format_exc()
@@ -480,4 +483,4 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
         thread.start()
 
 Listener.push()
-AGENT = AgentConnection()
+agent = AgentConnection()
