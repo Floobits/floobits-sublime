@@ -121,6 +121,10 @@ class AgentConnection(object):
         self.secret = settings.get('secret')
         self.authed = False
 
+    def stop(self):
+        self.sock.shutdown(2)
+        self.sock.close()
+
     @staticmethod
     def put(item):
         if not item:
@@ -427,6 +431,8 @@ class Listener(sublime_plugin.EventListener):
         print 'clone', self.name(view)
 
     def on_modified(self, view):
+        if not settings.get('run', True):
+            return
         try:
             MODIFIED_EVENTS.get_nowait()
         except Queue.Empty:
@@ -435,6 +441,8 @@ class Listener(sublime_plugin.EventListener):
             MODIFIED_EVENTS.task_done()
 
     def on_selection_modified(self, view):
+        if not settings.get('run', True):
+            return
         self.selection_changed.append(view)
 
     def on_activated(self, view):
