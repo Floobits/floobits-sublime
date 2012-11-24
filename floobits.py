@@ -22,13 +22,17 @@ __VERSION__ = '0.01'
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 COLAB_DIR = ""
-
+DEFAULT_HOST = ""
+DEFAULT_PORT = ""
 
 def reload_settings():
-    global COLAB_DIR
+    global COLAB_DIR, DEFAULT_HOST, DEFAULT_PORT
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
     if COLAB_DIR[-1] != '/':
         COLAB_DIR += '/'
+    DEFAULT_HOST = settings.get("host", "floobits.com")
+    DEFAULT_PORT = settings.get("port", 3148)
+
 
 settings.add_on_change('', reload_settings)
 reload_settings()
@@ -115,8 +119,6 @@ class AgentConnection(object):
         self.sock = None
         self.buf = ""
         self.reconnect_delay = 100
-        self.host = settings.get("host", "floobits.com")
-        self.port = settings.get("port", 3148)
         self.username = settings.get('username')
         self.secret = settings.get('secret')
         self.authed = False
@@ -143,9 +145,11 @@ class AgentConnection(object):
         print "reconnecting in", self.reconnect_delay, ""
         sublime.set_timeout(self.connect, int(self.reconnect_delay))
 
-    def connect(self, room=None):
-        if room:
-            self.room = room
+    def connect(self, owner, room, host=None, port=None):
+        self.host = host or DEFAULT_HOST
+        self.port = port or DEFAULT_PORT
+        self.owner = owner
+        self.room = room
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.sock.connect((self.host, self.port))
@@ -155,19 +159,18 @@ class AgentConnection(object):
         self.sock.setblocking(0)
         print('connected, calling select')
         self.reconnect_delay = 1
-        self.select()
+        sublime.set_timeout(self.select, 0)
         self.auth()
 
     def auth(self):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
         SOCKET_Q = Queue.Queue()
-        # TODO: room_owner can be different from username
         self.put(json.dumps({
             'username': self.username,
             'secret': self.secret,
             'room': self.room,
-            'room_owner': self.username,
+            'room_owner': self.owner,
             'version': __VERSION__
         }))
 
@@ -475,21 +478,34 @@ class Listener(sublime_plugin.EventListener):
 class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, *args, **kwargs):
-        self.window.show_input_panel("Join room:", "", self.on_input, None, None)
+        self.window.show_input_panel("Room URL:", "", self.on_input, None, None)
 
-    def on_input(self, room):
-        print('room:', room)
-        self.window.active_view().run_command("join_room", {"room": room})
+    def on_input(self, room_url):
+        import re
+        from urlparse import urlparse
+
+        parsed_url = urlparse(room_url)
+        print('result:', parsed_url)
+        result = re.match('^/r/(\w+)/(\w+)/?$', parsed_url.path)
+        (owner, room) = result.groups()
+        print result
+        print("owner", owner, "room", room)
+        self.window.active_view().run_command("join_room", {
+            "host": parsed_url.hostname,
+            "port": parsed_url.port,
+            "owner": owner,
+            "room": room,
+        })
 
 
 class JoinRoomCommand(sublime_plugin.TextCommand):
 
-    def run(self, edit, room):
+    def run(self, edit, owner, room, host=None, port=None):
 
         def run_agent():
             global agent
             try:
-                agent.connect(room)
+                agent.connect(owner, room, host, port)
             except Exception as e:
                 print e
                 tb = traceback.format_exc()
