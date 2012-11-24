@@ -129,6 +129,7 @@ class AgentConnection(object):
 
     @staticmethod
     def put(item):
+        global SOCKET_Q
         if not item:
             return
         SOCKET_Q.put(item + '\n')
@@ -270,6 +271,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def push():
+        global BUF_STATE
         reported = set()
         while Listener.views_changed:
             view = Listener.views_changed.pop()
@@ -303,6 +305,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def apply_patch(patch_data):
+        global BUF_IDS_TO_VIEWS, BUF_STATE, MODIFIED_EVENTS
         buf_id = patch_data['id']
         path = get_full_path(patch_data['path'])
         view = BUF_IDS_TO_VIEWS.get(buf_id)
@@ -380,7 +383,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def update_buf(buf_id, path, text, md5, view=None):
-        global READ_ONLY
+        global BUF_IDS_TO_VIEWS, BUF_STATE, MODIFIED_EVENTS, READ_ONLY
         path = get_full_path(path)
         if not view:
             view = BUF_IDS_TO_VIEWS.get(buf_id)
