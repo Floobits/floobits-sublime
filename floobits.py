@@ -59,18 +59,6 @@ def text(view):
     return view.substr(sublime.Region(0, view.size()))
 
 
-def get_view_from_path(path):
-    for window in sublime.windows():
-        for view in window.views():
-            file_name = view.file_name()
-            if not file_name:
-                continue
-            view_path = unfuck_path(file_name)
-            if view_path == path:
-                return view
-    return None
-
-
 class DMPTransport(object):
 
     def __init__(self, view):
