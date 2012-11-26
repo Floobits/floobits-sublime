@@ -70,7 +70,7 @@ def get_or_create_view(buf_id, path):
     return view
 
 
-def text(view):
+def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
 
 
@@ -81,7 +81,7 @@ class DMPTransport(object):
         self.vb_id = view.buffer_id()
         # to rel path
         self.path = view.file_name()[len(COLAB_DIR):]
-        self.current = text(view)
+        self.current = get_text(view)
         self.previous = BUF_STATE[self.vb_id]
         self.md5_before = hashlib.md5(self.previous).hexdigest()
         for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
@@ -327,7 +327,7 @@ class Listener(sublime_plugin.EventListener):
         print "patch is", patch_data['patch']
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
-        old_text = text(view)
+        old_text = get_text(view)
         md5_before = hashlib.md5(old_text).hexdigest()
         if md5_before != patch_data['md5_before']:
             print "starting md5s don't match. this is dangerous!"
@@ -414,6 +414,8 @@ class Listener(sublime_plugin.EventListener):
         view.set_read_only(READ_ONLY)
         if READ_ONLY:
             view.set_status("Floobits", "You don't have write permission. Buffer is read-only.")
+
+        print("view text is now %s" % get_text(view))
 
     def highlight(self, buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
