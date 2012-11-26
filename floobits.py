@@ -317,12 +317,9 @@ class Listener(sublime_plugin.EventListener):
         global MODIFIED_EVENTS
         buf_id = patch_data['id']
         path = get_full_path(patch_data['path'])
-        view = BUF_IDS_TO_VIEWS.get(buf_id)
-        if not view:
-            # maybe we should create a new window? I don't know
-            window = sublime.active_window()
-            view = window.open_file(path)
-            BUF_IDS_TO_VIEWS[buf_id] = view
+        path = get_full_path(path)
+        view = get_or_create_view(buf_id, path)
+
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
             print "no patches to apply"
