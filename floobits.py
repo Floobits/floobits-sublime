@@ -24,14 +24,18 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 COLAB_DIR = ""
 DEFAULT_HOST = ""
 DEFAULT_PORT = ""
+USERNAME = ""
+SECRET = ""
 
 def reload_settings():
-    global COLAB_DIR, DEFAULT_HOST, DEFAULT_PORT
+    global COLAB_DIR, DEFAULT_HOST, DEFAULT_PORT, USERNAME, SECRET
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
     if COLAB_DIR[-1] != '/':
         COLAB_DIR += '/'
     DEFAULT_HOST = settings.get("host", "floobits.com")
     DEFAULT_PORT = settings.get("port", 3148)
+    USERNAME = settings.get('username')
+    SECRET = settings.get('secret')
 
 
 settings.add_on_change('', reload_settings)
@@ -53,6 +57,16 @@ def get_full_path(p):
 def unfuck_path(p):
     print "unfucking", p
     return os.path.normcase(os.path.normpath(p))
+
+
+def get_or_create_view(buf_id, path):
+    view = BUF_IDS_TO_VIEWS.get(buf_id)
+    if not view:
+        # maybe we should create a new window? I don't know
+        window = sublime.active_window()
+        view = window.open_file(path)
+        BUF_IDS_TO_VIEWS[buf_id] = view
+    return view
 
 
 def text(view):
@@ -103,13 +117,17 @@ class DMPTransport(object):
 class AgentConnection(object):
     """ Simple chat server using select """
 
-    def __init__(self):
+    def __init__(self, username, secret, owner, room, host=None, port=None):
         self.sock = None
         self.buf = ""
         self.reconnect_delay = 100
-        self.username = settings.get('username')
-        self.secret = settings.get('secret')
+        self.username = username
+        self.secret = secret
         self.authed = False
+        self.host = host or DEFAULT_HOST
+        self.port = port or DEFAULT_PORT
+        self.owner = owner
+        self.room = room
 
     def stop(self):
         self.sock.shutdown(2)
@@ -117,7 +135,6 @@ class AgentConnection(object):
 
     @staticmethod
     def put(item):
-        global SOCKET_Q
         if not item:
             return
         SOCKET_Q.put(item + '\n')
@@ -134,15 +151,13 @@ class AgentConnection(object):
         print "reconnecting in", self.reconnect_delay, ""
         sublime.set_timeout(self.connect, int(self.reconnect_delay))
 
-    def connect(self, owner, room, host=None, port=None):
-        self.host = host or DEFAULT_HOST
-        self.port = port or DEFAULT_PORT
-        self.owner = owner
-        self.room = room
+    def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Connecting to %s:%s" % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
-        except socket.error:
+        except socket.error as e:
+            print("Error connecting:", e)
             self.reconnect()
             return
         self.sock.setblocking(0)
@@ -191,8 +206,8 @@ class AgentConnection(object):
                     print("We don't have patch permission. Setting buffers to read-only")
                     READ_ONLY = True
                 for buf_id, buf in data['bufs'].iteritems():
-                    print("updating buf", buf['id'])
-                    Listener.update_buf(buf['id'], buf['path'], buf['buf'], buf['md5'])
+                    print("updating buf", buf_id, "with text", buf['buf'])
+                    Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
                 self.authed = True
             elif name == 'join':
                 print "%s joined the room" % data['username']
@@ -234,7 +249,8 @@ class AgentConnection(object):
                     if not d:
                         break
                     buf += d
-                except socket.error:
+                except socket.error as e:
+                    print("Socket error in reading:", e)
                     break
             if not buf:
                 print "buf is empty"
@@ -259,7 +275,6 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def push():
-        global BUF_STATE
         reported = set()
         while Listener.views_changed:
             view = Listener.views_changed.pop()
@@ -272,7 +287,10 @@ class Listener(sublime_plugin.EventListener):
             patch = DMPTransport(view)
             #update the current copy of the buffer
             BUF_STATE[vb_id] = patch.current
-            agent.put(patch.to_json())
+            if agent:
+                agent.put(patch.to_json())
+            else:
+                print("No agent connected. Discarding view change.")
 
         while Listener.selection_changed:
             view = Listener.selection_changed.pop()
@@ -287,13 +305,16 @@ class Listener(sublime_plugin.EventListener):
               'name': 'highlight',
               'ranges': [[x.a, x.b] for x in sel]
             })
-            agent.put(highlight_json)
+            if agent:
+                agent.put(highlight_json)
+            else:
+                print("No agent connected. Discarding selection change.")
 
         sublime.set_timeout(Listener.push, 100)
 
     @staticmethod
     def apply_patch(patch_data):
-        global BUF_IDS_TO_VIEWS, BUF_STATE, MODIFIED_EVENTS
+        global MODIFIED_EVENTS
         buf_id = patch_data['id']
         path = get_full_path(patch_data['path'])
         view = BUF_IDS_TO_VIEWS.get(buf_id)
@@ -371,15 +392,8 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def update_buf(buf_id, path, text, md5, view=None):
-        global BUF_IDS_TO_VIEWS, BUF_STATE, MODIFIED_EVENTS, READ_ONLY
         path = get_full_path(path)
-        if not view:
-            view = BUF_IDS_TO_VIEWS.get(buf_id)
-        if not view:
-            # maybe we should create a new window? I don't know
-            window = sublime.active_window()
-            view = window.open_file(path)
-            BUF_IDS_TO_VIEWS[buf_id] = view
+        view = get_or_create_view(buf_id, path)
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
@@ -496,7 +510,8 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
         def run_agent():
             global agent
             try:
-                agent.connect(owner, room, host, port)
+                agent = AgentConnection(USERNAME, SECRET, owner, room, host, port)
+                agent.connect()
             except Exception as e:
                 print e
                 tb = traceback.format_exc()
@@ -506,4 +521,4 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
         thread.start()
 
 Listener.push()
-agent = AgentConnection()
+agent = None
