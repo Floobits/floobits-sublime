@@ -250,8 +250,7 @@ class AgentConnection(object):
                     if not d:
                         break
                     buf += d
-                except socket.error as e:
-                    print("Socket error in reading:", e)
+                except socket.error:
                     break
             if not buf:
                 print "buf is empty"
