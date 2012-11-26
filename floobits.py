@@ -66,6 +66,7 @@ def get_or_create_view(buf_id, path):
         window = sublime.active_window()
         view = window.open_file(path)
         BUF_IDS_TO_VIEWS[buf_id] = view
+        print("Created view", view)
     return view
 
 
@@ -401,6 +402,8 @@ class Listener(sublime_plugin.EventListener):
         try:
             edit = view.begin_edit()
             view.replace(edit, region, text.decode("utf-8"))
+        except Exception as e:
+            print("Exception updating view:", e)
         finally:
             view.end_edit(edit)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
