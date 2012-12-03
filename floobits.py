@@ -492,9 +492,9 @@ class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
         parsed_url = urlparse(room_url)
         print('result:', parsed_url)
-        result = re.match('^/r/(\w+)/(\w+)/?$', parsed_url.path)
-        (owner, room) = result.groups()
+        result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
         print result
+        (owner, room) = result.groups()
         print("owner", owner, "room", room)
         self.window.active_view().run_command("join_room", {
             "host": parsed_url.hostname,
