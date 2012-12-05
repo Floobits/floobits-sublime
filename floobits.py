@@ -427,6 +427,9 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
+        if not view:
+            print("No view for buffer id", buf_id)
+            return
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
