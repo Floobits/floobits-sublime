@@ -424,7 +424,8 @@ class Listener(sublime_plugin.EventListener):
 
         print("view text is now %s" % get_text(view))
 
-    def highlight(self, buf_id, region_key, username, ranges):
+    @staticmethod
+    def highlight(buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
         regions = []
         for r in ranges:
