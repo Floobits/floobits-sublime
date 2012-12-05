@@ -74,6 +74,14 @@ def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
 
 
+def vbid_to_buf_id(vb_id):
+    for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
+        if view.buffer_id() == vb_id:
+            return buf_id
+    print("SHIIIIIIIIT")
+    return None
+
+
 class DMPTransport(object):
 
     def __init__(self, view):
@@ -84,11 +92,7 @@ class DMPTransport(object):
         self.current = get_text(view)
         self.previous = BUF_STATE[self.vb_id]
         self.md5_before = hashlib.md5(self.previous).hexdigest()
-        for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
-            if view.buffer_id() == self.vb_id:
-                self.buf_id = buf_id
-        if not self.buf_id:
-            print("SHIIIIIIIIT")
+        self.buf_id = vbid_to_buf_id(self.vb_id)
 
     def __str__(self):
         return "%s - %s - %s" % (self.buf_id, self.path, self.vb_id)
@@ -221,6 +225,9 @@ class AgentConnection(object):
             elif name == 'highlight':
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
+            elif name == 'error':
+                # TODO: display error
+                print data
             else:
                 print "unknown name!", name
             self.buf = after
@@ -301,7 +308,7 @@ class Listener(sublime_plugin.EventListener):
             reported.add(vb_id)
             sel = view.sel()
             highlight_json = json.dumps({
-              'id': str(vb_id),
+              'id': str(vbid_to_buf_id(vb_id)),
               'name': 'highlight',
               'ranges': [[x.a, x.b] for x in sel]
             })
