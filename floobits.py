@@ -362,7 +362,6 @@ class Listener(sublime_plugin.EventListener):
         global MODIFIED_EVENTS
         buf_id = patch_data['id']
         path = get_full_path(patch_data['path'])
-        path = get_full_path(path)
         view = get_or_create_view(buf_id, path)
 
         DMP = dmp.diff_match_patch()
