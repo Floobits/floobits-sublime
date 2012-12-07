@@ -216,7 +216,7 @@ class AgentConnection(object):
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
             elif name == 'get_buf':
-                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'])
+                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = MAX_RETRIES
@@ -236,7 +236,8 @@ class AgentConnection(object):
                 project_fd = open(os.path.join(self.project_path, '.sublime-project'), 'w')
                 project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
                 project_fd.close()
-                sublime.active_window().run_command('open_project', {'file': self.project_path})
+                # TODO: this is hard. ST2 has no project api
+#                sublime.active_window().run_command('open', {'file': self.project_path})
 
                 for buf_id, buf in data['bufs'].iteritems():
                     Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
@@ -432,7 +433,7 @@ class Listener(sublime_plugin.EventListener):
         agent.put(json.dumps(req))
 
     @staticmethod
-    def update_buf(buf_id, path, text, md5, view=None):
+    def update_buf(buf_id, path, text, md5, view=None, save=False):
         path = get_full_path(path)
         view = get_or_create_view(buf_id, path)
         visible_region = view.visible_region()
@@ -460,6 +461,8 @@ class Listener(sublime_plugin.EventListener):
             view.set_status('Floobits', "You don't have write permission. Buffer is read-only.")
 
         print('view text is now %s' % get_text(view))
+        if save:
+            view.run_command("save")
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):
