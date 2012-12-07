@@ -21,19 +21,19 @@ __VERSION__ = '0.01'
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
-COLAB_DIR = ""
-DEFAULT_HOST = ""
-DEFAULT_PORT = ""
-USERNAME = ""
-SECRET = ""
+COLAB_DIR = ''
+DEFAULT_HOST = ''
+DEFAULT_PORT = ''
+USERNAME = ''
+SECRET = ''
 
 def reload_settings():
     global COLAB_DIR, DEFAULT_HOST, DEFAULT_PORT, USERNAME, SECRET
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
     if COLAB_DIR[-1] != '/':
         COLAB_DIR += '/'
-    DEFAULT_HOST = settings.get("host", "floobits.com")
-    DEFAULT_PORT = settings.get("port", 3148)
+    DEFAULT_HOST = settings.get('host', 'floobits.com')
+    DEFAULT_PORT = settings.get('port', 3148)
     USERNAME = settings.get('username')
     SECRET = settings.get('secret')
 
@@ -55,7 +55,7 @@ def get_full_path(p):
 
 
 def unfuck_path(p):
-    print "unfucking", p
+    print 'unfucking', p
     return os.path.normcase(os.path.normpath(p))
 
 
@@ -66,7 +66,7 @@ def get_or_create_view(buf_id, path):
         window = sublime.active_window()
         view = window.open_file(path)
         BUF_IDS_TO_VIEWS[buf_id] = view
-        print("Created view", view)
+        print('Created view', view)
     return view
 
 
@@ -78,7 +78,7 @@ def vbid_to_buf_id(vb_id):
     for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
         if view.buffer_id() == vb_id:
             return buf_id
-    print("SHIIIIIIIIT")
+    print('SHIIIIIIIIT')
     return None
 
 
@@ -95,7 +95,7 @@ class DMPTransport(object):
         self.buf_id = vbid_to_buf_id(self.vb_id)
 
     def __str__(self):
-        return "%s - %s - %s" % (self.buf_id, self.path, self.vb_id)
+        return '%s - %s - %s' % (self.buf_id, self.path, self.vb_id)
 
     def patches(self):
         return dmp.diff_match_patch().patch_make(self.previous, self.current)
@@ -104,11 +104,11 @@ class DMPTransport(object):
         patches = self.patches()
         if len(patches) == 0:
             return None
-        print "sending %s patches" % len(patches)
-        patch_str = ""
+        print 'sending %s patches' % len(patches)
+        patch_str = ''
         for patch in patches:
             patch_str += str(patch)
-        print "patch:", patch_str
+        print 'patch:', patch_str
         return json.dumps({
             'id': str(self.buf_id),
             'md5_after': hashlib.md5(self.current).hexdigest(),
@@ -120,12 +120,12 @@ class DMPTransport(object):
 
 
 class AgentConnection(object):
-    """ Simple chat server using select """
+    ''' Simple chat server using select '''
 
     def __init__(self, username, secret, owner, room, host=None, port=None):
         self.sock = None
-        self.buf = ""
-        self.reconnect_delay = 100
+        self.buf = ''
+        self.reconnect_delay = 500
         self.username = username
         self.secret = secret
         self.authed = False
@@ -133,6 +133,7 @@ class AgentConnection(object):
         self.port = port or DEFAULT_PORT
         self.owner = owner
         self.room = room
+        self.connect_attempt = 0
 
     def stop(self):
         self.sock.shutdown(2)
@@ -151,18 +152,21 @@ class AgentConnection(object):
         self.sock = None
         self.authed = False
         self.reconnect_delay *= 1.5
-        if self.reconnect_delay > 5000:
-            self.reconnect_delay = 5000
-        print "reconnecting in", self.reconnect_delay, ""
-        sublime.set_timeout(self.connect, int(self.reconnect_delay))
+        if self.reconnect_delay > 10000:
+            self.reconnect_delay = 10000
+        if self.connect_attempt < 20:
+            print 'reconnecting in', self.reconnect_delay
+            sublime.set_timeout(self.connect, int(self.reconnect_delay))
+        else:
+            print 'too many reconnect failures. giving up'
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("Connecting to %s:%s" % (self.host, self.port))
+        print('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
         except socket.error as e:
-            print("Error connecting:", e)
+            print('Error connecting:', e)
             self.reconnect()
             return
         self.sock.setblocking(0)
@@ -205,19 +209,20 @@ class AgentConnection(object):
             elif name == 'get_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'])
             elif name == 'room_info':
+                self.connect_attempt = 0
                 # TODO: do something with tree, owner, and users
                 perms = data['perms']
-                if "patch" not in perms:
+                if 'patch' not in perms:
                     print("We don't have patch permission. Setting buffers to read-only")
                     READ_ONLY = True
                 for buf_id, buf in data['bufs'].iteritems():
-                    print("updating buf", buf_id, "with text", buf['buf'])
+                    print('updating buf', buf_id, 'with text', buf['buf'])
                     Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
                 self.authed = True
             elif name == 'join':
-                print "%s joined the room" % data['username']
+                print '%s joined the room' % data['username']
             elif name == 'part':
-                print "%s left the room" % data['username']
+                print '%s left the room' % data['username']
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 for window in sublime.windows():
                     for view in window.views():
@@ -227,9 +232,14 @@ class AgentConnection(object):
                 Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
             elif name == 'error':
                 # TODO: display error
-                print data
+                
+                print(data)
+            elif name == 'disconnect':
+                print(data)
+                view.set_status('Floobits', 'Disconnected: %s' % str(data.get('reason')))
+                self.connect_attempt = 20
             else:
-                print "unknown name!", name
+                print('unknown name!', name, 'data:', )
             self.buf = after
 
     def select(self):
@@ -250,7 +260,7 @@ class AgentConnection(object):
             return
 
         if _in:
-            buf = ""
+            buf = ''
             while True:
                 try:
                     d = self.sock.recv(4096)
@@ -260,7 +270,7 @@ class AgentConnection(object):
                 except socket.error:
                     break
             if not buf:
-                print "buf is empty"
+                print 'buf is empty'
                 return self.reconnect()
             self.protocol(buf)
 
@@ -297,7 +307,7 @@ class Listener(sublime_plugin.EventListener):
             if agent:
                 agent.put(patch.to_json())
             else:
-                print("No agent connected. Discarding view change.")
+                print('No agent connected. Discarding view change.')
 
         while Listener.selection_changed:
             view = Listener.selection_changed.pop()
@@ -315,7 +325,7 @@ class Listener(sublime_plugin.EventListener):
             if agent:
                 agent.put(highlight_json)
             else:
-                print("No agent connected. Discarding selection change.")
+                print('No agent connected. Discarding selection change.')
 
         sublime.set_timeout(Listener.push, 100)
 
@@ -329,9 +339,9 @@ class Listener(sublime_plugin.EventListener):
 
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
-            print "no patches to apply"
+            print 'no patches to apply'
             return
-        print "patch is", patch_data['patch']
+        print 'patch is', patch_data['patch']
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         old_text = get_text(view)
@@ -348,18 +358,18 @@ class Listener(sublime_plugin.EventListener):
                 break
 
         if not clean_patch:
-            print "failed to patch"
+            print 'failed to patch'
             return Listener.get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0]).hexdigest()
         if cur_hash != patch_data['md5_after']:
-            print "new hash %s != expected %s" % (cur_hash, patch_data['md5_after'])
+            print 'new hash %s != expected %s' % (cur_hash, patch_data['md5_after'])
             # TODO: do something better than erasing local changes
             return Listener.get_buf(buf_id)
 
         selections = [x for x in view.sel()]  # deep copy
         # so we don't send a patch back to the server for this
-        BUF_STATE[view.buffer_id()] = str(t[0]).decode("utf-8")
+        BUF_STATE[view.buffer_id()] = str(t[0]).decode('utf-8')
         regions = []
         for patch in t[2]:
             offset = patch[0]
@@ -368,11 +378,11 @@ class Listener(sublime_plugin.EventListener):
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             print region
-            print "replacing", view.substr(region), "with", patch_text.decode("utf-8")
+            print 'replacing', view.substr(region), 'with', patch_text.decode('utf-8')
             MODIFIED_EVENTS.put(1)
             try:
                 edit = view.begin_edit()
-                view.replace(edit, region, patch_text.decode("utf-8"))
+                view.replace(edit, region, patch_text.decode('utf-8'))
             finally:
                 view.end_edit(edit)
         view.sel().clear()
@@ -380,11 +390,11 @@ class Listener(sublime_plugin.EventListener):
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
-            print "re-adding selection", sel
+            print 're-adding selection', sel
             view.sel().add(sel)
 
         now = datetime.now()
-        view.set_status("Floobits", "Changed by %s at %s" % (patch_data['username'], now.strftime("%H:%M")))
+        view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
 
     @staticmethod
     def get_buf(buf_id):
@@ -404,31 +414,31 @@ class Listener(sublime_plugin.EventListener):
         selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
         # so we don't send a patch back to the server for this
-        BUF_STATE[view.buffer_id()] = text.decode("utf-8")
+        BUF_STATE[view.buffer_id()] = text.decode('utf-8')
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, text.decode("utf-8"))
+            view.replace(edit, region, text.decode('utf-8'))
         except Exception as e:
-            print("Exception updating view:", e)
+            print('Exception updating view:', e)
         finally:
             view.end_edit(edit)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
-            print "re-adding selection", sel
+            print 're-adding selection', sel
             view.sel().add(sel)
         view.set_read_only(READ_ONLY)
         if READ_ONLY:
-            view.set_status("Floobits", "You don't have write permission. Buffer is read-only.")
+            view.set_status('Floobits', "You don't have write permission. Buffer is read-only.")
 
-        print("view text is now %s" % get_text(view))
+        print('view text is now %s' % get_text(view))
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
         if not view:
-            print("No view for buffer id", buf_id)
+            print('No view for buffer id', buf_id)
             return
         regions = []
         for r in ranges:
@@ -478,7 +488,7 @@ class Listener(sublime_plugin.EventListener):
         # This could probably be more efficient
         for buf_id, v in BUF_IDS_TO_VIEWS.iteritems():
             if v.buffer_id() == vb_id:
-                print("view is in BUF_IDS_TO_VIEWS. sending patch")
+                print('view is in BUF_IDS_TO_VIEWS. sending patch')
                 self.views_changed.append(view)
                 break
         if view.is_scratch():
@@ -495,7 +505,7 @@ class Listener(sublime_plugin.EventListener):
 class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, *args, **kwargs):
-        self.window.show_input_panel("Room URL:", "", self.on_input, None, None)
+        self.window.show_input_panel('Room URL:', '', self.on_input, None, None)
 
     def on_input(self, room_url):
         import re
@@ -506,12 +516,12 @@ class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
         print result
         (owner, room) = result.groups()
-        print("owner", owner, "room", room)
-        self.window.active_view().run_command("join_room", {
-            "host": parsed_url.hostname,
-            "port": parsed_url.port,
-            "owner": owner,
-            "room": room,
+        print('owner', owner, 'room', room)
+        self.window.active_view().run_command('join_room', {
+            'host': parsed_url.hostname,
+            'port': parsed_url.port,
+            'owner': owner,
+            'room': room,
         })
 
 
