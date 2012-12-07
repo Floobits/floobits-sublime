@@ -23,6 +23,7 @@ MAX_RETRIES = 20
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 COLAB_DIR = ''
+PROJECT_PATH = ''
 DEFAULT_HOST = ''
 DEFAULT_PORT = ''
 USERNAME = ''
@@ -51,12 +52,16 @@ READ_ONLY = False
 
 
 def get_full_path(p):
-    full_path = os.path.join(COLAB_DIR, p)
+    full_path = os.path.join(PROJECT_PATH, p)
     return unfuck_path(full_path)
 
 
 def unfuck_path(p):
     return os.path.normcase(os.path.normpath(p))
+
+
+def to_rel_path(p):
+    return p[len(PROJECT_PATH):]
 
 
 def get_or_create_view(buf_id, path):
@@ -87,7 +92,7 @@ class DMPTransport(object):
         self.buf_id = None
         self.vb_id = view.buffer_id()
         # to rel path
-        self.path = view.file_name()[len(COLAB_DIR):]
+        self.path = to_rel_path(view.file_name())
         self.current = get_text(view)
         self.previous = BUF_STATE[self.vb_id]
         self.md5_before = hashlib.md5(self.previous).hexdigest()
@@ -122,6 +127,7 @@ class AgentConnection(object):
     ''' Simple chat server using select '''
 
     def __init__(self, username, secret, owner, room, host=None, port=None):
+        global PROJECT_PATH
         self.sock = None
         self.buf = ''
         self.reconnect_delay = 500
@@ -135,6 +141,7 @@ class AgentConnection(object):
         self.retries = MAX_RETRIES
         # owner and room name are slugfields so this should be safe
         self.project_path = os.path.realpath(os.path.join(COLAB_DIR, self.owner, self.room))
+        PROJECT_PATH = self.project_path
 
     def stop(self):
         self.sock.shutdown(2)
@@ -229,7 +236,7 @@ class AgentConnection(object):
                 project_fd = open(os.path.join(self.project_path, '.sublime-project'), 'w')
                 project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
                 project_fd.close()
-                sublime.active_window().run_command('open_dir', {'dir': self.project_path})
+                sublime.active_window().run_command('open_project', {'file': self.project_path})
 
                 for buf_id, buf in data['bufs'].iteritems():
                     Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
@@ -326,14 +333,20 @@ class Listener(sublime_plugin.EventListener):
 
         while Listener.selection_changed:
             view = Listener.selection_changed.pop()
+            if view.is_scratch():
+                continue
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
 
             reported.add(vb_id)
             sel = view.sel()
+            buf_id = vbid_to_buf_id(vb_id)
+            if buf_id is None:
+                print('buf_id for view not found. Not sending highlight.')
+                continue
             highlight_json = json.dumps({
-                'id': str(vbid_to_buf_id(vb_id)),
+                'id': buf_id,
                 'name': 'highlight',
                 'ranges': [[x.a, x.b] for x in sel]
             })
