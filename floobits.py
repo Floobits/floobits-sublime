@@ -78,7 +78,6 @@ def vbid_to_buf_id(vb_id):
     for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
         if view.buffer_id() == vb_id:
             return buf_id
-    print('SHIIIIIIIIT')
     return None
 
 
