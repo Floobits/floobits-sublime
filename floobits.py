@@ -217,6 +217,8 @@ class AgentConnection(object):
                 for buf_id, buf in data['bufs'].iteritems():
                     print('updating buf', buf_id, 'with text', buf['buf'])
                     Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
+                    # Total hack. apparently we can't create views and set their text in the same "tick"
+                    Listener.get_buf(buf_id)
                 self.authed = True
             elif name == 'join':
                 print '%s joined the room' % data['username']
