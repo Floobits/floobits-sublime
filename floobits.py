@@ -231,12 +231,11 @@ class AgentConnection(object):
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
             elif name == 'error':
-                # TODO: display error
-                
                 print(data)
+                sublime.status_message('Floobits: Error! Message: %s' % str(data.get('msg')))
             elif name == 'disconnect':
                 print(data)
-                view.set_status('Floobits', 'Disconnected: %s' % str(data.get('reason')))
+                sublime.status_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.connect_attempt = 20
             else:
                 print('unknown name!', name, 'data:', )
