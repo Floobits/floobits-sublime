@@ -28,6 +28,7 @@ DEFAULT_HOST = ''
 DEFAULT_PORT = ''
 USERNAME = ''
 SECRET = ''
+CHAT_VIEW = None
 
 
 def reload_settings():
@@ -261,6 +262,11 @@ class AgentConnection(object):
             elif name == 'disconnect':
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
+            elif name == 'msg':
+                CHAT_VIEW = get_or_create_view()
+                # TODO: crimes against humanity follow
+                view = sublime.active_window().open_file('chatroom.txt')
+                view.
             else:
                 print('unknown name!', name, 'data:', data)
             self.buf = after
