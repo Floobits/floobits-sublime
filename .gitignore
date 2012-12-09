@@ -1,2 +1,3 @@
 *.pyc
 Floobits.sublime-settings
+.DS_store
