@@ -1,5 +1,3 @@
-
-
 import os
 import json
 import socket
@@ -33,7 +31,7 @@ class MSG(object):
 
 def get_or_create_chat():
     global CHAT_VIEW
-    p = utils.get_full_path('floobits.log')
+    p = utils.get_full_path('msgs.floobits.log')
     if not CHAT_VIEW:
         window = sublime.active_window()
         CHAT_VIEW = window.open_file(p)

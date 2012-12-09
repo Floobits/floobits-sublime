@@ -10,11 +10,20 @@ import sublime
 
 from floo import AgentConnection
 from floo.listener import Listener
-
-
 from floo import shared as G
+from floo import utils
 
 settings = sublime.load_settings('Floobits.sublime-settings')
+
+DATA = utils.get_persistent_data()
+
+
+def update_recent_rooms(room):
+    recent_rooms = DATA.get('recent_rooms', [])
+    recent_rooms.append(room)
+    recent_rooms = recent_rooms[-10:]
+    DATA['recent_rooms'] = recent_rooms
+    utils.update_persistent_data(DATA)
 
 
 def reload_settings():
@@ -63,6 +72,9 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
                 print(e)
                 tb = traceback.format_exc()
                 print(tb)
+            else:
+                joined_room = {'room': room, "owner": owner, "host": host, "port": port}
+                update_recent_rooms(joined_room)
 
         thread = threading.Thread(target=run_agent)
         thread.start()

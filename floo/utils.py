@@ -1,4 +1,5 @@
 import os
+import json
 
 import shared
 
@@ -26,3 +27,23 @@ def unfuck_path(p):
 
 def to_rel_path(p):
     return p[len(shared.PROJECT_PATH):]
+
+
+per_path = os.path.abspath('persistent.json')
+
+
+def get_persistent_data():
+    try:
+        per = open(per_path, 'rb')
+    except (IOError, OSError):
+        return {}
+    try:
+        persistent_data = json.loads(per.read())
+    except:
+        return {}
+    return persistent_data
+
+
+def update_persistent_data(data):
+    with open(per_path, 'wb') as per:
+        per.write(json.dumps(data))
