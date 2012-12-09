@@ -118,6 +118,7 @@ class AgentConnection(object):
             view.set_read_only(False)
             view.insert(ed, view.size(), envelope)
             view.set_read_only(True)
+            view.show(view.size()) # TODO: this scrolling is lame and centers text :/
 
     def protocol(self, req):
         self.buf += req
