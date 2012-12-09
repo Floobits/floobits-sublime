@@ -49,6 +49,7 @@ class edit:
 def reload_settings():
     global COLAB_DIR, DEFAULT_HOST, DEFAULT_PORT, USERNAME, SECRET
     COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
+    COLAB_DIR = os.path.expanduser(COLAB_DIR)
     COLAB_DIR = os.path.realpath(COLAB_DIR)
     DEFAULT_HOST = settings.get('host', 'floobits.com')
     DEFAULT_PORT = settings.get('port', 3148)
