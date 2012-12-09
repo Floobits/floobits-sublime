@@ -8,6 +8,7 @@ import json
 import collections
 import os.path
 import hashlib
+import time
 import traceback
 from datetime import datetime
 
@@ -29,6 +30,18 @@ DEFAULT_PORT = ''
 USERNAME = ''
 SECRET = ''
 CHAT_VIEW = None
+
+
+class edit:
+    def __init__(self, view):
+        self.view = view
+
+    def __enter__(self):
+        self.edit = self.view.begin_edit()
+        return self.edit
+
+    def __exit__(self, type, value, traceback):
+        self.view.end_edit(self.edit)
 
 
 def reload_settings():
@@ -74,6 +87,15 @@ def get_or_create_view(buf_id, path):
         BUF_IDS_TO_VIEWS[buf_id] = view
         print('Created view', view)
     return view
+
+
+def get_or_create_chat():
+    global CHAT_VIEW
+    p = get_full_path('floobits.log')
+    if not CHAT_VIEW:
+        window = sublime.active_window()
+        CHAT_VIEW = window.open_file(p)
+    return CHAT_VIEW
 
 
 def get_text(view):
@@ -127,7 +149,7 @@ class DMPTransport(object):
 class AgentConnection(object):
     ''' Simple chat server using select '''
 
-    def __init__(self, username, secret, owner, room, host=None, port=None):
+    def __init__(self, username, secret, owner, room, host=None, port=None, on_connect=None):
         global PROJECT_PATH
         self.sock = None
         self.buf = ''
@@ -140,6 +162,7 @@ class AgentConnection(object):
         self.owner = owner
         self.room = room
         self.retries = MAX_RETRIES
+        self.on_connect = on_connect
         # owner and room name are slugfields so this should be safe
         self.project_path = os.path.realpath(os.path.join(COLAB_DIR, self.owner, self.room))
         PROJECT_PATH = self.project_path
@@ -204,7 +227,7 @@ class AgentConnection(object):
                 break
 
     def protocol(self, req):
-        global READ_ONLY
+        global READ_ONLY, CHAT_VIEW
         self.buf += req
         while True:
             before, sep, after = self.buf.partition('\n')
@@ -219,6 +242,9 @@ class AgentConnection(object):
             elif name == 'get_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'room_info':
+                if self.on_connect:
+                    self.on_connect(self)
+                    self.on_connect = None
                 # Success! Reset counter
                 self.retries = MAX_RETRIES
                 perms = data['perms']
@@ -263,10 +289,13 @@ class AgentConnection(object):
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
             elif name == 'msg':
-                CHAT_VIEW = get_or_create_view()
-                # TODO: crimes against humanity follow
-                view = sublime.active_window().open_file('chatroom.txt')
-                view.
+                CHAT_VIEW = get_or_create_chat()
+                username = data['username']
+                timestamp = time.ctime(data['time'])
+                msg = data.get('data')
+                envelope = "[{time}] <{user}> {msg}".format(user=username, time=timestamp, msg=msg)
+                with edit(CHAT_VIEW) as ed:
+                    view.insert(ed, view.size(), envelope)
             else:
                 print('unknown name!', name, 'data:', data)
             self.buf = after
@@ -534,8 +563,8 @@ class Listener(sublime_plugin.EventListener):
 
 class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, *args, **kwargs):
-        self.window.show_input_panel('Room URL:', '', self.on_input, None, None)
+    def run(self, room=""):
+        self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
         import re
@@ -571,6 +600,12 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
 
         thread = threading.Thread(target=run_agent)
         thread.start()
+
+
+class MessageCommand(sublime_plugin.TextCommand):
+    def run(self, *args, **kwargs):
+        pass
+
 
 Listener.push()
 agent = None

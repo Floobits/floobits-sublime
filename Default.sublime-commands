@@ -14,5 +14,5 @@
 },
 {
   "caption": "Join Room",
-  "command": "join_room"
+  "command": "prompt_join_room"
 }]
