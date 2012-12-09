@@ -178,6 +178,9 @@ class AgentConnection(object):
         self.put(json.dumps({'name': 'msg', 'data': msg}))
         self.chat(self.username, time.time(), msg)
 
+    def is_ready(self):
+        return self.authed
+
     @staticmethod
     def put(item):
         #TODO: move json_dumps here
@@ -236,7 +239,7 @@ class AgentConnection(object):
 
     def chat(self, username, timestamp, msg):
         view = get_or_create_chat()
-        envelope = "[{time}] <{user}> {msg}\n".format(user=username, time=timestamp, msg=msg)
+        envelope = "[{time}] <{user}> {msg}\n".format(user=username, time=time.ctime(timestamp), msg=msg)
         with edit(view) as ed:
             view.set_read_only(False)
             view.insert(ed, view.size(), envelope)
@@ -305,10 +308,7 @@ class AgentConnection(object):
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
             elif name == 'msg':
-                username = data['username']
-                timestamp = time.ctime(data['time'])
-                msg = data.get('data')
-                self.chat(username, timestamp, msg)
+                self.chat(data['username'], data['time'], data.get('data'))
             else:
                 print('unknown name!', name, 'data:', data)
             self.buf = after
@@ -615,23 +615,26 @@ class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
         print('msg', msg)
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
-    def on_input(self, *args, **kwargs):
-        print('msg', args, kwargs)
+    def on_input(self, msg):
         self.window.active_view().run_command('floobits_msg', {'msg': msg})
 
 
 class FloobitsMsgCommand(sublime_plugin.TextCommand):
-    def run(self, msg):
+    def run(self, edit, msg):
         if not msg:
             return
+
         if agent:
             agent.send_msg(msg)
 
+    def is_visible(self):
+        return self.is_enabled()
 
-class MessageCommand(sublime_plugin.TextCommand):
-    def run(self, *args, **kwargs):
-        pass
+    def is_enabled(self):
+        return agent and agent.is_ready()
 
+    def description(self):
+        return "Send a message to the floobits room you are in (join a room first)"
 
 Listener.push()
 agent = None
