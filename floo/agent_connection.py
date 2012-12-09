@@ -1,11 +1,14 @@
 
+
+import os
 import json
 import socket
 import Queue
 import time
-import os
-import sublime
 import select
+import collections
+
+import sublime
 
 import shared as G
 import utils
@@ -15,6 +18,17 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
+
+
+class MSG(object):
+    def __init__(self, username, timestamp, msg):
+        self.username = username
+        self.msg = msg
+        self.timestamp = timestamp
+
+    def __str__(self):
+        return "[{time}] <{user}> {msg}\n".\
+            format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
 def get_or_create_chat():
@@ -29,7 +43,6 @@ def get_or_create_chat():
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
-
     def __init__(self, owner, room, host=None, port=None, on_connect=None):
         self.sock = None
         self.buf = ''
@@ -43,6 +56,7 @@ class AgentConnection(object):
         self.room = room
         self.retries = G.MAX_RETRIES
         self.on_connect = on_connect
+        self.chat_deck = collections.deque(maxlen=10)
 
     def stop(self):
         self.sock.shutdown(2)
@@ -50,7 +64,7 @@ class AgentConnection(object):
 
     def send_msg(self, msg):
         self.put(json.dumps({'name': 'msg', 'data': msg}))
-        self.chat(self.username, time.time(), msg)
+        self.chat(self.username, time.time(), msg, True)
 
     def is_ready(self):
         return self.authed
@@ -111,14 +125,31 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
-    def chat(self, username, timestamp, msg):
+    def chat(self, username, timestamp, msg, self_msg=False):
+        envelope = MSG(username, timestamp, msg)
+        if not self_msg:
+            self.chat_deck.appendleft(envelope)
         view = get_or_create_chat()
-        envelope = "[{time}] <{user}> {msg}\n".format(user=username, time=time.ctime(timestamp), msg=msg)
         with utils.edit(view) as ed:
+            size = view.size()
             view.set_read_only(False)
-            view.insert(ed, view.size(), envelope)
+            view.insert(ed, size, str(envelope))
             view.set_read_only(True)
-            view.show(view.size()) # TODO: this scrolling is lame and centers text :/
+            # TODO: this scrolling is lame and centers text :/
+            view.show(size)
+
+    def on_msg(self, data):
+        self.chat(data['username'], data['time'], data.get('data'))
+        window = sublime.active_window()
+
+        def cb(selected):
+            if selected == -1:
+                return
+            envelope = self.chat_deck[selected]
+            window.run_command("floobits_prompt_msg", {'msg': "%s: " % envelope.username})
+
+        print('asflkfaifaewoijafweoi', self.chat_deck)
+        window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
         self.buf += req
@@ -182,7 +213,7 @@ class AgentConnection(object):
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
             elif name == 'msg':
-                self.chat(data['username'], data['time'], data.get('data'))
+                self.on_msg(data)
             else:
                 print('unknown name!', name, 'data:', data)
             self.buf = after
