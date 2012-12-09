@@ -1,5 +1,6 @@
 from lib import diff_match_patch as dmp
 
+
 def patch_apply(self, patches, text):
     """Merge a set of patches onto the text.  Return a patched text, as well
     as a list of true/false values indicating which patches were applied.
@@ -116,6 +117,7 @@ def patch_apply(self, patches, text):
     text = text[len(nullPadding):-len(nullPadding)]
     print "returning patches. null padding is", len(nullPadding)
     return (text, results, positions)
+
 
 def monkey_patch():
     dmp.diff_match_patch.patch_apply = patch_apply
