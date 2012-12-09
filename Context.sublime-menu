@@ -1,4 +1,8 @@
 [{
   "caption": "Floobits::Join room",
-  "command": "prompt_join_room"
+  "command": "floobits_prompt_join_room"
+},
+{
+  "caption": "Floobits::Send Message",
+  "command": "floobits_prompt_msg"
 }]

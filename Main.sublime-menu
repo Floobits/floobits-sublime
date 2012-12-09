@@ -8,7 +8,12 @@
     "children": [{
       "id": "floobits_room_menu",
       "caption": "Join Room",
-      "command": "prompt_join_room"
+      "command": "floobits_prompt_join_room"
+    },
+    {
+      "id": "floobits_msg",
+      "caption": "Send Message",
+      "command": "floobits_prompt_msg"
     }]
   }]
 },

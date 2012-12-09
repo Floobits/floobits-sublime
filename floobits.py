@@ -1,4 +1,5 @@
 # coding: utf-8
+import re
 import Queue
 import threading
 import socket
@@ -10,6 +11,7 @@ import os.path
 import hashlib
 import time
 import traceback
+from urlparse import urlparse
 from datetime import datetime
 
 import sublime
@@ -95,6 +97,7 @@ def get_or_create_chat():
     if not CHAT_VIEW:
         window = sublime.active_window()
         CHAT_VIEW = window.open_file(p)
+        CHAT_VIEW.set_read_only(True)
     return CHAT_VIEW
 
 
@@ -171,8 +174,13 @@ class AgentConnection(object):
         self.sock.shutdown(2)
         self.sock.close()
 
+    def send_msg(self, msg):
+        self.put(json.dumps({'name': 'msg', 'data': msg}))
+        self.chat(self.username, time.time(), msg)
+
     @staticmethod
     def put(item):
+        #TODO: move json_dumps here
         if not item:
             return
         SOCKET_Q.put(item + '\n')
@@ -226,8 +234,16 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
+    def chat(self, username, timestamp, msg):
+        view = get_or_create_chat()
+        envelope = "[{time}] <{user}> {msg}\n".format(user=username, time=timestamp, msg=msg)
+        with edit(view) as ed:
+            view.set_read_only(False)
+            view.insert(ed, view.size(), envelope)
+            view.set_read_only(True)
+
     def protocol(self, req):
-        global READ_ONLY, CHAT_VIEW
+        global READ_ONLY
         self.buf += req
         while True:
             before, sep, after = self.buf.partition('\n')
@@ -267,7 +283,7 @@ class AgentConnection(object):
 #                sublime.active_window().run_command('open', {'file': self.project_path})
 
                 for buf_id, buf in data['bufs'].iteritems():
-                    Listener.update_buf(buf_id, buf['path'], buf['buf'], buf['md5'])
+                    Listener.update_buf(buf_id, buf['path'], "", buf['md5'])
                     # Total hack. apparently we can't create views and set their text in the same "tick"
                     Listener.get_buf(buf_id)
 
@@ -289,13 +305,10 @@ class AgentConnection(object):
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
             elif name == 'msg':
-                CHAT_VIEW = get_or_create_chat()
                 username = data['username']
                 timestamp = time.ctime(data['time'])
                 msg = data.get('data')
-                envelope = "[{time}] <{user}> {msg}".format(user=username, time=timestamp, msg=msg)
-                with edit(CHAT_VIEW) as ed:
-                    view.insert(ed, view.size(), envelope)
+                self.chat(username, timestamp, msg)
             else:
                 print('unknown name!', name, 'data:', data)
             self.buf = after
@@ -561,22 +574,16 @@ class Listener(sublime_plugin.EventListener):
             return
 
 
-class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room=""):
         self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
-        import re
-        from urlparse import urlparse
-
         parsed_url = urlparse(room_url)
-        print('result:', parsed_url)
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
-        print(result)
         (owner, room) = result.groups()
-        print('owner', owner, 'room', room)
-        self.window.active_view().run_command('join_room', {
+        self.window.active_view().run_command('floobits_join_room', {
             'host': parsed_url.hostname,
             'port': parsed_url.port,
             'owner': owner,
@@ -584,7 +591,7 @@ class PromptJoinRoomCommand(sublime_plugin.WindowCommand):
         })
 
 
-class JoinRoomCommand(sublime_plugin.TextCommand):
+class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, owner, room, host=None, port=None):
 
@@ -600,6 +607,25 @@ class JoinRoomCommand(sublime_plugin.TextCommand):
 
         thread = threading.Thread(target=run_agent)
         thread.start()
+
+
+class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
+
+    def run(self, msg=""):
+        print('msg', msg)
+        self.window.show_input_panel('msg:', msg, self.on_input, None, None)
+
+    def on_input(self, *args, **kwargs):
+        print('msg', args, kwargs)
+        self.window.active_view().run_command('floobits_msg', {'msg': msg})
+
+
+class FloobitsMsgCommand(sublime_plugin.TextCommand):
+    def run(self, msg):
+        if not msg:
+            return
+        if agent:
+            agent.send_msg(msg)
 
 
 class MessageCommand(sublime_plugin.TextCommand):

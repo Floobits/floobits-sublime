@@ -1,7 +1,11 @@
 [
 	{
 		"keys": ["shift+ctrl+j"],
-		"command": "prompt_join_room",
+		"command": "floobits_prompt_join_room",
 		"args": {"room": "https://floobits.com/r/ggreer/test"}
+	},
+	{
+		"keys": ["ctrl+alt+m"],
+		"command": "floobits_prompt_msg"
 	}
 ]

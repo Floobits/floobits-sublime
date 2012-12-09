@@ -1,6 +1,9 @@
 [
-    {
-        "command": "join_room",
-        "caption": "Join Room"
-    }
+  {
+    "command": "floobits_prompt_join_room",
+    "caption": "Join Room"
+  },
+  { "command": "floobits_prompt_msg",
+    "caption": "Send Message"
+  }
 ]
