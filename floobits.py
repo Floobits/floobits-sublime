@@ -70,6 +70,8 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
                 subl = '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl'
             elif sublime.platform() == 'windows':
                 subl = sys.executable
+            else:
+                raise Exception("WHAT PLATFORM ARE WE ON?!?!?")
 
             command = [subl, '--add', G.PROJECT_PATH]
             print('command:', command)
