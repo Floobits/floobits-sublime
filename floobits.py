@@ -50,7 +50,7 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         parsed_url = urlparse(room_url)
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
         (owner, room) = result.groups()
-        self.window.active_view().run_command('floobits_join_room', {
+        self.window.run_command('floobits_join_room', {
             'host': parsed_url.hostname,
             'port': parsed_url.port,
             'owner': owner,
