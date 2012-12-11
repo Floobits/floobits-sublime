@@ -7,3 +7,4 @@ DEFAULT_PORT = ''
 USERNAME = ''
 SECRET = ''
 READ_ONLY = False
+ROOM_WINDOW = None

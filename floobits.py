@@ -1,6 +1,7 @@
 # coding: utf-8
 import re
 import os
+import subprocess
 import threading
 import traceback
 from urlparse import urlparse
@@ -60,10 +61,18 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, owner, room, host=None, port=None):
 
+        def on_connect(agent_connection):
+            # TODO: use the right sublime binary. this only works for OS X
+            command = ["/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl", "--add", G.PROJECT_PATH]
+            print("command:", command)
+            p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            poll_result = p.poll()
+            print("poll:", poll_result)
+
         def run_agent():
             global agent
             try:
-                agent = AgentConnection(owner, room, host, port)
+                agent = AgentConnection(owner, room, host, port, on_connect)
                 # owner and room name are slugfields so this should be safe
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 Listener.set_agent(agent)

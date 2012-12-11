@@ -27,9 +27,7 @@ def get_text(view):
 def get_or_create_view(buf_id, path):
     view = BUF_IDS_TO_VIEWS.get(buf_id)
     if not view:
-        # maybe we should create a new window? I don't know
-        window = sublime.active_window()
-        view = window.open_file(path)
+        view = G.ROOM_WINDOW.open_file(path)
         BUF_IDS_TO_VIEWS[buf_id] = view
         print('Created view', view)
     return view

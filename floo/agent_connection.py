@@ -33,8 +33,7 @@ def get_or_create_chat():
     global CHAT_VIEW
     p = utils.get_full_path('msgs.floobits.log')
     if not CHAT_VIEW:
-        window = sublime.active_window()
-        CHAT_VIEW = window.open_file(p)
+        CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
         CHAT_VIEW.set_read_only(True)
     return CHAT_VIEW
 
@@ -138,7 +137,7 @@ class AgentConnection(object):
 
     def on_msg(self, data):
         self.chat(data['username'], data['time'], data.get('data'))
-        window = sublime.active_window()
+        window = G.ROOM_WINDOW
 
         def cb(selected):
             if selected == -1:
@@ -164,9 +163,6 @@ class AgentConnection(object):
             elif name == 'get_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'room_info':
-                if self.on_connect:
-                    self.on_connect(self)
-                    self.on_connect = None
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
                 perms = data['perms']
@@ -185,15 +181,18 @@ class AgentConnection(object):
                 project_fd = open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w')
                 project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
                 project_fd.close()
-                # TODO: this is hard. ST2 has no project api
-#                sublime.active_window().run_command('open', {'file': G.PROJECT_PATH})
 
+                # TODO: use run_command to open a new window
+                G.ROOM_WINDOW = sublime.active_window()
                 for buf_id, buf in data['bufs'].iteritems():
                     Listener.update_buf(buf_id, buf['path'], "", buf['md5'])
                     # Total hack. apparently we can't create views and set their text in the same "tick"
                     Listener.get_buf(buf_id)
 
                 self.authed = True
+                if self.on_connect:
+                    self.on_connect(self)
+                    self.on_connect = None
             elif name == 'join':
                 print('%s joined the room' % data['username'])
             elif name == 'part':
