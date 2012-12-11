@@ -5,6 +5,7 @@ import Queue
 import time
 import select
 import collections
+import ssl
 
 import sublime
 
@@ -89,7 +90,8 @@ class AgentConnection(object):
             print('too many reconnect failures. giving up')
 
     def connect(self):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = ssl.wrap_socket(sock)
         print('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
