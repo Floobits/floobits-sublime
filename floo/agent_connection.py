@@ -41,7 +41,7 @@ def get_or_create_chat():
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
-    def __init__(self, owner, room, host=None, port=None, on_connect=None):
+    def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
         self.buf = ''
         self.reconnect_delay = 500
@@ -50,6 +50,7 @@ class AgentConnection(object):
         self.authed = False
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
+        self.secure = secure
         self.owner = owner
         self.room = room
         self.retries = G.MAX_RETRIES
@@ -90,11 +91,14 @@ class AgentConnection(object):
             print('too many reconnect failures. giving up')
 
     def connect(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock = ssl.wrap_socket(sock)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.secure:
+            self.sock = ssl.wrap_socket(self.sock)
         print('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
+            if self.secure:
+                self.sock.do_handshake()
         except socket.error as e:
             print('Error connecting:', e)
             self.reconnect()
