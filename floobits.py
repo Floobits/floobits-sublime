@@ -2,6 +2,7 @@
 import re
 import os
 import subprocess
+import sys
 import threading
 import traceback
 from urlparse import urlparse
@@ -42,7 +43,7 @@ reload_settings()
 
 class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, room=""):
+    def run(self, room=''):
         self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
@@ -62,12 +63,19 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
     def run(self, edit, owner, room, host=None, port=None):
 
         def on_connect(agent_connection):
-            # TODO: use the right sublime binary. this only works for OS X
-            command = ["/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl", "--add", G.PROJECT_PATH]
-            print("command:", command)
+            if sublime.platform() == 'linux':
+                subl = open('/proc/self/cmdline').read().split(chr(0))[0]
+            elif sublime.platform() == 'osx':
+                # TODO: totally explodes if you install ST2 somewhere else
+                subl = '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl'
+            elif sublime.platform() == 'windows':
+                subl = sys.executable
+
+            command = [subl, '--add', G.PROJECT_PATH]
+            print('command:', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
-            print("poll:", poll_result)
+            print('poll:', poll_result)
 
         def run_agent():
             global agent
@@ -82,7 +90,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
                 tb = traceback.format_exc()
                 print(tb)
             else:
-                joined_room = {'room': room, "owner": owner, "host": host, "port": port}
+                joined_room = {'room': room, 'owner': owner, 'host': host, 'port': port}
                 update_recent_rooms(joined_room)
 
         thread = threading.Thread(target=run_agent)
@@ -91,7 +99,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
 
 class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
 
-    def run(self, msg=""):
+    def run(self, msg=''):
         print('msg', msg)
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
@@ -114,7 +122,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
         return agent and agent.is_ready()
 
     def description(self):
-        return "Send a message to the floobits room you are in (join a room first)"
+        return 'Send a message to the floobits room you are in (join a room first)'
 
 Listener.push()
 agent = None
