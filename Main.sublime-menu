@@ -9,6 +9,10 @@
       "id": "floobits_room_menu",
       "caption": "Join Room",
       "command": "floobits_prompt_join_room"
+    },{
+      "id": "floobits_join_room",
+      "caption": "Join Recent Room",
+      "command": "floobits_join_recent_room"
     },
     {
       "id": "floobits_msg",

@@ -7,5 +7,9 @@
 	{
 		"keys": ["ctrl+alt+m"],
 		"command": "floobits_prompt_msg"
+	},
+	{
+		"keys": ["shift+ctrl+j+alt"],
+		"command": "floobits_join_recent_room"
 	}
 ]

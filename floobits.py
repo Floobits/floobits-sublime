@@ -58,9 +58,9 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         })
 
 
-class FloobitsJoinRoomCommand(sublime_plugin.TextCommand):
+class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, edit, owner, room, host=None, port=None):
+    def run(self, owner, room, host=None, port=None):
 
         def on_connect(agent_connection):
             if sublime.platform() == 'linux':
@@ -125,6 +125,16 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
+
+
+class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
+    def run(self, *args):
+        rooms = ["{0}/r/{1}/{2}".format(x['host'], x['owner'], x['room']) for x in DATA['recent_rooms']]
+        self.window.show_quick_panel(rooms, self.on_done)
+
+    def on_done(self, item):
+        room = DATA['recent_rooms'][item]
+        self.window.run_command("floobits_join_room", {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
 
 Listener.push()
 agent = None
