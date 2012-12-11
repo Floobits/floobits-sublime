@@ -33,7 +33,7 @@ def reload_settings():
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     G.DEFAULT_HOST = settings.get('host', 'floobits.com')
-    G.DEFAULT_PORT = settings.get('port', 3148)
+    G.DEFAULT_PORT = settings.get('port', 3448)
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
 
