@@ -40,8 +40,7 @@ def patch_apply(self, patches, text):
             start_loc = self.match_main(text, text1[:self.Match_MaxBits],
                                         expected_loc)
             if start_loc != -1:
-                end_loc = self.match_main(text, text1[-self.Match_MaxBits:],
-                    expected_loc + len(text1) - self.Match_MaxBits)
+                end_loc = self.match_main(text, text1[-self.Match_MaxBits:], expected_loc + len(text1) - self.Match_MaxBits)
                 if end_loc == -1 or start_loc >= end_loc:
                     # Can't find valid trailing context.  Drop this patch.
                     start_loc = -1
@@ -64,17 +63,14 @@ def patch_apply(self, patches, text):
                 # Perfect match, just shove the replacement text in.
                 print "perfect match"
                 replacement_str = self.diff_text2(patch.diffs)
-                text = (text[:start_loc] + replacement_str +
-                            text[start_loc + len(text1):])
+                text = (text[:start_loc] + replacement_str + text[start_loc + len(text1):])
                 position = [start_loc, len(text1), str(replacement_str)]
             else:
                 print "imperfect match"
                 # Imperfect match.
                 # Run a diff to get a framework of equivalent indices.
                 diffs = self.diff_main(text1, text2, False)
-                if (len(text1) > self.Match_MaxBits and
-                    self.diff_levenshtein(diffs) / float(len(text1)) >
-                    self.Patch_DeleteThreshold):
+                if len(text1) > self.Match_MaxBits and self.diff_levenshtein(diffs) / float(len(text1)) > self.Patch_DeleteThreshold:
                     # The end points match, but the content is unacceptably bad.
                     results[-1] = False
                 else:
@@ -91,8 +87,7 @@ def patch_apply(self, patches, text):
                             inserted_text += data
                         elif op == self.DIFF_DELETE:  # Deletion
                             diff_index = self.diff_xIndex(diffs, index1 + len(data))
-                            text = text[:start_loc + index2] + text[start_loc +
-                                diff_index:]
+                            text = text[:start_loc + index2] + text[start_loc + diff_index:]
                             delete_len += (diff_index - index2)
                         if op != self.DIFF_DELETE:
                             index1 += len(data)
