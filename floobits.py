@@ -34,6 +34,7 @@ def reload_settings():
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     G.DEFAULT_HOST = settings.get('host', 'floobits.com')
     G.DEFAULT_PORT = settings.get('port', 3448)
+    G.SECURE = settings.get('secure', True)
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
 
@@ -82,7 +83,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         def run_agent():
             global agent
             try:
-                agent = AgentConnection(owner, room, host, port, on_connect)
+                agent = AgentConnection(owner, room, host=host, port=port, secure=G.SECURE, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 Listener.set_agent(agent)

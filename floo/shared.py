@@ -7,9 +7,11 @@ COLAB_DIR = ''
 PROJECT_PATH = ''
 DEFAULT_HOST = ''
 DEFAULT_PORT = ''
+SECURE = True
 
 USERNAME = ''
 SECRET = ''
+
 
 READ_ONLY = False
 
