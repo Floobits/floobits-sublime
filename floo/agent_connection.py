@@ -58,8 +58,11 @@ class AgentConnection(object):
         self.chat_deck = collections.deque(maxlen=10)
 
     def stop(self):
-        self.sock.shutdown(2)
-        self.sock.close()
+        try:
+            self.sock.shutdown(2)
+            self.sock.close()
+        except Exception:
+            pass
 
     def send_msg(self, msg):
         self.put(json.dumps({'name': 'msg', 'data': msg}))
@@ -216,6 +219,7 @@ class AgentConnection(object):
             elif name == 'disconnect':
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
                 self.retries = 0
+                self.stop()
             elif name == 'msg':
                 self.on_msg(data)
             else:
