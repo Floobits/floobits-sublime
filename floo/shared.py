@@ -1,10 +1,16 @@
 __VERSION__ = '0.01'
+
 MAX_RETRIES = 20
+INITIAL_RECONNECT_DELAY = 500 # milliseconds
+
 COLAB_DIR = ''
 PROJECT_PATH = ''
 DEFAULT_HOST = ''
 DEFAULT_PORT = ''
+
 USERNAME = ''
 SECRET = ''
+
 READ_ONLY = False
+
 ROOM_WINDOW = None

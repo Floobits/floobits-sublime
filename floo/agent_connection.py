@@ -44,7 +44,7 @@ class AgentConnection(object):
     def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
         self.buf = ''
-        self.reconnect_delay = 500
+        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.username = G.USERNAME
         self.secret = G.SECRET
         self.authed = False
@@ -85,10 +85,11 @@ class AgentConnection(object):
         if self.reconnect_delay > 10000:
             self.reconnect_delay = 10000
         if self.retries > 0:
-            print('reconnecting in', self.reconnect_delay)
+            print('Floobits: Reconnecting in %sms' % self.reconnect_delay)
+            sublime.status_message('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.set_timeout(self.connect, int(self.reconnect_delay))
         else:
-            print('too many reconnect failures. giving up')
+            sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -105,7 +106,7 @@ class AgentConnection(object):
             return
         self.sock.setblocking(0)
         print('connected, calling select')
-        self.reconnect_delay = 1
+        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         sublime.set_timeout(self.select, 0)
         self.auth()
 
