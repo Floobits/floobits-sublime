@@ -18,6 +18,8 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
 
+CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
+
 
 class MSG(object):
     def __init__(self, username, timestamp, msg):
@@ -97,7 +99,7 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            self.sock = ssl.wrap_socket(self.sock)
+            self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
         print('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
