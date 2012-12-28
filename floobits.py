@@ -32,11 +32,7 @@ def reload_settings():
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    try:
-        os.makedirs(G.COLAB_DIR)
-    except OSError as e:
-        if e.errno != 17:
-            raise
+    utils.mkdir(G.COLAB_DIR)
     G.DEFAULT_HOST = settings.get('host', 'floobits.com')
     G.DEFAULT_PORT = settings.get('port', 3448)
     G.SECURE = settings.get('secure', True)

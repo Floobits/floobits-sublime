@@ -188,12 +188,7 @@ class AgentConnection(object):
                     ]
                 }
 
-                try:
-                    os.makedirs(G.PROJECT_PATH)
-                except OSError as e:
-                    if e.errno != 17:
-                        sublime.error_message('Can not create directory {0}.\n{1}'.format(G.PROJECT_PATH, e))
-                        raise
+                utils.mkdir(G.PROJECT_PATH)
 
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))

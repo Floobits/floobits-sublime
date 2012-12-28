@@ -1,6 +1,8 @@
 import os
 import json
 
+import sublime
+
 import shared
 
 
@@ -47,3 +49,12 @@ def get_persistent_data():
 def update_persistent_data(data):
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data))
+
+
+def mkdir(path):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != 17:
+            sublime.error_message('Can not create directory {0}.\n{1}'.format(path, e))
+            raise
