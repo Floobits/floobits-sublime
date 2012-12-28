@@ -1,10 +1,11 @@
 # coding: utf-8
 import re
 import os
-import subprocess
 import sys
+import json
 import threading
 import traceback
+import subprocess
 from urlparse import urlparse
 
 import sublime_plugin
@@ -22,9 +23,18 @@ DATA = utils.get_persistent_data()
 
 def update_recent_rooms(room):
     recent_rooms = DATA.get('recent_rooms', [])
-    recent_rooms.append(room)
-    recent_rooms = recent_rooms[-10:]
-    DATA['recent_rooms'] = recent_rooms
+    recent_rooms.insert(0, room)
+    recent_rooms = recent_rooms[:25]
+    seen = set()
+    new = []
+    print(room)
+    for r in recent_rooms:
+        stringified = json.dumps(r)
+        if stringified not in seen:
+            new.append(r)
+            seen.add(stringified)
+
+    DATA['recent_rooms'] = new
     utils.update_persistent_data(DATA)
 
 
@@ -135,6 +145,8 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
+        if item == -1:
+            return
         room = DATA['recent_rooms'][item]
         self.window.run_command("floobits_join_room", {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
 
