@@ -66,7 +66,6 @@ class DMPTransport(object):
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
-        print('patch:', patch_str)
         return json.dumps({
             'id': str(self.buf_id),
             'md5_after': hashlib.md5(self.current).hexdigest(),
@@ -233,7 +232,7 @@ class Listener(sublime_plugin.EventListener):
         if G.READ_ONLY:
             view.set_status('Floobits', "You don't have write permission. Buffer is read-only.")
 
-        print('view text is now %s' % get_text(view))
+        # print('view text is now %s' % get_text(view))
         if save:
             view.run_command("save")
 
