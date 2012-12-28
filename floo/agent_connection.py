@@ -167,7 +167,6 @@ class AgentConnection(object):
             if not sep:
                 break
             data = json.loads(before)
-            print(data)
             name = data.get('name')
             if name == 'patch':
                 # TODO: we should do this in a separate thread
@@ -178,21 +177,26 @@ class AgentConnection(object):
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
                 perms = data['perms']
+
                 if 'patch' not in perms:
                     print("We don't have patch permission. Setting buffers to read-only")
                     G.READ_ONLY = True
+
                 project_json = {
                     'folders': [
                         {'path': G.PROJECT_PATH}
                     ]
                 }
+
                 try:
                     os.makedirs(G.PROJECT_PATH)
-                except Exception:
-                    pass
-                project_fd = open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w')
-                project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
-                project_fd.close()
+                except OSError as e:
+                    if e.errno != 17:
+                        sublime.error_message('Can not create directory {0}.\n{1}'.format(G.PROJECT_PATH, e))
+                        raise
+
+                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
+                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
                 # TODO: use run_command to open a new window
                 G.ROOM_WINDOW = sublime.active_window()
@@ -265,7 +269,7 @@ class AgentConnection(object):
                 if p is None:
                     SOCKET_Q.task_done()
                     continue
-                print('writing patch: %s' % p)
+                # print('writing patch: %s' % p)
                 self.sock.sendall(p)
                 SOCKET_Q.task_done()
 

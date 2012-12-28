@@ -177,8 +177,8 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            print(region)
-            print('replacing', view.substr(region), 'with', patch_text.decode('utf-8'))
+            # print(region)
+            # print('replacing', view.substr(region), 'with', patch_text.decode('utf-8'))
             MODIFIED_EVENTS.put(1)
             try:
                 edit = view.begin_edit()
