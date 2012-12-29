@@ -198,6 +198,20 @@ class Listener(sublime_plugin.EventListener):
             try:
                 edit = view.begin_edit()
                 view.replace(edit, region, patch_text.decode('utf-8'))
+            except:
+                raise
+            else:
+                new_sels = []
+                for sel in selections:
+                    a = sel.a
+                    b = sel.b
+                    new_offset = len(patch_text) - length
+                    if sel.a > offset:
+                        a += new_offset
+                    if sel.b > offset:
+                        b += new_offset
+                    new_sels.append(sublime.Region(a, b))
+                selections = [x for x in new_sels]
             finally:
                 view.end_edit(edit)
         view.sel().clear()
