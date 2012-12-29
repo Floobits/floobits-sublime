@@ -149,7 +149,8 @@ class AgentConnection(object):
             view.show(size)
 
     def on_msg(self, data):
-        self.chat(data['username'], data['time'], data.get('data'))
+        message = data.get('data')
+        self.chat(data['username'], data['time'], message)
         window = G.ROOM_WINDOW
 
         def cb(selected):
@@ -158,8 +159,8 @@ class AgentConnection(object):
             envelope = self.chat_deck[selected]
             window.run_command("floobits_prompt_msg", {'msg': "%s: " % envelope.username})
 
-        print('asflkfaifaewoijafweoi', self.chat_deck)
-        window.show_quick_panel([str(x) for x in self.chat_deck], cb)
+        if message.find(self.username) > 0:
+            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
         self.buf += req
