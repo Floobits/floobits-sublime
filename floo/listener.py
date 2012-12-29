@@ -40,7 +40,7 @@ def vbid_to_buf_id(vb_id):
     return None
 
 
-class DMPTransport(object):
+class FlooPatch(object):
 
     def __init__(self, view):
         self.buf_id = None
@@ -81,6 +81,10 @@ class Listener(sublime_plugin.EventListener):
     selection_changed = []
     agent = None
 
+    def __init__(self, *args, **kwargs):
+        sublime_plugin.EventListener.__init__(self, *args, **kwargs)
+        self.between_save_events = {}
+
     @staticmethod
     def set_agent(agent):
         Listener.agent = agent
@@ -96,7 +100,7 @@ class Listener(sublime_plugin.EventListener):
                 continue
 
             reported.add(vb_id)
-            patch = DMPTransport(view)
+            patch = FlooPatch(view)
             # update the current copy of the buffer
             BUF_STATE[vb_id] = patch.current
             if Listener.agent:
@@ -116,7 +120,7 @@ class Listener(sublime_plugin.EventListener):
             sel = view.sel()
             buf_id = vbid_to_buf_id(vb_id)
             if buf_id is None:
-                print('buf_id for view not found. Not sending highlight.')
+                # print('buf_id for view not found. Not sending highlight.')
                 continue
             highlight_json = json.dumps({
                 'id': buf_id,
@@ -132,7 +136,6 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def apply_patch(patch_data):
-        global MODIFIED_EVENTS
         buf_id = patch_data['id']
         path = utils.get_full_path(patch_data['path'])
         view = get_or_create_view(buf_id, path)
@@ -240,7 +243,7 @@ class Listener(sublime_plugin.EventListener):
     def highlight(buf_id, region_key, username, ranges):
         view = BUF_IDS_TO_VIEWS.get(buf_id)
         if not view:
-            print('No view for buffer id', buf_id)
+            # print('No view for buffer id', buf_id)
             return
         regions = []
         for r in ranges:
@@ -257,12 +260,51 @@ class Listener(sublime_plugin.EventListener):
     def on_new(self, view):
         print('new', self.name(view))
 
+    def on_clone(self, view):
+        print('clone', self.name(view))
+
     def on_load(self, view):
         print('load', self.name(view))
 
-    def on_clone(self, view):
-        self.add(view)
-        print('clone', self.name(view))
+    def on_pre_save(self, view):
+        p = view.name()
+        if view.file_name():
+            p = utils.to_rel_path(view.file_name())
+        self.between_save_events[view.buffer_id()] = p
+
+    def on_post_save(self, view):
+        event = None
+        buf_id = vbid_to_buf_id(view.buffer_id())
+        name = utils.to_rel_path(view.file_name())
+        old_name = self.between_save_events[view.buffer_id()]
+
+        if buf_id is None:
+            if utils.is_shared(view.file_name()):
+                print('new buffer', name, view.file_name())
+                event = {
+                    'name': 'create_buf',
+                    'buf': get_text(view),
+                    'path': name
+                }
+        elif name != old_name:
+            if utils.is_shared(view.file_name()):
+                print('renamed buffer {0} to {1}'.format(old_name, name))
+                event = {
+                    'name': 'rename_buf',
+                    'id': buf_id,
+                    'path': name
+                }
+            else:
+                print('deleting buffer from shared: {0}'.format(name))
+                event = {
+                    'name': 'delete_buf',
+                    'id': buf_id,
+                }
+
+        if event and Listener.agent:
+            Listener.agent.put(json.dumps(event))
+
+        del self.between_save_events[view.buffer_id()]
 
     def on_modified(self, view):
         if not settings.get('run', True):
@@ -283,7 +325,6 @@ class Listener(sublime_plugin.EventListener):
         if view.is_scratch():
             return
         self.add(view)
-        print('activated', self.name(view))
 
     def add(self, view):
         vb_id = view.buffer_id()

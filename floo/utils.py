@@ -5,6 +5,8 @@ import sublime
 
 import shared
 
+per_path = os.path.abspath('persistent.json')
+
 
 class edit:
     def __init__(self, view):
@@ -28,10 +30,12 @@ def unfuck_path(p):
 
 
 def to_rel_path(p):
-    return p[len(shared.PROJECT_PATH):]
+    return p[len(shared.PROJECT_PATH) + 1:]
 
 
-per_path = os.path.abspath('persistent.json')
+def is_shared(p):
+    p = unfuck_path(p)
+    return shared.PROJECT_PATH == p[:len(shared.PROJECT_PATH)]
 
 
 def get_persistent_data():

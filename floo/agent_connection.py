@@ -173,6 +173,8 @@ class AgentConnection(object):
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
+            elif name == 'create_buf':
+                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
