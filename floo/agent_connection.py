@@ -177,14 +177,18 @@ class AgentConnection(object):
             elif name == 'create_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'rename_buf':
-                view = listener.BUF_IDS_TO_VIEWS.get(data['id'])
                 new = utils.get_full_path(data['path'])
-                old = view.file_name()
+                old = utils.get_full_path(data['old_path'])
                 new_dir = os.path.split(new)[0]
                 if new_dir:
                     utils.mkdir(new_dir)
                 os.rename(old, new)
-                view.retarget(new)
+                view = listener.BUF_IDS_TO_VIEWS.get(data['id'])
+                if view:
+                    view.retarget(new)
+            elif name == "delete_buf":
+                path = utils.get_full_path(data['path'])
+                utils.rm(path)
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES

@@ -55,6 +55,17 @@ def update_persistent_data(data):
         per.write(json.dumps(data))
 
 
+def rm(path):
+    """removes path and dirs going up until a OSError"""
+    os.remove(path)
+    try:
+        os.removedirs(os.path.split(path)[0])
+    except OSError as e:
+        if e.errno != 66:
+            sublime.error_message('Can not delete directory {0}.\n{1}'.format(path, e))
+            raise
+
+
 def mkdir(path):
     try:
         os.makedirs(path)
