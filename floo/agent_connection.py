@@ -183,12 +183,13 @@ class AgentConnection(object):
                 if new_dir:
                     utils.mkdir(new_dir)
                 os.rename(old, new)
-                view = listener.BUF_IDS_TO_VIEWS.get(data['id'])
+                view = listener.get_view(data['id'])
                 if view:
                     view.retarget(new)
             elif name == "delete_buf":
                 path = utils.get_full_path(data['path'])
                 utils.rm(path)
+                listener.delete_view(data['id'])
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES

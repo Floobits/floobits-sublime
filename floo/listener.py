@@ -1,3 +1,4 @@
+import os
 import Queue
 import json
 import hashlib
@@ -24,13 +25,25 @@ def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
 
 
-def get_or_create_view(buf_id, path):
-    view = BUF_IDS_TO_VIEWS.get(buf_id)
-    if not view:
-        view = G.ROOM_WINDOW.open_file(path)
-        BUF_IDS_TO_VIEWS[buf_id] = view
-        print('Created view', view.name() or view.file_name())
+def get_view(buf_id):
+    buf_id = int(buf_id)
+    return BUF_IDS_TO_VIEWS.get(buf_id)
+
+
+def create_view(buf_id, path):
+    buf_id = int(buf_id)
+    utils.mkdir(os.path.split(path)[0])
+    with open(path, 'wb') as fd:
+        fd.write("")
+    view = G.ROOM_WINDOW.open_file(path)
+    print('Created view', view.name() or view.file_name())
+    BUF_IDS_TO_VIEWS[buf_id] = view
     return view
+
+
+def delete_view(buf_id):
+    buf_id = int(buf_id)
+    del BUF_IDS_TO_VIEWS[buf_id]
 
 
 def vbid_to_buf_id(vb_id):
@@ -120,7 +133,7 @@ class Listener(sublime_plugin.EventListener):
             sel = view.sel()
             buf_id = vbid_to_buf_id(vb_id)
             if buf_id is None:
-                # print('buf_id for view not found. Not sending highlight.')
+                print('buf_id for view not found. Not sending highlight.')
                 continue
             highlight_json = json.dumps({
                 'id': buf_id,
@@ -137,8 +150,7 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def apply_patch(patch_data):
         buf_id = patch_data['id']
-        path = utils.get_full_path(patch_data['path'])
-        view = get_or_create_view(buf_id, path)
+        view = get_view(buf_id)
 
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
@@ -210,7 +222,9 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def update_buf(buf_id, path, text, md5, view=None, save=False):
         path = utils.get_full_path(path)
-        view = get_or_create_view(buf_id, path)
+        view = get_view(buf_id)
+        if not view:
+            view = create_view(buf_id, path)
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
