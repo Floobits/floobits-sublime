@@ -29,7 +29,7 @@ def get_or_create_view(buf_id, path):
     if not view:
         view = G.ROOM_WINDOW.open_file(path)
         BUF_IDS_TO_VIEWS[buf_id] = view
-        print('Created view', view)
+        print('Created view', view.name() or view.file_name())
     return view
 
 
@@ -193,7 +193,7 @@ class Listener(sublime_plugin.EventListener):
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
-            print('re-adding selection', sel)
+            # print('re-adding selection', sel)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -229,7 +229,7 @@ class Listener(sublime_plugin.EventListener):
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
-            print('re-adding selection', sel)
+            # print('re-adding selection', sel)
             view.sel().add(sel)
         view.set_read_only(G.READ_ONLY)
         if G.READ_ONLY:

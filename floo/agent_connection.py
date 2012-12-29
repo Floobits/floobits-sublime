@@ -11,7 +11,8 @@ import sublime
 
 import shared as G
 import utils
-from listener import Listener
+import listener
+Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
@@ -175,6 +176,15 @@ class AgentConnection(object):
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
             elif name == 'create_buf':
                 Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
+            elif name == 'rename_buf':
+                view = listener.BUF_IDS_TO_VIEWS.get(data['id'])
+                new = utils.get_full_path(data['path'])
+                old = view.file_name()
+                new_dir = os.path.split(new)[0]
+                if new_dir:
+                    utils.mkdir(new_dir)
+                os.rename(old, new)
+                view.retarget(new)
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
@@ -198,6 +208,8 @@ class AgentConnection(object):
                 # TODO: use run_command to open a new window
                 G.ROOM_WINDOW = sublime.active_window()
                 for buf_id, buf in data['bufs'].iteritems():
+                    new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
+                    utils.mkdir(new_dir)
                     Listener.update_buf(buf_id, buf['path'], "", buf['md5'])
                     # Total hack. apparently we can't create views and set their text in the same "tick"
                     Listener.get_buf(buf_id)
