@@ -15,13 +15,12 @@ If you'd rather create a symlink instead of copy/moving, run something like:
 
 # Configuration
 
-Create a Floobits.sublime-settings file and fill in the following info:
+Edit your Floobits.sublime-settings file (in `Package Settings -> Floobits -> Settings - User`) and fill in the following info:
 
     {
-      "share_dir": "/Users/ggreer/code/sublime-text-2-plugin/shared/",
-      "username": "ggreer",
+      "username": "user",
       "secret": "1234",
-      "room": "test"
+      "share_dir": "~/.floobits/shared/"
     }
 
-`share_dir` must be an absolute path.
+Replace username with your Floobits username. The secret is your API secret, which you can see at https://floobits.com/dash/settings/
