@@ -2,7 +2,7 @@
 	{
 		"keys": ["shift+ctrl+j"],
 		"command": "floobits_prompt_join_room",
-		"args": {"room": "https://floobits.com/r/ggreer/test"}
+		"args": {"room": "https://floobits.com/r/"}
 	},
 	{
 		"keys": ["ctrl+alt+m"],
