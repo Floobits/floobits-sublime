@@ -18,7 +18,12 @@
       "id": "floobits_msg",
       "caption": "Send Message",
       "command": "floobits_prompt_msg"
-    }]
+    },
+    { "command": "floobits_open_message_view",
+      "caption": "Open Messages View",
+      "id": "floobits_open_message_view"
+    }
+  ]
   }]
 },
 {

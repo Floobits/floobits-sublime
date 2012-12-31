@@ -18,4 +18,10 @@
   },
   { "command": "floobits_prompt_msg",
     "caption": "Send Message"
+  },
+  { "command": "floobits_join_recent_room",
+    "caption": "Join Recent Room"
+  },
+  { "command": "floobits_open_message_view",
+    "caption": "Open Messages View"
   }]

@@ -7,6 +7,11 @@ import shared
 
 per_path = os.path.abspath('persistent.json')
 
+CHAT_VIEW = None
+
+# TODO: use run_command to open a new window
+ROOM_WINDOW = None
+
 
 class edit:
     def __init__(self, view):
@@ -73,3 +78,26 @@ def mkdir(path):
         if e.errno != 17:
             sublime.error_message('Can not create directory {0}.\n{1}'.format(path, e))
             raise
+
+
+def get_or_create_chat():
+    global CHAT_VIEW, ROOM_WINDOW
+    p = get_full_path('msgs.floobits.log')
+    if not ROOM_WINDOW:
+        w = sublime.active_window()
+        if w:
+            ROOM_WINDOW = w
+        else:
+            w = sublime.windows()
+            if w:
+                ROOM_WINDOW = w[0]
+            else:
+                msg = 'no window, can\'t make a view'
+                print msg
+                sublime.error_message("Sublime is stupid, I can't make a new view")
+                return
+
+    if not CHAT_VIEW:
+        CHAT_VIEW = ROOM_WINDOW.open_file(p)
+        CHAT_VIEW.set_read_only(True)
+    return CHAT_VIEW

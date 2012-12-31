@@ -21,6 +21,15 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 DATA = utils.get_persistent_data()
 
 
+def set_active_window():
+    w = sublime.active_window()
+    if not w:
+        return sublime.set_timeout(set_active_window, 100)
+    G.ROOM_WINDOW = w
+
+sublime.set_timeout(set_active_window, 0)
+
+
 def update_recent_rooms(room):
     recent_rooms = DATA.get('recent_rooms', [])
     recent_rooms.insert(0, room)
@@ -149,6 +158,22 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
             return
         room = DATA['recent_rooms'][item]
         self.window.run_command("floobits_join_room", {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
+
+
+class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
+    def run(self, *args):
+        if not agent:
+            return
+        utils.get_or_create_chat()
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return agent and agent.is_ready()
+
+    def description(self):
+        return 'Open the floobits messages view.'
 
 Listener.push()
 agent = None

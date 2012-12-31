@@ -33,15 +33,6 @@ class MSG(object):
             format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
-def get_or_create_chat():
-    global CHAT_VIEW
-    p = utils.get_full_path('msgs.floobits.log')
-    if not CHAT_VIEW:
-        CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
-        CHAT_VIEW.set_read_only(True)
-    return CHAT_VIEW
-
-
 class AgentConnection(object):
     ''' Simple chat server using select '''
     def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
@@ -139,7 +130,7 @@ class AgentConnection(object):
         envelope = MSG(username, timestamp, msg)
         if not self_msg:
             self.chat_deck.appendleft(envelope)
-        view = get_or_create_chat()
+        view = utils.get_or_create_chat()
         with utils.edit(view) as ed:
             size = view.size()
             view.set_read_only(False)
@@ -211,8 +202,6 @@ class AgentConnection(object):
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
-                # TODO: use run_command to open a new window
-                G.ROOM_WINDOW = sublime.active_window()
                 for buf_id, buf in data['bufs'].iteritems():
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
                     utils.mkdir(new_dir)
