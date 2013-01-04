@@ -335,8 +335,6 @@ class Listener(sublime_plugin.EventListener):
         del self.between_save_events[view.buffer_id()]
 
     def on_modified(self, view):
-        if not settings.get('run', True):
-            return
         try:
             MODIFIED_EVENTS.get_nowait()
         except Queue.Empty:
