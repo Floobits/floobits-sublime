@@ -205,8 +205,6 @@ class AgentConnection(object):
                 for buf_id, buf in data['bufs'].iteritems():
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
                     utils.mkdir(new_dir)
-                    Listener.update_buf(buf_id, buf['path'], "", buf['md5'])
-                    # Total hack. apparently we can't create views and set their text in the same "tick"
                     Listener.get_buf(buf_id)
 
                 self.authed = True
