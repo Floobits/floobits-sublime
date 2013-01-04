@@ -261,7 +261,7 @@ class AgentConnection(object):
                     if not d:
                         break
                     buf += d
-                except socket.error:
+                except (socket.error, TypeError):
                     break
             if not buf:
                 print('buf is empty')
