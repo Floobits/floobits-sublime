@@ -30,11 +30,11 @@ def get_view(buf_id):
     return BUF_IDS_TO_VIEWS.get(buf_id)
 
 
-def create_view(buf_id, path):
+def create_view(buf_id, path, text=""):
     buf_id = int(buf_id)
     utils.mkdir(os.path.split(path)[0])
     with open(path, 'wb') as fd:
-        fd.write("")
+        fd.write(text);
     view = G.ROOM_WINDOW.open_file(path)
     print('Created view', view.name() or view.file_name())
     BUF_IDS_TO_VIEWS[buf_id] = view
@@ -238,7 +238,7 @@ class Listener(sublime_plugin.EventListener):
         path = utils.get_full_path(path)
         view = get_view(buf_id)
         if not view:
-            view = create_view(buf_id, path)
+            view = create_view(buf_id, path, text)
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
