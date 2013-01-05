@@ -203,6 +203,7 @@ class AgentConnection(object):
                     Listener.get_buf(buf_id)
 
                 self.authed = True
+                msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
                 if self.on_connect:
                     self.on_connect(self)
                     self.on_connect = None
@@ -218,9 +219,13 @@ class AgentConnection(object):
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
             elif name == 'error':
-                sublime.error_message('Floobits: Error! Message: %s' % str(data.get('msg')))
+                message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
+                msg.error(message)
+                sublime.error_message(message)
             elif name == 'disconnect':
-                sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
+                message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
+                msg.error(message)
+                sublime.error_message(message)
                 self.stop()
             elif name == 'msg':
                 self.on_msg(data)
