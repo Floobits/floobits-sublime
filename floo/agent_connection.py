@@ -13,6 +13,7 @@ import shared as G
 import utils
 import listener
 import msg
+
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -64,7 +65,7 @@ class AgentConnection(object):
         SOCKET_Q.put(item + '\n')
         qsize = SOCKET_Q.qsize()
         if qsize > 0:
-            print('%s items in q' % qsize)
+            msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
         self.sock = None
@@ -224,12 +225,12 @@ class AgentConnection(object):
             elif name == 'msg':
                 self.on_msg(data)
             else:
-                print('unknown name!', name, 'data:', data)
+                msg.error('unknown name!', name, 'data:', data)
             self.buf = after
 
     def select(self):
         if not self.sock:
-            print('no sock')
+            msg.error('select(): No socket.')
             self.reconnect()
             return
 
@@ -239,7 +240,7 @@ class AgentConnection(object):
         _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
 
         if _except:
-            print('socket error')
+            msg.error('Socket error')
             self.sock.close()
             self.reconnect()
             return
@@ -255,7 +256,7 @@ class AgentConnection(object):
                 except (socket.error, TypeError):
                     break
             if not buf:
-                print('buf is empty')
+                msg.error('No data from sock.recv()')
                 return self.reconnect()
             self.protocol(buf)
 
@@ -264,7 +265,7 @@ class AgentConnection(object):
                 if p is None:
                     SOCKET_Q.task_done()
                     continue
-                # print('writing patch: %s' % p)
+                msg.debug('writing patch: %s' % p)
                 self.sock.sendall(p)
                 SOCKET_Q.task_done()
 

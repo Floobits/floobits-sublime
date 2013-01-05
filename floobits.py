@@ -13,6 +13,7 @@ import sublime
 
 from floo import AgentConnection
 from floo.listener import Listener
+from floo import msg
 from floo import shared as G
 from floo import utils
 
@@ -104,7 +105,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             global agent
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-                sublime.set_timeout(utils.get_or_create_chat, 0)
+                sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=G.SECURE, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
@@ -165,7 +166,7 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
         if not agent:
             return
-        utils.get_or_create_chat()
+        msg.get_or_create_chat()
 
     def is_visible(self):
         return self.is_enabled()

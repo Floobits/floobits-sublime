@@ -73,26 +73,3 @@ def mkdir(path):
         if e.errno != 17:
             sublime.error_message('Can not create directory {0}.\n{1}'.format(path, e))
             raise
-
-
-def get_or_create_chat():
-    p = get_full_path('msgs.floobits.log')
-    if not G.ROOM_WINDOW:
-        w = sublime.active_window()
-        if w:
-            G.ROOM_WINDOW = w
-        else:
-            w = sublime.windows()
-            if w:
-                G.ROOM_WINDOW = w[0]
-            else:
-                msg = 'no window, can\'t make a view'
-                print msg
-                sublime.error_message("Sublime is stupid, I can't make a new view")
-                return
-
-    G.CHAT_VIEW_PATH = p
-    if not (G.CHAT_VIEW and G.CHAT_VIEW.window()):
-        G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
-        G.CHAT_VIEW.set_read_only(True)
-    return G.CHAT_VIEW

@@ -2,6 +2,7 @@ import time
 
 import sublime
 
+import shared as G
 import utils
 
 LOG_LEVELS = {
@@ -14,6 +15,27 @@ LOG_LEVELS = {
 LOG_LEVEL = LOG_LEVELS['MSG']
 
 
+def get_or_create_chat():
+    p = utils.get_full_path('msgs.floobits.log')
+    if not G.ROOM_WINDOW:
+        w = sublime.active_window()
+        if w:
+            G.ROOM_WINDOW = w
+        else:
+            w = sublime.windows()
+            if w:
+                G.ROOM_WINDOW = w[0]
+            else:
+                sublime.error_message("Sublime is stupid, I can't make a new view")
+                return
+
+    G.CHAT_VIEW_PATH = p
+    if not (G.CHAT_VIEW and G.CHAT_VIEW.window()):
+        G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
+        G.CHAT_VIEW.set_read_only(True)
+    return G.CHAT_VIEW
+
+
 class MSG(object):
     def __init__(self, msg, timestamp=None, username=None, level=LOG_LEVELS['MSG']):
         self.msg = msg
@@ -24,8 +46,8 @@ class MSG(object):
     def display(self):
         if self.level < LOG_LEVEL:
             return
-        def get_or_create_chat():
-            view = utils.get_or_create_chat()
+        def _get_or_create_chat():
+            view = get_or_create_chat()
             sublime.set_timeout(lambda: _display(view), 0)
         def _display(view):
             with utils.edit(view) as ed:
@@ -36,7 +58,7 @@ class MSG(object):
                 # TODO: this scrolling is lame and centers text :/
                 view.show(size)
 
-        sublime.set_timeout(get_or_create_chat, 0)
+        sublime.set_timeout(_get_or_create_chat, 0)
 
     def __str__(self):
         if self.username:
@@ -46,18 +68,29 @@ class MSG(object):
         return msg.format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
+def msg_format(message, *args, **kwargs):
+    message += " ".join([str(x) for x in args])
+    if kwargs:
+        message = message.format(**kwargs)
+    return message
+
+
+def _log(message, level, *args, **kwargs):
+    MSG(msg_format(message, *args, **kwargs), level=level).display()
+
+
 # TODO: use introspection?
-def debug(message):
-    MSG(message, level=LOG_LEVELS['DEBUG']).display()
+def debug(message, *args, **kwargs):
+    _log(message, LOG_LEVELS['DEBUG'], *args, **kwargs)
 
 
-def log(message):
-    MSG(message, level=LOG_LEVELS['MSG']).display()
+def log(message, *args, **kwargs):
+    _log(message, LOG_LEVELS['MSG'], *args, **kwargs)
 
 
-def warn(message):
-    MSG(message, level=LOG_LEVELS['WARN']).display()
+def warn(message, *args, **kwargs):
+    _log(message, LOG_LEVELS['WARN'], *args, **kwargs)
 
 
-def error(message):
-    MSG(message, level=LOG_LEVELS['ERROR']).display()
+def error(message, *args, **kwargs):
+    _log(message, LOG_LEVELS['ERROR'], *args, **kwargs)

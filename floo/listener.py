@@ -10,6 +10,7 @@ import dmp_monkey
 dmp_monkey.monkey_patch()
 from lib import diff_match_patch as dmp
 
+import msg
 import shared as G
 import utils
 
@@ -34,7 +35,7 @@ def get_view(buf_id):
 def create_view(buf):
     path = utils.get_full_path(buf['path'])
     view = G.ROOM_WINDOW.open_file(path)
-    print('Created view', view.name() or view.file_name())
+    msg.debug('Created view', view.name() or view.file_name())
     return view
 
 
@@ -81,7 +82,7 @@ class FlooPatch(object):
         patches = self.patches()
         if len(patches) == 0:
             return None
-        print('sending %s patches' % len(patches))
+        msg.debug('sending %s patches' % len(patches))
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
@@ -118,7 +119,7 @@ class Listener(sublime_plugin.EventListener):
             if vb_id in reported:
                 continue
             if 'buf' not in buf:
-                print('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
+                msg.debug('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
                 continue
 
             reported.add(vb_id)
@@ -129,7 +130,7 @@ class Listener(sublime_plugin.EventListener):
             if Listener.agent:
                 Listener.agent.put(patch.to_json())
             else:
-                print('Not connected. Discarding view change.')
+                msg.debug('Not connected. Discarding view change.')
 
         while Listener.selection_changed:
             view, buf = Listener.selection_changed.pop()
@@ -147,7 +148,7 @@ class Listener(sublime_plugin.EventListener):
             if Listener.agent:
                 Listener.agent.put(highlight_json)
             else:
-                print('Not connected. Discarding selection change.')
+                msg.debug('Not connected. Discarding selection change.')
 
         sublime.set_timeout(Listener.push, 100)
 
@@ -158,9 +159,9 @@ class Listener(sublime_plugin.EventListener):
         view = get_view(buf_id)
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
-            print('wtf? no patches to apply')
+            msg.error('wtf? no patches to apply. server is being stupid')
             return
-        print('patch is', patch_data['patch'])
+        msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         if view:
@@ -169,7 +170,7 @@ class Listener(sublime_plugin.EventListener):
             old_text = buf['buf']
         md5_before = hashlib.md5(old_text).hexdigest()
         if md5_before != patch_data['md5_before']:
-            print("starting md5s don't match. this is dangerous!")
+            msg.warn("starting md5s don't match. this is dangerous!")
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
@@ -180,12 +181,12 @@ class Listener(sublime_plugin.EventListener):
                 break
 
         if not clean_patch:
-            print('failed to patch')
+            msg.error('failed to patch')
             return Listener.get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0]).hexdigest()
         if cur_hash != patch_data['md5_after']:
-            print('new hash %s != expected %s' % (cur_hash, patch_data['md5_after']))
+            msg.warn('new hash %s != expected %s' % (cur_hash, patch_data['md5_after']))
             # TODO: do something better than erasing local changes
             return Listener.get_buf(buf_id)
 
@@ -204,8 +205,6 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            # print(region)
-            # print('replacing', view.substr(region), 'with', patch_text.decode('utf-8'))
             MODIFIED_EVENTS.put(1)
             try:
                 edit = view.begin_edit()
@@ -256,7 +255,7 @@ class Listener(sublime_plugin.EventListener):
             edit = view.begin_edit()
             view.replace(edit, region, buf['buf'].decode('utf-8'))
         except Exception as e:
-            print('Exception updating view:', e)
+            msg.error('Exception updating view: %s' % e)
         finally:
             view.end_edit(edit)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
@@ -286,13 +285,13 @@ class Listener(sublime_plugin.EventListener):
         return view.file_name()
 
     def on_new(self, view):
-        print('new', self.name(view))
+        msg.debug('new', self.name(view))
 
     def on_clone(self, view):
-        print('clone', self.name(view))
+        msg.debug('clone', self.name(view))
 
     def on_load(self, view):
-        print('load', self.name(view))
+        msg.debug('load', self.name(view))
 
     def on_pre_save(self, view):
         p = view.name()
@@ -312,7 +311,7 @@ class Listener(sublime_plugin.EventListener):
 
         if buf is None:
             if utils.is_shared(view.file_name()):
-                print('new buffer', name, view.file_name())
+                msg.log('new buffer', name, view.file_name())
                 event = {
                     'name': 'create_buf',
                     'buf': get_text(view),
@@ -320,14 +319,14 @@ class Listener(sublime_plugin.EventListener):
                 }
         elif name != old_name:
             if utils.is_shared(view.file_name()):
-                print('renamed buffer {0} to {1}'.format(old_name, name))
+                msg.log('renamed buffer {0} to {1}'.format(old_name, name))
                 event = {
                     'name': 'rename_buf',
                     'id': buf['id'],
                     'path': name
                 }
             else:
-                print('deleting buffer from shared: {0}'.format(name))
+                msg.log('deleting buffer from shared: {0}'.format(name))
                 event = {
                     'name': 'delete_buf',
                     'id': buf['id'],
@@ -349,7 +348,7 @@ class Listener(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         buf = get_buf(view)
         if buf:
-            print('selection in view %s is buf id %s' % (buf['path'], buf['id']))
+            msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
             self.selection_changed.append((view, buf))
 
     def on_activated(self, view):
@@ -358,5 +357,5 @@ class Listener(sublime_plugin.EventListener):
     def add(self, view):
         buf = get_buf(view)
         if buf:
-            print('changed view %s buf id %s' % (buf['path'], buf['id']))
+            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
             self.views_changed.append((view, buf))
