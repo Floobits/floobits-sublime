@@ -2,7 +2,6 @@ import os
 import Queue
 import json
 import hashlib
-import collections
 from datetime import datetime
 
 import sublime
@@ -15,8 +14,7 @@ import shared as G
 import utils
 
 MODIFIED_EVENTS = Queue.Queue()
-BUF_STATE = collections.defaultdict(str)
-BUF_IDS_TO_VIEWS = {}
+BUFS = {}
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
@@ -26,47 +24,55 @@ def get_text(view):
 
 
 def get_view(buf_id):
-    buf_id = int(buf_id)
-    return BUF_IDS_TO_VIEWS.get(buf_id)
+    buf = BUFS[buf_id]
+    for view in G.ROOM_WINDOW.views():
+        if buf['path'] == utils.to_rel_path(view.file_name()):
+            return view
+    return None
 
 
-def create_view(buf_id, path, text=""):
-    buf_id = int(buf_id)
-    utils.mkdir(os.path.split(path)[0])
-    with open(path, 'wb') as fd:
-        fd.write(text);
+def create_view(buf):
+    path = utils.get_full_path(buf['path'])
     view = G.ROOM_WINDOW.open_file(path)
     print('Created view', view.name() or view.file_name())
-    BUF_IDS_TO_VIEWS[buf_id] = view
     return view
 
 
-def delete_view(buf_id):
-    buf_id = int(buf_id)
-    del BUF_IDS_TO_VIEWS[buf_id]
-
-
-def vbid_to_buf_id(vb_id):
-    for buf_id, view in BUF_IDS_TO_VIEWS.iteritems():
-        if view.buffer_id() == vb_id:
-            return buf_id
+def get_buf(view):
+    if view.is_scratch():
+        return None
+    if not view.file_name():
+        return None
+    rel_path = utils.to_rel_path(view.file_name())
+    for buf_id, buf in BUFS.iteritems():
+        if rel_path == buf['path']:
+            return buf
     return None
+
+
+def save_buf(buf):
+    path = utils.get_full_path(buf['path'])
+    utils.mkdir(os.path.split(path)[0])
+    with open(path, 'wb') as fd:
+        fd.write(buf['buf'])
+
+
+def delete_buf(buf_id):
+    # TODO: somehow tell the user about this. maybe delete on disk too?
+    del BUFS[buf_id]
 
 
 class FlooPatch(object):
 
-    def __init__(self, view):
-        self.buf_id = None
-        self.vb_id = view.buffer_id()
-        # to rel path
-        self.path = utils.to_rel_path(view.file_name())
+    def __init__(self, view, buf):
+        self.buf = buf
+        self.view = view
         self.current = get_text(view)
-        self.previous = BUF_STATE[self.vb_id]
+        self.previous = buf['buf']
         self.md5_before = hashlib.md5(self.previous).hexdigest()
-        self.buf_id = vbid_to_buf_id(self.vb_id)
 
     def __str__(self):
-        return '%s - %s - %s' % (self.buf_id, self.path, self.vb_id)
+        return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
 
     def patches(self):
         return dmp.diff_match_patch().patch_make(self.previous, self.current)
@@ -80,10 +86,10 @@ class FlooPatch(object):
         for patch in patches:
             patch_str += str(patch)
         return json.dumps({
-            'id': str(self.buf_id),
+            'id': self.buf['id'],
             'md5_after': hashlib.md5(self.current).hexdigest(),
             'md5_before': self.md5_before,
-            'path': self.path,
+            'path': self.buf['path'],
             'patch': patch_str,
             'name': 'patch'
         })
@@ -106,37 +112,35 @@ class Listener(sublime_plugin.EventListener):
     def push():
         reported = set()
         while Listener.views_changed:
-            view = Listener.views_changed.pop()
+            view, buf = Listener.views_changed.pop()
 
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
+            if 'buf' not in buf:
+                print('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
+                continue
 
             reported.add(vb_id)
-            patch = FlooPatch(view)
+            patch = FlooPatch(view, buf)
             # update the current copy of the buffer
-            BUF_STATE[vb_id] = patch.current
+            buf['buf'] = patch.current
+            buf['md5'] = hashlib.md5(patch.current).hexdigest()
             if Listener.agent:
                 Listener.agent.put(patch.to_json())
             else:
                 print('Not connected. Discarding view change.')
 
         while Listener.selection_changed:
-            view = Listener.selection_changed.pop()
-            if view.is_scratch():
-                continue
+            view, buf = Listener.selection_changed.pop()
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
 
             reported.add(vb_id)
             sel = view.sel()
-            buf_id = vbid_to_buf_id(vb_id)
-            if buf_id is None:
-                print('buf_id for view not found. Not sending highlight.')
-                continue
             highlight_json = json.dumps({
-                'id': buf_id,
+                'id': buf['id'],
                 'name': 'highlight',
                 'ranges': [[x.a, x.b] for x in sel]
             })
@@ -150,16 +154,19 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def apply_patch(patch_data):
         buf_id = patch_data['id']
+        buf = BUFS[buf_id]
         view = get_view(buf_id)
-
         DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
-            print('no patches to apply')
+            print('wtf? no patches to apply')
             return
         print('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
-        old_text = get_text(view)
+        if view:
+            old_text = get_text(view)
+        else:
+            old_text = buf['buf']
         md5_before = hashlib.md5(old_text).hexdigest()
         if md5_before != patch_data['md5_before']:
             print("starting md5s don't match. this is dangerous!")
@@ -182,9 +189,14 @@ class Listener(sublime_plugin.EventListener):
             # TODO: do something better than erasing local changes
             return Listener.get_buf(buf_id)
 
+        buf['buf'] = str(t[0]).decode('utf-8')
+        buf['md5'] = cur_hash
+
+        if not view:
+            save_buf(buf)
+            return
+
         selections = [x for x in view.sel()]  # deep copy
-        # so we don't send a patch back to the server for this
-        BUF_STATE[view.buffer_id()] = str(t[0]).decode('utf-8')
         regions = []
         for patch in t[2]:
             offset = patch[0]
@@ -219,7 +231,6 @@ class Listener(sublime_plugin.EventListener):
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
-            # print('re-adding selection', sel)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -234,21 +245,16 @@ class Listener(sublime_plugin.EventListener):
         Listener.agent.put(json.dumps(req))
 
     @staticmethod
-    def update_buf(buf_id, path, text, md5, view=None, save=False):
-        path = utils.get_full_path(path)
-        view = get_view(buf_id)
-        if not view:
-            view = create_view(buf_id, path, text)
+    def update_view(buf, view=None):
+        view = view or get_view(buf['id'])
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
-        # so we don't send a patch back to the server for this
-        BUF_STATE[view.buffer_id()] = text.decode('utf-8')
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, text.decode('utf-8'))
+            view.replace(edit, region, buf['buf'].decode('utf-8'))
         except Exception as e:
             print('Exception updating view:', e)
         finally:
@@ -257,21 +263,15 @@ class Listener(sublime_plugin.EventListener):
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
-            # print('re-adding selection', sel)
             view.sel().add(sel)
         view.set_read_only(G.READ_ONLY)
         if G.READ_ONLY:
             view.set_status('Floobits', "You don't have write permission. Buffer is read-only.")
 
-        # print('view text is now %s' % get_text(view))
-        if save:
-            view.run_command("save")
-
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):
-        view = BUF_IDS_TO_VIEWS.get(buf_id)
+        view = get_view(buf_id)
         if not view:
-            # print('No view for buffer id', buf_id)
             return
         regions = []
         for r in ranges:
@@ -302,11 +302,11 @@ class Listener(sublime_plugin.EventListener):
 
     def on_post_save(self, view):
         event = None
-        buf_id = vbid_to_buf_id(view.buffer_id())
+        buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
         old_name = self.between_save_events[view.buffer_id()]
 
-        if buf_id is None:
+        if buf is None:
             if utils.is_shared(view.file_name()):
                 print('new buffer', name, view.file_name())
                 event = {
@@ -319,14 +319,14 @@ class Listener(sublime_plugin.EventListener):
                 print('renamed buffer {0} to {1}'.format(old_name, name))
                 event = {
                     'name': 'rename_buf',
-                    'id': buf_id,
+                    'id': buf['id'],
                     'path': name
                 }
             else:
                 print('deleting buffer from shared: {0}'.format(name))
                 event = {
                     'name': 'delete_buf',
-                    'id': buf_id,
+                    'id': buf['id'],
                 }
 
         if event and Listener.agent:
@@ -343,23 +343,16 @@ class Listener(sublime_plugin.EventListener):
             MODIFIED_EVENTS.task_done()
 
     def on_selection_modified(self, view):
-        if not settings.get('run', True):
-            return
-        self.selection_changed.append(view)
+        buf = get_buf(view)
+        if buf:
+            print('selection in view %s is buf id %s' % (buf['path'], buf['id']))
+            self.selection_changed.append((view, buf))
 
     def on_activated(self, view):
-        if view.is_scratch():
-            return
         self.add(view)
 
     def add(self, view):
-        vb_id = view.buffer_id()
-        # This could probably be more efficient
-        for buf_id, v in BUF_IDS_TO_VIEWS.iteritems():
-            if v.buffer_id() == vb_id:
-                print('view is in BUF_IDS_TO_VIEWS. sending patch')
-                self.views_changed.append(view)
-                break
-        if view.is_scratch():
-            print('is scratch')
-            return
+        buf = get_buf(view)
+        if buf:
+            print('changed view %s buf id %s' % (buf['path'], buf['id']))
+            self.views_changed.append((view, buf))

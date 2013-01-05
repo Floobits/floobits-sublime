@@ -53,6 +53,7 @@ class AgentConnection(object):
 
     def stop(self):
         try:
+            self.retries = 0
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
@@ -165,9 +166,17 @@ class AgentConnection(object):
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
             elif name == 'get_buf':
-                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
+                buf_id = data['id']
+                listener.BUFS[buf_id] = data
+                view = listener.get_view(buf_id)
+                if view:
+                    Listener.update_view(data, view)
+                else:
+                    listener.save_buf(data)
             elif name == 'create_buf':
-                Listener.update_buf(data['id'], data['path'], data['buf'], data['md5'], save=True)
+                listener.BUFS[data['id']] = data
+                listener.save_buf(data)
+                listener.create_view(data)
             elif name == 'rename_buf':
                 new = utils.get_full_path(data['path'])
                 old = utils.get_full_path(data['old_path'])
@@ -181,7 +190,7 @@ class AgentConnection(object):
             elif name == "delete_buf":
                 path = utils.get_full_path(data['path'])
                 utils.rm(path)
-                listener.delete_view(data['id'])
+                listener.delete_buf(data['id'])
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
@@ -203,8 +212,10 @@ class AgentConnection(object):
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
                 for buf_id, buf in data['bufs'].iteritems():
+                    buf_id = int(buf_id)  # json keys must be strings
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
                     utils.mkdir(new_dir)
+                    listener.BUFS[buf_id] = buf
                     Listener.get_buf(buf_id)
 
                 self.authed = True
@@ -226,7 +237,6 @@ class AgentConnection(object):
                 sublime.error_message('Floobits: Error! Message: %s' % str(data.get('msg')))
             elif name == 'disconnect':
                 sublime.error_message('Floobits: Disconnected! Reason: %s' % str(data.get('reason')))
-                self.retries = 0
                 self.stop()
             elif name == 'msg':
                 self.on_msg(data)

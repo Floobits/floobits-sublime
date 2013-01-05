@@ -1,7 +1,7 @@
 __VERSION__ = '0.01'
 
 MAX_RETRIES = 20
-INITIAL_RECONNECT_DELAY = 500 # milliseconds
+INITIAL_RECONNECT_DELAY = 500  # milliseconds
 
 COLAB_DIR = ''
 PROJECT_PATH = ''
