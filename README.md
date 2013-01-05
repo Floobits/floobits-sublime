@@ -1,6 +1,8 @@
 # Floobits plugin for Sublime Text 2
 
-## Development status: Really buggy. You don't want to use this yet.
+Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
+
+### Development status: Works, but rough around the edges. It's probably worth waiting a little while for this plugin to mature and stabilize.
 
 # Installation instructions
 
