@@ -170,7 +170,7 @@ class Listener(sublime_plugin.EventListener):
             old_text = buf['buf']
         md5_before = hashlib.md5(old_text).hexdigest()
         if md5_before != patch_data['md5_before']:
-            msg.warn("starting md5s don't match. this is dangerous!")
+            msg.warn('starting md5s don\'t match. this is dangerous!')
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
@@ -265,7 +265,7 @@ class Listener(sublime_plugin.EventListener):
             view.sel().add(sel)
         view.set_read_only(G.READ_ONLY)
         if G.READ_ONLY:
-            view.set_status('Floobits', "You don't have write permission. Buffer is read-only.")
+            view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):

@@ -133,7 +133,7 @@ class AgentConnection(object):
             if selected == -1:
                 return
             envelope = self.chat_deck[selected]
-            window.run_command("floobits_prompt_msg", {'msg': "%s: " % envelope.username})
+            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
 
         if message.find(self.username) >= 0:
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
@@ -171,7 +171,7 @@ class AgentConnection(object):
                 view = listener.get_view(data['id'])
                 if view:
                     view.retarget(new)
-            elif name == "delete_buf":
+            elif name == 'delete_buf':
                 path = utils.get_full_path(data['path'])
                 utils.rm(path)
                 listener.delete_buf(data['id'])
@@ -181,7 +181,7 @@ class AgentConnection(object):
                 perms = data['perms']
 
                 if 'patch' not in perms:
-                    msg.log("We don't have patch permission. Setting buffers to read-only")
+                    msg.log('We don\'t have patch permission. Setting buffers to read-only')
                     G.READ_ONLY = True
 
                 project_json = {

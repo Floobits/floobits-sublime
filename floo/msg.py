@@ -26,7 +26,7 @@ def get_or_create_chat():
             if w:
                 G.ROOM_WINDOW = w[0]
             else:
-                sublime.error_message("Sublime is stupid, I can't make a new view")
+                sublime.error_message('Sublime is stupid, I can\'t make a new view')
                 return
 
     G.CHAT_VIEW_PATH = p
@@ -64,14 +64,14 @@ class MSG(object):
 
     def __str__(self):
         if self.username:
-            msg = "[{time}] <{user}> {msg}\n"
+            msg = '[{time}] <{user}> {msg}\n'
         else:
-            msg = "[{time}] {msg}\n"
+            msg = '[{time}] {msg}\n'
         return msg.format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
 def msg_format(message, *args, **kwargs):
-    message += " ".join([str(x) for x in args])
+    message += ' '.join([str(x) for x in args])
     if kwargs:
         message = message.format(**kwargs)
     return message

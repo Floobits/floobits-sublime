@@ -93,7 +93,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
-                raise Exception("WHAT PLATFORM ARE WE ON?!?!?")
+                raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
             command = [subl, '--add', G.PROJECT_PATH]
             print('command:', command)
@@ -152,14 +152,14 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = ["{0}/r/{1}/{2}".format(x['host'], x['owner'], x['room']) for x in DATA['recent_rooms']]
+        rooms = ['{0}/r/{1}/{2}'.format(x['host'], x['owner'], x['room']) for x in DATA['recent_rooms']]
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
         if item == -1:
             return
         room = DATA['recent_rooms'][item]
-        self.window.run_command("floobits_join_room", {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
+        self.window.run_command('floobits_join_room', {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
 
 
 class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
