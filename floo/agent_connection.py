@@ -12,6 +12,7 @@ import sublime
 import shared as G
 import utils
 import listener
+import msg
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -20,17 +21,6 @@ CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
 
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
-
-
-class MSG(object):
-    def __init__(self, username, timestamp, msg):
-        self.username = username
-        self.msg = msg
-        self.timestamp = timestamp
-
-    def __str__(self):
-        return "[{time}] <{user}> {msg}\n".\
-            format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
 class AgentConnection(object):
@@ -127,18 +117,11 @@ class AgentConnection(object):
             except Queue.Empty:
                 break
 
-    def chat(self, username, timestamp, msg, self_msg=False):
-        envelope = MSG(username, timestamp, msg)
+    def chat(self, username, timestamp, message, self_msg=False):
+        envelope = msg.MSG(timestamp, message, username)
         if not self_msg:
             self.chat_deck.appendleft(envelope)
-        view = utils.get_or_create_chat()
-        with utils.edit(view) as ed:
-            size = view.size()
-            view.set_read_only(False)
-            view.insert(ed, size, str(envelope))
-            view.set_read_only(True)
-            # TODO: this scrolling is lame and centers text :/
-            view.show(size)
+        envelope.display()
 
     def on_msg(self, data):
         message = data.get('data')

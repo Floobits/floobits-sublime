@@ -8,6 +8,7 @@ import shared
 per_path = os.path.abspath('persistent.json')
 
 CHAT_VIEW = None
+CHAT_VIEW_PATH = None
 
 # TODO: use run_command to open a new window
 ROOM_WINDOW = None
@@ -81,7 +82,7 @@ def mkdir(path):
 
 
 def get_or_create_chat():
-    global CHAT_VIEW, ROOM_WINDOW
+    global CHAT_VIEW, CHAT_VIEW_PATH, ROOM_WINDOW
     p = get_full_path('msgs.floobits.log')
     if not ROOM_WINDOW:
         w = sublime.active_window()
@@ -97,7 +98,8 @@ def get_or_create_chat():
                 sublime.error_message("Sublime is stupid, I can't make a new view")
                 return
 
-    if not CHAT_VIEW:
+    CHAT_VIEW_PATH = p
+    if not (CHAT_VIEW and CHAT_VIEW.window()):
         CHAT_VIEW = ROOM_WINDOW.open_file(p)
         CHAT_VIEW.set_read_only(True)
     return CHAT_VIEW

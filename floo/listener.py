@@ -301,6 +301,10 @@ class Listener(sublime_plugin.EventListener):
         self.between_save_events[view.buffer_id()] = p
 
     def on_post_save(self, view):
+        def cleanup():
+            del self.between_save_events[view.buffer_id()]
+        if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+            return cleanup()
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -332,7 +336,7 @@ class Listener(sublime_plugin.EventListener):
         if event and Listener.agent:
             Listener.agent.put(json.dumps(event))
 
-        del self.between_save_events[view.buffer_id()]
+        cleanup()
 
     def on_modified(self, view):
         try:

@@ -103,9 +103,10 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         def run_agent():
             global agent
             try:
+                G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+                sublime.set_timeout(utils.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=G.SECURE, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
-                G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 Listener.set_agent(agent)
                 agent.connect()
             except Exception as e:
