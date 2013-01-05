@@ -73,7 +73,7 @@ class AgentConnection(object):
         if self.reconnect_delay > 10000:
             self.reconnect_delay = 10000
         if self.retries > 0:
-            print('Floobits: Reconnecting in %sms' % self.reconnect_delay)
+            msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.status_message('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.set_timeout(self.connect, int(self.reconnect_delay))
         else:
@@ -83,17 +83,17 @@ class AgentConnection(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
-        print('Connecting to %s:%s' % (self.host, self.port))
+        msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
             if self.secure:
                 self.sock.do_handshake()
         except socket.error as e:
-            print('Error connecting:', e)
+            msg.error('Error connecting:', e)
             self.reconnect()
             return
         self.sock.setblocking(0)
-        print('connected, calling select')
+        msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         sublime.set_timeout(self.select, 0)
         self.auth()
@@ -118,7 +118,7 @@ class AgentConnection(object):
                 break
 
     def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(timestamp, message, username)
+        envelope = msg.MSG(message, timestamp, username)
         if not self_msg:
             self.chat_deck.appendleft(envelope)
         envelope.display()
@@ -180,7 +180,7 @@ class AgentConnection(object):
                 perms = data['perms']
 
                 if 'patch' not in perms:
-                    print("We don't have patch permission. Setting buffers to read-only")
+                    msg.log("We don't have patch permission. Setting buffers to read-only")
                     G.READ_ONLY = True
 
                 project_json = {
@@ -206,9 +206,9 @@ class AgentConnection(object):
                     self.on_connect(self)
                     self.on_connect = None
             elif name == 'join':
-                print('%s joined the room' % data['username'])
+                msg.log('%s joined the room' % data['username'])
             elif name == 'part':
-                print('%s left the room' % data['username'])
+                msg.log('%s left the room' % data['username'])
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 for window in sublime.windows():
                     for view in window.views():
