@@ -33,7 +33,7 @@ def to_rel_path(p):
     return p[len(G.PROJECT_PATH) + 1:]
 
 
-def is_G(p):
+def is_shared(p):
     p = unfuck_path(p)
     return G.PROJECT_PATH == p[:len(G.PROJECT_PATH)]
 
