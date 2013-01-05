@@ -46,9 +46,11 @@ class MSG(object):
     def display(self):
         if self.level < LOG_LEVEL:
             return
+
         def _get_or_create_chat():
             view = get_or_create_chat()
             sublime.set_timeout(lambda: _display(view), 0)
+
         def _display(view):
             with utils.edit(view) as ed:
                 size = view.size()
