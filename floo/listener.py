@@ -304,6 +304,8 @@ class Listener(sublime_plugin.EventListener):
             del self.between_save_events[view.buffer_id()]
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
+        else:
+            print G.CHAT_VIEW_PATH, "not", view.file_name()
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -311,7 +313,7 @@ class Listener(sublime_plugin.EventListener):
 
         if buf is None:
             if utils.is_shared(view.file_name()):
-                msg.log('new buffer', name, view.file_name())
+                msg.log('new buffer ', name, view.file_name())
                 event = {
                     'name': 'create_buf',
                     'buf': get_text(view),

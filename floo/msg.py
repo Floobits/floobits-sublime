@@ -29,9 +29,16 @@ def get_or_create_chat():
                 sublime.error_message('Sublime is stupid, I can\'t make a new view')
                 return
 
-    G.CHAT_VIEW_PATH = p
-    if not (G.CHAT_VIEW and G.CHAT_VIEW.window()):
+    chat_view = None
+    if G.CHAT_VIEW:
+        for view in G.ROOM_WINDOW.views():
+            if G.CHAT_VIEW.file_name() == view.file_name():
+                chat_view = view
+                G.CHAT_VIEW = view
+                break
+    if not chat_view:
         G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
+        G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
         G.CHAT_VIEW.set_read_only(True)
     return G.CHAT_VIEW
 
