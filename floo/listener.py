@@ -27,6 +27,8 @@ def get_text(view):
 def get_view(buf_id):
     buf = BUFS[buf_id]
     for view in G.ROOM_WINDOW.views():
+        if not view.file_name():
+            continue
         if buf['path'] == utils.to_rel_path(view.file_name()):
             return view
     return None
