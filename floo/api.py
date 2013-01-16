@@ -5,7 +5,7 @@ import shared as G
 
 
 def create_room(room_name):
-    url = 'https://%s/api/room' % G.DEFAULT_HOST
+    url = 'https://%s/api/room/' % G.DEFAULT_HOST
     # TODO: let user specify permissions
     post_data = {
         'username': G.USERNAME,
