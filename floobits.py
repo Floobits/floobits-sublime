@@ -142,6 +142,7 @@ class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
     def run(self):
         if agent:
             agent.stop()
+            sublime.error_message('You have left the room.')
         else:
             sublime.error_message('You are not joined to any room.')
 
