@@ -6,11 +6,13 @@ import json
 import threading
 import traceback
 import subprocess
+import urllib2
 from urlparse import urlparse
 
 import sublime_plugin
 import sublime
 
+from floo import api
 from floo import AgentConnection
 from floo.listener import Listener
 from floo import msg
@@ -61,6 +63,19 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+
+
+class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
+
+    def run(self, room=''):
+        self.window.show_input_panel('Room name:', room, self.on_input, None, None)
+
+    def on_input(self, room):
+        try:
+            api.create_room(room)
+        except urllib2.URLError as e:
+            sublime.error_message('Unable to create room: %s' % str(e))
+        # TODO: join newly-created room and load it with files
 
 
 class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
@@ -120,6 +135,15 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
         thread = threading.Thread(target=run_agent)
         thread.start()
+
+
+class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
+
+    def run(self):
+        if agent:
+            agent.stop()
+        else:
+            sublime.error_message('You are not joined to any room.')
 
 
 class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
