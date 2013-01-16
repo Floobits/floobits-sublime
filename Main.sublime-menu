@@ -6,13 +6,24 @@
     "id": "floobitsmenu",
     "caption": "Floobits",
     "children": [{
+      "id": "floobits_create_room",
+      "caption": "Create Room",
+      "command": "floobits_create_room"
+    },
+    {
       "id": "floobits_room_menu",
       "caption": "Join Room",
       "command": "floobits_prompt_join_room"
-    },{
+    },
+    {
       "id": "floobits_join_room",
       "caption": "Join Recent Room",
       "command": "floobits_join_recent_room"
+    },
+    {
+      "id": "floobits_leave_room",
+      "caption": "Leave Room",
+      "command": "floobits_leave_room"
     },
     {
       "id": "floobits_msg",
