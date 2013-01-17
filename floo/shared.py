@@ -1,5 +1,7 @@
 __VERSION__ = '0.01'
 
+DEBUG = False
+
 MAX_RETRIES = 20
 INITIAL_RECONNECT_DELAY = 500  # milliseconds
 

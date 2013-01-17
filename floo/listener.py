@@ -182,6 +182,10 @@ class Listener(sublime_plugin.EventListener):
                 clean_patch = False
                 break
 
+        if G.DEBUG:
+            if '\x01' in t[0]:
+                msg.debug('FOUND CRAZY BYTE IN BUFFER')
+
         if not clean_patch:
             msg.error('failed to patch')
             return Listener.get_buf(buf_id)
