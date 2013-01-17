@@ -74,6 +74,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
     def on_input(self, room):
         try:
             api.create_room(room)
+            msg.log('Created room https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room))
         except urllib2.URLError as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
@@ -83,7 +84,6 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             'port': G.DEFAULT_PORT,
             'owner': G.USERNAME,
             'room': room,
-            'add_files': True,
         })
 
 
@@ -106,7 +106,7 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, owner, room, host=None, port=None, add_files=False):
+    def run(self, owner, room, host=None, port=None):
 
         def on_connect(agent_connection):
             if sublime.platform() == 'linux':
@@ -124,8 +124,6 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
             print('poll:', poll_result)
-            if add_files:
-                pass
 
         def run_agent():
             global agent
