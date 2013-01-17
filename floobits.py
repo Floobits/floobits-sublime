@@ -76,6 +76,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             api.create_room(room)
         except urllib2.URLError as e:
             sublime.error_message('Unable to create room: %s' % str(e))
+            return
 
         self.window.run_command('floobits_join_room', {
             'host': G.DEFAULT_HOST,
