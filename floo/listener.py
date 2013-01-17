@@ -184,6 +184,9 @@ class Listener(sublime_plugin.EventListener):
                 break
 
         if G.DEBUG:
+            # TODO: log tons of stuff if these things happen
+            if len(t[0]):
+                msg.debug('OMG EMPTY!')
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
 
