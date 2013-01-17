@@ -37,7 +37,8 @@ def get_view(buf_id):
 def create_view(buf):
     path = utils.get_full_path(buf['path'])
     view = G.ROOM_WINDOW.open_file(path)
-    msg.debug('Created view', view.name() or view.file_name())
+    if view:
+        msg.debug('Created view', view.name() or view.file_name())
     return view
 
 
