@@ -75,7 +75,6 @@ class AgentConnection(object):
             self.reconnect_delay = 10000
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            sublime.status_message('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.set_timeout(self.connect, int(self.reconnect_delay))
         else:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
