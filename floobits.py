@@ -74,16 +74,14 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
     def on_input(self, room):
         try:
             api.create_room(room)
-            msg.log('Created room https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room))
+            room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room)
+            msg.log('Created room %s' % room_url)
         except urllib2.URLError as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
         self.window.run_command('floobits_join_room', {
-            'host': G.DEFAULT_HOST,
-            'port': G.DEFAULT_PORT,
-            'owner': G.USERNAME,
-            'room': room,
+            'room_url': room_url,
         })
 
 
@@ -93,33 +91,14 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
-        secure = G.SECURE
-        parsed_url = urlparse(room_url)
-        port = parsed_url.port
-        if parsed_url.scheme == 'http':
-            if not port:
-                port = 3148
-            secure = False
-        result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
-        if result:
-            (owner, room) = result.groups()
-            self.window.run_command('floobits_join_room', {
-                'host': parsed_url.hostname,
-                'port': port,
-                'owner': owner,
-                'room': room,
-                'secure': secure,
-            })
-        else:
-            sublime.error_message('Unable to parse your URL!')
+        self.window.run_command('floobits_join_room', {
+            'room_url': room_url,
+        })
 
 
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, owner, room, host=None, port=None, secure=None):
-        if secure is None:
-            secure = G.SECURE
-
+    def run(self, room_url):
         def on_connect(agent_connection):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
@@ -137,7 +116,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             poll_result = p.poll()
             print('poll:', poll_result)
 
-        def run_agent():
+        def run_agent(owner, room, host, port, secure):
             global agent
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
@@ -151,11 +130,30 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 tb = traceback.format_exc()
                 print(tb)
             else:
-                joined_room = {'room': room, 'owner': owner, 'host': host, 'port': port}
+                joined_room = {'url': room_url}
                 update_recent_rooms(joined_room)
 
-        thread = threading.Thread(target=run_agent)
-        thread.start()
+        secure = G.SECURE
+        parsed_url = urlparse(room_url)
+        port = parsed_url.port
+        if parsed_url.scheme == 'http':
+            if not port:
+                port = 3148
+            secure = False
+        result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
+        if result:
+            (owner, room) = result.groups()
+            thread = threading.Thread(target=run_agent, kwargs={
+                'owner': owner,
+                'room': room,
+                'host': parsed_url.hostname,
+                'port': port,
+                'secure': secure,
+            })
+            thread.start()
+        else:
+            sublime.error_message('Unable to parse your URL!')
+
 
 
 class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
@@ -198,14 +196,15 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = ['{0}/r/{1}/{2}'.format(x['host'], x['owner'], x['room']) for x in DATA['recent_rooms']]
+        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') != None]
+        print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
         if item == -1:
             return
         room = DATA['recent_rooms'][item]
-        self.window.run_command('floobits_join_room', {'owner': room['owner'], 'room': room['room'], 'host': room['host']})
+        self.window.run_command('floobits_join_room', {'room_url': room['url']})
 
 
 class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
