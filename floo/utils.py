@@ -34,7 +34,7 @@ def to_rel_path(p):
 
 
 def to_scheme(secure):
-    if secure == True:
+    if secure is True:
         return 'https'
     return 'http'
 
