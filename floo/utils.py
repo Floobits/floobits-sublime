@@ -33,6 +33,12 @@ def to_rel_path(p):
     return p[len(G.PROJECT_PATH) + 1:]
 
 
+def to_scheme(secure):
+    if secure == True:
+        return 'https'
+    return 'http'
+
+
 def is_shared(p):
     p = unfuck_path(p)
     return G.PROJECT_PATH == p[:len(G.PROJECT_PATH)]
