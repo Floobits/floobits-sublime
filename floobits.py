@@ -93,20 +93,32 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
+        secure = G.SECURE
         parsed_url = urlparse(room_url)
+        port = parsed_url.port
+        if parsed_url.scheme == 'http':
+            if not port:
+                port = 3148
+            secure = False
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
-        (owner, room) = result.groups()
-        self.window.run_command('floobits_join_room', {
-            'host': parsed_url.hostname,
-            'port': parsed_url.port,
-            'owner': owner,
-            'room': room,
-        })
+        if result:
+            (owner, room) = result.groups()
+            self.window.run_command('floobits_join_room', {
+                'host': parsed_url.hostname,
+                'port': port,
+                'owner': owner,
+                'room': room,
+                'secure': secure,
+            })
+        else:
+            sublime.error_message('Unable to parse your URL!')
 
 
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, owner, room, host=None, port=None):
+    def run(self, owner, room, host=None, port=None, secure=None):
+        if secure is None:
+            secure = G.SECURE
 
         def on_connect(agent_connection):
             if sublime.platform() == 'linux':
@@ -130,7 +142,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 sublime.set_timeout(msg.get_or_create_chat, 0)
-                agent = AgentConnection(owner, room, host=host, port=port, secure=G.SECURE, on_connect=on_connect)
+                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
                 agent.connect()
