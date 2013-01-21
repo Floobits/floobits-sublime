@@ -62,9 +62,9 @@ def patch_apply(self, patches, text):
             if text1 == text2:
                 # Perfect match, just shove the replacement text in.
                 print "perfect match"
-                replacement_str = self.diff_text2(patch.diffs)
+                replacement_str = self.diff_text2(patch.diffs).encode('utf-8')
                 text = (text[:start_loc] + replacement_str + text[start_loc + len(text1):])
-                position = [start_loc, len(text1), str(replacement_str)]
+                position = [start_loc, len(text1), replacement_str]
             else:
                 print "imperfect match"
                 # Imperfect match.

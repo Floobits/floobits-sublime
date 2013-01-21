@@ -263,7 +263,7 @@ class Listener(sublime_plugin.EventListener):
         MODIFIED_EVENTS.put(1)
         try:
             edit = view.begin_edit()
-            view.replace(edit, region, buf['buf'].decode('utf-8'))
+            view.replace(edit, region, buf['buf'])
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
         finally:
