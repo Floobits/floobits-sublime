@@ -129,7 +129,7 @@ class Listener(sublime_plugin.EventListener):
             patch = FlooPatch(view, buf)
             # update the current copy of the buffer
             buf['buf'] = patch.current
-            buf['md5'] = hashlib.md5(patch.current).hexdigest()
+            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
             if Listener.agent:
                 Listener.agent.put(patch.to_json())
             else:
