@@ -244,8 +244,6 @@ class AgentConnection(object):
             self.reconnect()
             return
 
-        if not settings.get('run', True):
-            return sublime.set_timeout(self.select, 1000)
         # this blocks until the socket is readable or writeable
         _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
 
