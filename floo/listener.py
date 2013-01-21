@@ -171,7 +171,7 @@ class Listener(sublime_plugin.EventListener):
             old_text = get_text(view)
         else:
             old_text = buf['buf']
-        md5_before = hashlib.md5(old_text).hexdigest()
+        md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
             msg.warn('starting md5s don\'t match. this is dangerous!')
 
@@ -194,7 +194,7 @@ class Listener(sublime_plugin.EventListener):
             msg.error('failed to patch')
             return Listener.get_buf(buf_id)
 
-        cur_hash = hashlib.md5(t[0]).hexdigest()
+        cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
             msg.warn('new hash %s != expected %s' % (cur_hash, patch_data['md5_after']))
             # TODO: do something better than erasing local changes
