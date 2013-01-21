@@ -91,7 +91,7 @@ class FlooPatch(object):
             patch_str += str(patch)
         return json.dumps({
             'id': self.buf['id'],
-            'md5_after': hashlib.md5(self.current).hexdigest(),
+            'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
