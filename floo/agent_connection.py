@@ -68,6 +68,7 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
+        self.buf = ''
         self.sock = None
         self.authed = False
         self.reconnect_delay *= 1.5
