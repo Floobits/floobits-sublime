@@ -143,7 +143,12 @@ class AgentConnection(object):
             before, sep, after = self.buf.partition('\n')
             if not sep:
                 break
-            data = json.loads(before)
+            try:
+                data = json.loads(before)
+            except Exception as e:
+                print('Unable to parse json:', e)
+                print('Data:', before)
+                raise e
             name = data.get('name')
             if name == 'patch':
                 # TODO: we should do this in a separate thread
