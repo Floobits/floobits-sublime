@@ -73,7 +73,7 @@ class FlooPatch(object):
         self.view = view
         self.current = get_text(view)
         self.previous = buf['buf']
-        self.md5_before = hashlib.md5(self.previous).hexdigest()
+        self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
 
     def __str__(self):
         return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
