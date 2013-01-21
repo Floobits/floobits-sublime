@@ -173,7 +173,7 @@ class Listener(sublime_plugin.EventListener):
             old_text = buf['buf']
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
-            msg.warn('starting md5s don\'t match. this is dangerous!')
+            msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
