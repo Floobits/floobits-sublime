@@ -191,13 +191,15 @@ class Listener(sublime_plugin.EventListener):
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
 
         if not clean_patch:
-            msg.error('failed to patch')
+            msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
             return Listener.get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
-            msg.warn('new hash %s != expected %s' % (cur_hash, patch_data['md5_after']))
-            # TODO: do something better than erasing local changes
+            msg.warn(
+                '%s new hash %s != expected %s. re-fetching buffer...' %
+                (buf['path'], cur_hash, patch_data['md5_after'])
+            )
             return Listener.get_buf(buf_id)
 
         buf['buf'] = str(t[0]).decode('utf-8')
