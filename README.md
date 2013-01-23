@@ -4,6 +4,8 @@ Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 
 ### Development status: Works, but rough around the edges. It's probably worth waiting a little while for this plugin to mature and stabilize.
 
+## This plugin does not work on Windows. The Python included with the Windows version of Sublime Text 2 does not have the [select](http://docs.python.org/2/library/select.html) module. We're working on fixing this.
+
 # Installation instructions
 
 * Clone this repository or download and extract a tarball.
