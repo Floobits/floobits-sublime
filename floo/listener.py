@@ -184,11 +184,14 @@ class Listener(sublime_plugin.EventListener):
                 break
 
         if G.DEBUG:
-            # TODO: log tons of stuff if these things happen
-            if len(t[0]):
+            if len(t[0]) == 0:
                 msg.debug('OMG EMPTY!')
+                msg.debug('Starting data:', buf['buf'])
+                msg.debug('Patch:', patch_data['patch'])
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
+                msg.debug('Starting data:', buf['buf'])
+                msg.debug('Patch:', patch_data['patch'])
 
         if not clean_patch:
             msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
