@@ -96,7 +96,7 @@ class AgentConnection(object):
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
-            if self.secure:
+            if self.secure and ssl:
                 self.sock.do_handshake()
         except socket.error as e:
             msg.error('Error connecting:', e)
