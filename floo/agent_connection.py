@@ -87,7 +87,7 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl: # ST2 on linux doesn't have the ssl module. Not sure about windows
+            if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
                 self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
