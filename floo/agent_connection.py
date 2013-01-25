@@ -71,6 +71,7 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
+        G.CONNECTED = False
         self.buf = ''
         self.sock = None
         self.authed = False
@@ -86,7 +87,7 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl:
+            if ssl: # ST2 on linux doesn't have the ssl module. Not sure about windows
                 self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
@@ -216,6 +217,7 @@ class AgentConnection(object):
                     Listener.get_buf(buf_id)
 
                 self.authed = True
+                G.CONNECTED = True
                 msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
                 if self.on_connect:
                     self.on_connect(self)

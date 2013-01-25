@@ -40,6 +40,8 @@ def to_scheme(secure):
 
 
 def is_shared(p):
+    if not G.CONNECTED:
+        return False
     p = unfuck_path(p)
     return G.PROJECT_PATH == p[:len(G.PROJECT_PATH)]
 

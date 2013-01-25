@@ -5,6 +5,8 @@ DEBUG = False
 MAX_RETRIES = 20
 INITIAL_RECONNECT_DELAY = 500  # milliseconds
 
+CONNECTED = False
+
 COLAB_DIR = ''
 PROJECT_PATH = ''
 DEFAULT_HOST = ''
