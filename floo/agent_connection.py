@@ -5,7 +5,10 @@ import Queue
 import time
 import select
 import collections
-import ssl
+try:
+    import ssl
+except ImportError:
+    ssl = False
 
 import sublime
 
@@ -83,7 +86,12 @@ class AgentConnection(object):
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
+            if ssl:
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
+            else:
+                msg.log('No SSL module found. Connection will not be encrypted.')
+                if self.port == G.DEFAULT_PORT:
+                    self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
             self.sock.connect((self.host, self.port))
