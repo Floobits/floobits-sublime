@@ -16,6 +16,7 @@ SECURE = True
 USERNAME = ''
 SECRET = ''
 
+ALERT_ON_MSG = True
 
 READ_ONLY = False
 

@@ -144,7 +144,7 @@ class AgentConnection(object):
             envelope = self.chat_deck[selected]
             window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
 
-        if message.find(self.username) >= 0:
+        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):

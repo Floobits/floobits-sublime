@@ -51,6 +51,7 @@ def update_recent_rooms(room):
 
 
 def reload_settings():
+    G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
