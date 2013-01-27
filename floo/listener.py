@@ -170,7 +170,7 @@ class Listener(sublime_plugin.EventListener):
         if view:
             old_text = get_text(view)
         else:
-            old_text = buf['buf']
+            old_text = buf.get('buf', '')
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
