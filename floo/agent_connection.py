@@ -46,12 +46,14 @@ class AgentConnection(object):
         self.chat_deck = collections.deque(maxlen=10)
 
     def stop(self):
+        msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
         try:
             self.retries = -1
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
             pass
+        msg.log('Disconnected.')
 
     def send_msg(self, msg):
         self.put(json.dumps({'name': 'msg', 'data': msg}))
@@ -274,7 +276,6 @@ class AgentConnection(object):
                 try:
                     d = self.sock.recv(4096)
                     if not d:
-                        msg.log('No data yet...')
                         break
                     buf += d
                 except (socket.error, TypeError):
@@ -289,8 +290,12 @@ class AgentConnection(object):
                 if p is None:
                     SOCKET_Q.task_done()
                     continue
-                msg.debug('writing patch: %s' % p)
-                self.sock.sendall(p)
-                SOCKET_Q.task_done()
+                try:
+                    msg.debug('writing patch: %s' % p)
+                    self.sock.sendall(p)
+                    SOCKET_Q.task_done()
+                except Exception as e:
+                    msg.error('Couldn\'t write to socket: %s' % str(e))
+                    return self.reconnect()
 
         sublime.set_timeout(self.select, 100)
