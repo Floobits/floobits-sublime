@@ -47,7 +47,7 @@ class AgentConnection(object):
 
     def stop(self):
         try:
-            self.retries = 0
+            self.retries = -1
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
@@ -71,6 +71,10 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
+        try:
+            self.sock.close()
+        except Exception:
+            pass
         G.CONNECTED = False
         self.buf = ''
         self.sock = None
@@ -81,8 +85,9 @@ class AgentConnection(object):
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             sublime.set_timeout(self.connect, int(self.reconnect_delay))
-        else:
+        elif self.retries == 0:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
+        self.retries -= 1
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -205,7 +210,6 @@ class AgentConnection(object):
                 }
 
                 utils.mkdir(G.PROJECT_PATH)
-
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
@@ -251,17 +255,18 @@ class AgentConnection(object):
     def select(self):
         if not self.sock:
             msg.error('select(): No socket.')
-            self.reconnect()
-            return
+            return self.reconnect()
 
-        # this blocks until the socket is readable or writeable
-        _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
+        try:
+            # this blocks until the socket is readable or writeable
+            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
+        except select.error as e:
+            msg.error('Error in select(): %s' % str(e))
+            self.reconnect()
 
         if _except:
             msg.error('Socket error')
-            self.sock.close()
-            self.reconnect()
-            return
+            return self.reconnect()
 
         if _in:
             buf = ''
@@ -269,13 +274,13 @@ class AgentConnection(object):
                 try:
                     d = self.sock.recv(4096)
                     if not d:
+                        msg.log('No data yet...')
                         break
                     buf += d
                 except (socket.error, TypeError):
                     break
             if not buf:
                 msg.error('No data from sock.recv()')
-                self.sock.close()
                 return self.reconnect()
             self.protocol(buf)
 
