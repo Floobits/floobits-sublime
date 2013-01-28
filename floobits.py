@@ -119,6 +119,9 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
         def run_agent(owner, room, host, port, secure):
             global agent
+            if agent:
+                agent.stop()
+                agent = None
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 sublime.set_timeout(msg.get_or_create_chat, 0)
@@ -160,8 +163,10 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self):
+        global agent
         if agent:
             agent.stop()
+            agent = None
             sublime.error_message('You have left the room.')
         else:
             sublime.error_message('You are not joined to any room.')
