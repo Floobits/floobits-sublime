@@ -112,7 +112,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
-                subl = '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl'
+                subl = '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl'
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
@@ -145,6 +145,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 joined_room = {'url': room_url}
                 update_recent_rooms(joined_room)
 
+        reload_settings()
         secure = G.SECURE
         parsed_url = urlparse(room_url)
         port = parsed_url.port
