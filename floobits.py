@@ -22,9 +22,11 @@ from floo import utils
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = utils.get_persistent_data()
+agent = None
 
 
 def set_active_window():
+    import sublime
     w = sublime.active_window()
     if not w:
         return sublime.set_timeout(set_active_window, 100)
@@ -51,6 +53,7 @@ def update_recent_rooms(room):
 
 
 def reload_settings():
+    print('Reloading settings...')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
@@ -62,6 +65,9 @@ def reload_settings():
     G.SECURE = settings.get('secure', True)
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
+    if agent and agent.is_ready():
+        msg.log('Reconnecting due to settings change')
+        agent.reconnect()
 
 settings.add_on_change('', reload_settings)
 reload_settings()
@@ -256,4 +262,4 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
         return
 
 Listener.push()
-agent = None
+
