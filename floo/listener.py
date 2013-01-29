@@ -1,20 +1,20 @@
 import os
-import Queue
+import queue
 import json
 import hashlib
 from datetime import datetime
 
 import sublime
 import sublime_plugin
-import dmp_monkey
+from . import dmp_monkey
 dmp_monkey.monkey_patch()
-from lib import diff_match_patch as dmp
+from .lib import diff_match_patch as dmp
 
-import msg
-import shared as G
-import utils
+from . import msg
+from . import shared as G
+from . import utils
 
-MODIFIED_EVENTS = Queue.Queue()
+MODIFIED_EVENTS = queue.Queue()
 BUFS = {}
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -48,7 +48,7 @@ def get_buf(view):
     if not view.file_name():
         return None
     rel_path = utils.to_rel_path(view.file_name())
-    for buf_id, buf in BUFS.iteritems():
+    for buf_id, buf in BUFS.items():
         if rel_path == buf['path']:
             return buf
     return None
@@ -320,7 +320,7 @@ class Listener(sublime_plugin.EventListener):
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
         else:
-            print G.CHAT_VIEW_PATH, "not", view.file_name()
+            print(G.CHAT_VIEW_PATH, "not", view.file_name())
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -357,7 +357,7 @@ class Listener(sublime_plugin.EventListener):
     def on_modified(self, view):
         try:
             MODIFIED_EVENTS.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             self.add(view)
         else:
             MODIFIED_EVENTS.task_done()

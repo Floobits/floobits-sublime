@@ -1,7 +1,7 @@
 import os
 import json
 import socket
-import Queue
+import queue
 import time
 import select
 import collections
@@ -12,17 +12,17 @@ except ImportError:
 
 import sublime
 
-import shared as G
-import utils
-import listener
-import msg
+from . import shared as G
+from . import utils
+from . import listener
+from . import msg
 
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
-SOCKET_Q = Queue.Queue()
+SOCKET_Q = queue.Queue()
 
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
 
@@ -120,7 +120,7 @@ class AgentConnection(object):
     def auth(self):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
-        SOCKET_Q = Queue.Queue()
+        SOCKET_Q = queue.Queue()
         self.put(json.dumps({
             'username': self.username,
             'secret': self.secret,
@@ -133,7 +133,7 @@ class AgentConnection(object):
         while True:
             try:
                 yield SOCKET_Q.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
     def chat(self, username, timestamp, message, self_msg=False):
@@ -165,8 +165,8 @@ class AgentConnection(object):
             try:
                 data = json.loads(before)
             except Exception as e:
-                print('Unable to parse json:', e)
-                print('Data:', before)
+                print(('Unable to parse json:', e))
+                print(('Data:', before))
                 raise e
             name = data.get('name')
             if name == 'patch':
@@ -217,7 +217,7 @@ class AgentConnection(object):
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
-                for buf_id, buf in data['bufs'].iteritems():
+                for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
                     utils.mkdir(new_dir)

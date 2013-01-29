@@ -2,8 +2,8 @@ import time
 
 import sublime
 
-import shared as G
-import utils
+from . import shared as G
+from . import utils
 
 LOG_LEVELS = {
     'DEBUG': 1,

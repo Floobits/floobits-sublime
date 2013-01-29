@@ -3,7 +3,7 @@ import json
 
 import sublime
 
-import shared as G
+from . import shared as G
 
 per_path = os.path.abspath('persistent.json')
 

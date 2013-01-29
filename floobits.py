@@ -6,8 +6,8 @@ import json
 import threading
 import traceback
 import subprocess
-import urllib2
-from urlparse import urlparse
+import urllib.request, urllib.error, urllib.parse
+from urllib.parse import urlparse
 
 import sublime_plugin
 import sublime
@@ -82,7 +82,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             api.create_room(room)
             room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room)
             msg.log('Created room %s' % room_url)
-        except urllib2.URLError as e:
+        except urllib.error.URLError as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
@@ -117,10 +117,10 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
             command = [subl, '--add', G.PROJECT_PATH]
-            print('command:', command)
+            print(('command:', command))
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
-            print('poll:', poll_result)
+            print(('poll:', poll_result))
 
         def run_agent(owner, room, host, port, secure):
             global agent
@@ -179,7 +179,7 @@ class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
 
     def run(self, msg=''):
-        print('msg', msg)
+        print(('msg', msg))
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
     def on_input(self, msg):
