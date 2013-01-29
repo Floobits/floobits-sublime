@@ -15,32 +15,42 @@ LOG_LEVELS = {
 LOG_LEVEL = LOG_LEVELS['MSG']
 
 
-def get_or_create_chat():
-    p = utils.get_full_path('msgs.floobits.log')
-    if not G.ROOM_WINDOW:
-        w = sublime.active_window()
-        if w:
-            G.ROOM_WINDOW = w
-        else:
-            w = sublime.windows()
-            if w:
-                G.ROOM_WINDOW = w[0]
-            else:
-                sublime.error_message('Sublime is stupid, I can\'t make a new view')
-                return
+def get_or_create_chat(cb=None):
 
-    chat_view = None
-    if G.CHAT_VIEW:
-        for view in G.ROOM_WINDOW.views():
-            if G.CHAT_VIEW.file_name() == view.file_name():
-                chat_view = view
-                G.CHAT_VIEW = view
-                break
-    if not chat_view:
-        G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
+    def return_view():
         G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
         G.CHAT_VIEW.set_read_only(True)
-    return G.CHAT_VIEW
+        if cb:
+            return cb(G.CHAT_VIEW)
+
+    def open_view():
+        if not G.CHAT_VIEW:
+            p = utils.get_full_path('msgs.floobits.log')
+            G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
+
+        sublime.set_timeout(return_view, 0)
+
+    def call_in_main_thread():
+        if not G.ROOM_WINDOW:
+            w = sublime.active_window()
+            if w:
+                G.ROOM_WINDOW = w
+            else:
+                w = sublime.windows()
+                if w:
+                    G.ROOM_WINDOW = w[0]
+                else:
+                    sublime.error_message('Sublime is stupid, I can\'t make a new view')
+                    return
+
+        if G.CHAT_VIEW:
+            for view in G.ROOM_WINDOW.views():
+                if G.CHAT_VIEW.file_name() == view.file_name():
+                    G.CHAT_VIEW = view
+                    break
+        sublime.set_timeout(open_view, 0)
+
+    sublime.set_timeout(call_in_main_thread, 0)
 
 
 class MSG(object):
@@ -54,10 +64,6 @@ class MSG(object):
         if self.level < LOG_LEVEL:
             return
 
-        def _get_or_create_chat():
-            view = get_or_create_chat()
-            sublime.set_timeout(lambda: _display(view), 0)
-
         def _display(view):
             with utils.edit(view) as ed:
                 size = view.size()
@@ -67,7 +73,7 @@ class MSG(object):
                 # TODO: this scrolling is lame and centers text :/
                 view.show(size)
 
-        sublime.set_timeout(_get_or_create_chat, 0)
+        get_or_create_chat(_display)
 
     def __str__(self):
         if self.username:

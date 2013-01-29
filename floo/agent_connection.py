@@ -44,6 +44,7 @@ class AgentConnection(object):
         self.retries = G.MAX_RETRIES
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
+        self.empty_selects = 0
 
     def stop(self):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
@@ -92,6 +93,7 @@ class AgentConnection(object):
         self.retries -= 1
 
     def connect(self):
+        self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
@@ -262,7 +264,7 @@ class AgentConnection(object):
         try:
             # this blocks until the socket is readable or writeable
             _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
-        except select.error as e:
+        except (select.error, socket.error) as e:
             msg.error('Error in select(): %s' % str(e))
             self.reconnect()
 
@@ -282,7 +284,8 @@ class AgentConnection(object):
                     break
             if not buf:
                 msg.error('No data from sock.recv()')
-                return self.reconnect()
+                if self.empty_selects > 5:
+                    return self.reconnect()
             self.protocol(buf)
 
         if _out:
