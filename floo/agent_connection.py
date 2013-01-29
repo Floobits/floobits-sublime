@@ -287,6 +287,7 @@ class AgentConnection(object):
                 self.empty_selects += 1
                 if self.empty_selects > 5:
                     return self.reconnect()
+            self.empty_selects = 0
             self.protocol(buf)
 
         if _out:
