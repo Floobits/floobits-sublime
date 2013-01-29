@@ -217,7 +217,7 @@ class AgentConnection(object):
 
                 utils.mkdir(G.PROJECT_PATH)
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-                    project_fd.write(bytes(json.dumps(project_json, indent=4, sort_keys=True), 'utf-8'))
+                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
                 for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
