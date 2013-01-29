@@ -1,0 +1,9 @@
+[
+  { "caption": "-"},
+  {
+    "caption": "Floobits", "id":"side-bar-floobits",
+    "children": [
+      {"caption": "Add to room", "command": "floobits_add_to_room", "args": {"paths": []}}
+    ]
+  }
+]

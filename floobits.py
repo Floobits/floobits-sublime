@@ -159,7 +159,6 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             sublime.error_message('Unable to parse your URL!')
 
 
-
 class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self):
@@ -227,6 +226,24 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
 
     def description(self):
         return 'Open the floobits messages view.'
+
+
+class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
+    def run(self, *args, **kwargs):
+        print(args, kwargs)
+        if not agent:
+            return
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return True
+        # return agent and agent.is_ready()
+
+    def description(self):
+        return 'Add file or directory to currently-joined Floobits room.'
+
 
 Listener.push()
 agent = None
