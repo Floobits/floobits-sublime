@@ -222,8 +222,7 @@ class Listener(sublime_plugin.EventListener):
             regions.append(region)
             MODIFIED_EVENTS.put(1)
             try:
-                edit = view.begin_edit()
-                view.replace(edit, region, patch_text.decode('utf-8'))
+                view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text.decode('utf-8')})
             except:
                 raise
             else:
@@ -238,8 +237,7 @@ class Listener(sublime_plugin.EventListener):
                         b += new_offset
                     new_sels.append(sublime.Region(a, b))
                 selections = [x for x in new_sels]
-            finally:
-                view.end_edit(edit)
+
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
@@ -263,16 +261,12 @@ class Listener(sublime_plugin.EventListener):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
-        region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
         try:
-            edit = view.begin_edit()
-            view.replace(edit, region, buf['buf'])
+            view.run_command('floo_view_replace_region', {'r': (0, view.size()), 'data': buf['buf']})
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        finally:
-            view.end_edit(edit)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
         view.sel().clear()
         view.show(visible_region, False)
