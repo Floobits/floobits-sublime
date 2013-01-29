@@ -48,7 +48,7 @@ def get_persistent_data():
 
 def update_persistent_data(data):
     with open(per_path, 'wb') as per:
-        per.write(json.dumps(data))
+        per.write(bytes(json.dumps(data), 'UTF-8'))
 
 
 def rm(path):
