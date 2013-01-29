@@ -1845,7 +1845,6 @@ class diff_match_patch:
         else:
           sign = ''
         line = urllib.parse.unquote(text[0][1:])
-        line = line.decode("utf-8")
         if sign == '+':
           # Insertion.
           patch.diffs.append((self.DIFF_INSERT, line))

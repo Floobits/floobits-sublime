@@ -205,7 +205,7 @@ class Listener(sublime_plugin.EventListener):
             )
             return Listener.get_buf(buf_id)
 
-        buf['buf'] = str(t[0]).decode('utf-8')
+        buf['buf'] = t[0]
         buf['md5'] = cur_hash
 
         if not view:
@@ -222,7 +222,7 @@ class Listener(sublime_plugin.EventListener):
             regions.append(region)
             MODIFIED_EVENTS.put(1)
             try:
-                view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text.decode('utf-8')})
+                view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text})
             except:
                 raise
             else:
