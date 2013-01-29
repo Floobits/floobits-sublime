@@ -3,6 +3,8 @@
   {
     "caption": "Floobits", "id":"side-bar-floobits",
     "children": [
+      {"caption": "  Floobits", "command": "floobits_not_a", "args": {"paths": []}},
+      {"caption": "-"},
       {"caption": "Add to room", "command": "floobits_add_to_room", "args": {"paths": []}}
     ]
   }

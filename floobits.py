@@ -242,5 +242,18 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
         return 'Add file or directory to currently-joined Floobits room.'
 
 
+class FloobitsNotACommand(sublime_plugin.WindowCommand):
+    def run(self, *args, **kwargs):
+        pass
+
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return False
+
+    def description(self):
+        return
+
 Listener.push()
 agent = None
