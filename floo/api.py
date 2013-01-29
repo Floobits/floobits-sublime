@@ -1,5 +1,5 @@
 from urllib.parse import urlencode
-import urllib.request, urllib.error, urllib.parse
+#import urllib.request, urllib.error
 
 from . import shared as G
 
@@ -12,4 +12,4 @@ def create_room(room_name):
         'secret': G.SECRET,
         'name': room_name
     }
-    urllib.request.urlopen(url, data=urlencode(post_data), timeout=5)
+    #urllib.request.urlopen(url, data=urlencode(post_data), timeout=5)

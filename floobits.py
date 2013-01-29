@@ -6,18 +6,18 @@ import json
 import threading
 import traceback
 import subprocess
-import urllib.request, urllib.error, urllib.parse
+import urllib.error
 from urllib.parse import urlparse
 
 import sublime_plugin
 import sublime
 
-from floo import api
-from floo import AgentConnection
-from floo.listener import Listener
-from floo import msg
-from floo import shared as G
-from floo import utils
+from .floo import api
+from .floo import AgentConnection
+from .floo.listener import Listener
+from .floo import msg
+from .floo import shared as G
+from .floo import utils
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
