@@ -199,7 +199,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
@@ -243,7 +243,7 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits room.'
