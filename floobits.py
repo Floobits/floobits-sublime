@@ -55,7 +55,7 @@ def reload_settings():
     print('Reloading settings...')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
-    G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
+    G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
@@ -226,7 +226,7 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Open the floobits messages view.'
