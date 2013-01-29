@@ -8,18 +8,6 @@ from . import shared as G
 per_path = os.path.abspath('persistent.json')
 
 
-class edit:
-    def __init__(self, view):
-        self.view = view
-
-    def __enter__(self):
-        self.edit = self.view.begin_edit()
-        return self.edit
-
-    def __exit__(self, type, value, traceback):
-        self.view.end_edit(self.edit)
-
-
 def get_full_path(p):
     full_path = os.path.join(G.PROJECT_PATH, p)
     return unfuck_path(full_path)

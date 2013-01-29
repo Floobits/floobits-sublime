@@ -27,7 +27,6 @@ def get_or_create_chat(cb=None):
         if not G.CHAT_VIEW:
             p = utils.get_full_path('msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
-
         sublime.set_timeout(return_view, 0)
 
     def call_in_main_thread():
@@ -65,13 +64,7 @@ class MSG(object):
             return
 
         def _display(view):
-            with utils.edit(view) as ed:
-                size = view.size()
-                view.set_read_only(False)
-                view.insert(ed, size, str(self))
-                view.set_read_only(True)
-                # TODO: this scrolling is lame and centers text :/
-                view.show(size)
+            view.run_command('floo_set_view', {'data': str(self)})
 
         get_or_create_chat(_display)
 

@@ -262,5 +262,26 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def description(self):
         return
 
+
+# The new ST3 plugin API sucks
+class FlooSetView(sublime_plugin.TextCommand):
+    def run(self, args):
+        data = args.get('data')
+        print('Setting view to %s' % data)
+        size = self.view.size()
+        self.view.set_read_only(False)
+        self.view.insert(self, size, data)
+        self.view.set_read_only(True)
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return False
+
+    def description(self):
+        return ''
+
+
 Listener.push()
 
