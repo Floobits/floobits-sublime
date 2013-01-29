@@ -284,6 +284,7 @@ class AgentConnection(object):
                     break
             if not buf:
                 msg.error('No data from sock.recv()')
+                self.empty_selects += 1
                 if self.empty_selects > 5:
                     return self.reconnect()
             self.protocol(buf)
