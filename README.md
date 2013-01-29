@@ -9,7 +9,7 @@ Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 # Installation instructions
 
 * If you don't have one already, go to [Floobits](https://floobits.com/) and create an account (or sign in with GitHub).
-* Clone this repository or download and extract a tarball.
+* Clone this repository or download and extract [this tarball](https://github.com/Floobits/sublime-text-2-plugin/archive/master.zip). **Sublime Text 3 Beta users:** Check out the [ST3 branch](https://github.com/Floobits/sublime-text-2-plugin/tree/st3) or download the [ST3 tarball](https://github.com/Floobits/sublime-text-2-plugin/archive/st3.zip).
 * Rename the directory to "Floobits".
 * In Sublime Text, go to Preferences -> Browse Packages.
 * Drag, copy, or move the Floobits directory into your Packages directory.
