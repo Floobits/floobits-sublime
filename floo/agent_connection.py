@@ -215,7 +215,7 @@ class AgentConnection(object):
 
                 utils.mkdir(G.PROJECT_PATH)
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
+                    project_fd.write(bytes(json.dumps(project_json, indent=4, sort_keys=True), 'UTF-8'))
 
                 for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
@@ -297,7 +297,7 @@ class AgentConnection(object):
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
-                    self.sock.sendall(p)
+                    self.sock.sendall(bytes(p, 'UTF-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
