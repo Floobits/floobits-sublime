@@ -282,13 +282,14 @@ class AgentConnection(object):
                     buf += d
                 except (socket.error, TypeError):
                     break
-            if not buf:
+            if buf:
+                self.empty_selects = 0
+                self.protocol(buf)
+            else:
                 self.empty_selects += 1
                 if self.empty_selects > 5:
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
-            self.empty_selects = 0
-            self.protocol(buf)
 
         if _out:
             for p in self.get_patches():
