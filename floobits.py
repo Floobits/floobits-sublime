@@ -53,6 +53,7 @@ def update_recent_rooms(room):
 
 def reload_settings():
     print('Reloading settings...')
+    settings = sublime.load_settings('Floobits.sublime-settings')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
