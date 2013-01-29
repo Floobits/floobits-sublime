@@ -1807,10 +1807,6 @@ class diff_match_patch:
     Raises:
       ValueError: If invalid input.
     """
-    if type(textline) == str:
-      # Patches should be composed of a subset of ascii chars, Unicode not
-      # required.  If this encode raises UnicodeEncodeError, patch is invalid.
-      textline = textline.encode("ascii")
     patches = []
     if not textline:
       return patches
