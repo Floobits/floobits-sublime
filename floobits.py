@@ -26,7 +26,6 @@ agent = None
 
 
 def set_active_window():
-    import sublime
     w = sublime.active_window()
     if not w:
         return sublime.set_timeout(set_active_window, 100)
