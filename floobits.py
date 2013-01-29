@@ -131,6 +131,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent = None
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+                utils.mkdir(G.PROJECT_PATH)
                 sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
