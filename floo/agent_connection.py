@@ -266,7 +266,7 @@ class AgentConnection(object):
             _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
         except (select.error, socket.error) as e:
             msg.error('Error in select(): %s' % str(e))
-            self.reconnect()
+            return self.reconnect()
 
         if _except:
             msg.error('Socket error')
