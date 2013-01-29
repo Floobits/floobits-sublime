@@ -185,7 +185,6 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
     def run(self, edit, msg):
         if not msg:
             return
-
         if agent:
             agent.send_msg(msg)
 
@@ -230,7 +229,6 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
 
 class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
-        print(args, kwargs)
         if not agent:
             return
 
@@ -238,8 +236,7 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return True
-        # return agent and agent.is_ready()
+        return agent and agent.is_ready()
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits room.'
