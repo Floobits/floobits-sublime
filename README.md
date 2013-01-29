@@ -8,6 +8,7 @@ Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 
 # Installation instructions
 
+* If you don't have one already, go to [Floobits](https://floobits.com/) and create an account (or sign in with GitHub).
 * Clone this repository or download and extract a tarball.
 * Rename the directory to "Floobits".
 * In Sublime Text, go to Preferences -> Browse Packages.
