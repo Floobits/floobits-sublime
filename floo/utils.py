@@ -40,7 +40,7 @@ def get_persistent_data():
     except (IOError, OSError):
         return {}
     try:
-        persistent_data = json.loads(per.read())
+        persistent_data = json.loads(str(per.read()))
     except:
         return {}
     return persistent_data
