@@ -265,23 +265,23 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
 
 # The new ST3 plugin API sucks
-class FlooSetView(sublime_plugin.TextCommand):
-    def run(self, args):
-        data = args.get('data')
-        print('Setting view to %s' % data)
+class FlooSetMsgView(sublime_plugin.TextCommand):
+    def run(self, edit, data, *args, **kwargs):
         size = self.view.size()
         self.view.set_read_only(False)
-        self.view.insert(self, size, data)
+        self.view.insert(edit, size, data)
         self.view.set_read_only(True)
+        # TODO: this scrolling is lame and centers text :/
+        self.view.show(size)
 
     def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
         return False
 
+    def is_enabled(self):
+        return True
+
     def description(self):
-        return ''
+        return
 
 
 Listener.push()
