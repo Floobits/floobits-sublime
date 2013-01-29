@@ -1,4 +1,4 @@
-from .lib import diff_match_patch as dmp
+from .lib.diff_match_patch import diff_match_patch as dmp
 
 
 def patch_apply(self, patches, text):
@@ -115,4 +115,4 @@ def patch_apply(self, patches, text):
 
 
 def monkey_patch():
-    dmp.diff_match_patch.patch_apply = patch_apply
+    dmp.patch_apply = patch_apply

@@ -32,7 +32,7 @@ import math
 import re
 import sys
 import time
-import urllib.request, urllib.parse, urllib.error
+import urllib.parse
 
 class diff_match_patch:
   """Class containing the diff, match and patch methods.
