@@ -112,7 +112,7 @@ class AgentConnection(object):
             msg.error('Error connecting:', e)
             self.reconnect()
             return
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         sublime.set_timeout(self.select, 0)
@@ -158,7 +158,8 @@ class AgentConnection(object):
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
-        self.buf += req
+        self.buf += req.decode('utf-8')
+        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
@@ -166,8 +167,8 @@ class AgentConnection(object):
             try:
                 data = json.loads(before)
             except Exception as e:
-                print(('Unable to parse json:', e))
-                print(('Data:', before))
+                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
             if name == 'patch':
@@ -216,7 +217,7 @@ class AgentConnection(object):
 
                 utils.mkdir(G.PROJECT_PATH)
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-                    project_fd.write(bytes(json.dumps(project_json, indent=4, sort_keys=True), 'UTF-8'))
+                    project_fd.write(bytes(json.dumps(project_json, indent=4, sort_keys=True), 'utf-8'))
 
                 for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
@@ -274,7 +275,7 @@ class AgentConnection(object):
             return self.reconnect()
 
         if _in:
-            buf = ''
+            buf = bytes('', 'utf-8')
             while True:
                 try:
                     d = self.sock.recv(4096)
@@ -283,13 +284,15 @@ class AgentConnection(object):
                     buf += d
                 except (socket.error, TypeError):
                     break
-            if not buf:
+
+            if buf:
+                self.empty_selects = 0
+                self.protocol(buf)
+            else:
                 self.empty_selects += 1
                 if self.empty_selects > 5:
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
-            self.empty_selects = 0
-            self.protocol(buf)
 
         if _out:
             for p in self.get_patches():
@@ -298,7 +301,7 @@ class AgentConnection(object):
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
-                    self.sock.sendall(bytes(p, 'UTF-8'))
+                    self.sock.sendall(bytes(p, 'utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
