@@ -3,21 +3,9 @@ import json
 
 import sublime
 
-import shared as G
+from . import shared as G
 
 per_path = os.path.abspath('persistent.json')
-
-
-class edit:
-    def __init__(self, view):
-        self.view = view
-
-    def __enter__(self):
-        self.edit = self.view.begin_edit()
-        return self.edit
-
-    def __exit__(self, type, value, traceback):
-        self.view.end_edit(self.edit)
 
 
 def get_full_path(p):
@@ -52,7 +40,7 @@ def get_persistent_data():
     except (IOError, OSError):
         return {}
     try:
-        persistent_data = json.loads(per.read())
+        persistent_data = json.loads(str(per.read()))
     except:
         return {}
     return persistent_data
@@ -60,7 +48,7 @@ def get_persistent_data():
 
 def update_persistent_data(data):
     with open(per_path, 'wb') as per:
-        per.write(json.dumps(data))
+        per.write(bytes(json.dumps(data), 'UTF-8'))
 
 
 def rm(path):

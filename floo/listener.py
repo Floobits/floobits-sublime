@@ -1,20 +1,20 @@
 import os
-import Queue
+import queue
 import json
 import hashlib
 from datetime import datetime
 
 import sublime
 import sublime_plugin
-import dmp_monkey
+from . import dmp_monkey
 dmp_monkey.monkey_patch()
-from lib import diff_match_patch as dmp
+from .lib import diff_match_patch as dmp
 
-import msg
-import shared as G
-import utils
+from . import msg
+from . import shared as G
+from . import utils
 
-MODIFIED_EVENTS = Queue.Queue()
+MODIFIED_EVENTS = queue.Queue()
 BUFS = {}
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -48,7 +48,7 @@ def get_buf(view):
     if not view.file_name():
         return None
     rel_path = utils.to_rel_path(view.file_name())
-    for buf_id, buf in BUFS.iteritems():
+    for buf_id, buf in BUFS.items():
         if rel_path == buf['path']:
             return buf
     return None
@@ -205,7 +205,7 @@ class Listener(sublime_plugin.EventListener):
             )
             return Listener.get_buf(buf_id)
 
-        buf['buf'] = str(t[0]).decode('utf-8')
+        buf['buf'] = t[0]
         buf['md5'] = cur_hash
 
         if not view:
@@ -222,8 +222,7 @@ class Listener(sublime_plugin.EventListener):
             regions.append(region)
             MODIFIED_EVENTS.put(1)
             try:
-                edit = view.begin_edit()
-                view.replace(edit, region, patch_text.decode('utf-8'))
+                view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text})
             except:
                 raise
             else:
@@ -238,8 +237,7 @@ class Listener(sublime_plugin.EventListener):
                         b += new_offset
                     new_sels.append(sublime.Region(a, b))
                 selections = [x for x in new_sels]
-            finally:
-                view.end_edit(edit)
+
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
@@ -263,16 +261,12 @@ class Listener(sublime_plugin.EventListener):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
-        region = sublime.Region(0, view.size())
         selections = [x for x in view.sel()]  # deep copy
         MODIFIED_EVENTS.put(1)
         try:
-            edit = view.begin_edit()
-            view.replace(edit, region, buf['buf'])
+            view.run_command('floo_view_replace_region', {'r': (0, view.size()), 'data': buf['buf']})
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        finally:
-            view.end_edit(edit)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
         view.sel().clear()
         view.show(visible_region, False)
@@ -320,7 +314,7 @@ class Listener(sublime_plugin.EventListener):
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
         else:
-            print G.CHAT_VIEW_PATH, "not", view.file_name()
+            print(G.CHAT_VIEW_PATH, "not", view.file_name())
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -357,7 +351,7 @@ class Listener(sublime_plugin.EventListener):
     def on_modified(self, view):
         try:
             MODIFIED_EVENTS.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             self.add(view)
         else:
             MODIFIED_EVENTS.task_done()

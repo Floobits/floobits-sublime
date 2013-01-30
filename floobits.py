@@ -6,18 +6,18 @@ import json
 import threading
 import traceback
 import subprocess
-import urllib2
-from urlparse import urlparse
+import urllib.error
+from urllib.parse import urlparse
 
 import sublime_plugin
 import sublime
 
-from floo import api
-from floo import AgentConnection
-from floo.listener import Listener
-from floo import msg
-from floo import shared as G
-from floo import utils
+from .floo import api
+from .floo import AgentConnection
+from .floo.listener import Listener
+from .floo import msg
+from .floo import shared as G
+from .floo import utils
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
@@ -53,15 +53,18 @@ def update_recent_rooms(room):
 
 def reload_settings():
     print('Reloading settings...')
+    settings = sublime.load_settings('Floobits.sublime-settings')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
-    G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
+    G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host', 'floobits.com')
-    G.DEFAULT_PORT = settings.get('port', 3448)
-    G.SECURE = settings.get('secure', True)
+    G.DEFAULT_HOST = settings.get('host') or 'floobits.com'
+    G.DEFAULT_PORT = settings.get('port') or 3448
+    G.SECURE = settings.get('secure')
+    if G.SECURE is None:
+        G.SECURE = True
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
     if agent and agent.is_ready():
@@ -82,7 +85,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             api.create_room(room)
             room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room)
             msg.log('Created room %s' % room_url)
-        except urllib2.URLError as e:
+        except urllib.error.URLError as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
@@ -110,17 +113,17 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
-                subl = '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl'
+                subl = '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl'
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
             command = [subl, '--add', G.PROJECT_PATH]
-            print('command:', command)
+            print(('command:', command))
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
-            print('poll:', poll_result)
+            print(('poll:', poll_result))
 
         def run_agent(owner, room, host, port, secure):
             global agent
@@ -129,6 +132,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent = None
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+                utils.mkdir(G.PROJECT_PATH)
                 sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
@@ -142,6 +146,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 joined_room = {'url': room_url}
                 update_recent_rooms(joined_room)
 
+        reload_settings()
         secure = G.SECURE
         parsed_url = urlparse(room_url)
         port = parsed_url.port
@@ -179,7 +184,7 @@ class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
 
     def run(self, msg=''):
-        print('msg', msg)
+        print(('msg', msg))
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
     def on_input(self, msg):
@@ -197,7 +202,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
@@ -205,7 +210,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') != None]
+        rooms = [x.get('url') for x in DATA.get('recent_rooms', []) if x.get('url') != None]
         print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
@@ -226,7 +231,7 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Open the floobits messages view.'
@@ -241,7 +246,7 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits room.'
@@ -259,6 +264,43 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
     def description(self):
         return
+
+
+# The new ST3 plugin API sucks
+class FlooViewSetMsg(sublime_plugin.TextCommand):
+    def run(self, edit, data, *args, **kwargs):
+        size = self.view.size()
+        self.view.set_read_only(False)
+        self.view.insert(edit, size, data)
+        self.view.set_read_only(True)
+        # TODO: this scrolling is lame and centers text :/
+        self.view.show(size)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return True
+
+    def description(self):
+        return
+
+
+# The new ST3 plugin API sucks
+class FlooViewReplaceRegion(sublime_plugin.TextCommand):
+    def run(self, edit, r, data, *args, **kwargs):
+        region = sublime.Region(r[0], r[1])
+        self.view.replace(edit, region, data)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return True
+
+    def description(self):
+        return
+
 
 Listener.push()
 

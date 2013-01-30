@@ -1,7 +1,7 @@
 import os
 import json
 import socket
-import Queue
+import queue
 import time
 import select
 import collections
@@ -12,17 +12,17 @@ except ImportError:
 
 import sublime
 
-import shared as G
-import utils
-import listener
-import msg
+from . import shared as G
+from . import utils
+from . import listener
+from . import msg
 
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
-SOCKET_Q = Queue.Queue()
+SOCKET_Q = queue.Queue()
 
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
 
@@ -104,6 +104,7 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
+            self.sock.settimeout(30)  # Seconds before timing out connecting
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -111,7 +112,7 @@ class AgentConnection(object):
             msg.error('Error connecting:', e)
             self.reconnect()
             return
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         sublime.set_timeout(self.select, 0)
@@ -120,7 +121,7 @@ class AgentConnection(object):
     def auth(self):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
-        SOCKET_Q = Queue.Queue()
+        SOCKET_Q = queue.Queue()
         self.put(json.dumps({
             'username': self.username,
             'secret': self.secret,
@@ -133,7 +134,7 @@ class AgentConnection(object):
         while True:
             try:
                 yield SOCKET_Q.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
     def chat(self, username, timestamp, message, self_msg=False):
@@ -157,7 +158,8 @@ class AgentConnection(object):
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
-        self.buf += req
+        self.buf += req.decode('utf-8')
+        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
@@ -165,8 +167,8 @@ class AgentConnection(object):
             try:
                 data = json.loads(before)
             except Exception as e:
-                print('Unable to parse json:', e)
-                print('Data:', before)
+                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
             if name == 'patch':
@@ -217,7 +219,7 @@ class AgentConnection(object):
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
-                for buf_id, buf in data['bufs'].iteritems():
+                for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
                     utils.mkdir(new_dir)
@@ -273,7 +275,7 @@ class AgentConnection(object):
             return self.reconnect()
 
         if _in:
-            buf = ''
+            buf = bytes('', 'utf-8')
             while True:
                 try:
                     d = self.sock.recv(4096)
@@ -282,6 +284,7 @@ class AgentConnection(object):
                     buf += d
                 except (socket.error, TypeError):
                     break
+
             if buf:
                 self.empty_selects = 0
                 self.protocol(buf)
@@ -298,7 +301,7 @@ class AgentConnection(object):
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
-                    self.sock.sendall(p)
+                    self.sock.sendall(bytes(p, 'utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
