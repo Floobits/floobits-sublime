@@ -6,8 +6,6 @@ Sublime Text 2 users: You want the [Sublime Text 2 plugin](https://github.com/Fl
 
 ### Development status: Works, but rough around the edges. It's probably worth waiting a little while for this plugin to mature and stabilize.
 
-## This plugin does not work on Windows. The Python included with the Windows version of Sublime Text 3 does not have the [select](http://docs.python.org/2/library/select.html) module. We're working on fixing this.
-
 # Installation instructions
 
 * If you don't have one already, go to [Floobits](https://floobits.com/) and create an account (or sign in with GitHub). (It's free.)
