@@ -1,7 +1,6 @@
 # coding: utf-8
 import re
 import os
-import sys
 import json
 import threading
 import traceback
@@ -109,17 +108,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
         def on_connect(agent_connection):
-            if sublime.platform() == 'linux':
-                subl = open('/proc/self/cmdline').read().split(chr(0))[0]
-            elif sublime.platform() == 'osx':
-                # TODO: totally explodes if you install ST2 somewhere else
-                subl = '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl'
-            elif sublime.platform() == 'windows':
-                subl = sys.executable
-            else:
-                raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
-
-            command = [subl, '--add', G.PROJECT_PATH]
+            command = [sublime.executable_path(), '--add', G.PROJECT_PATH]
             print(('command:', command))
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
