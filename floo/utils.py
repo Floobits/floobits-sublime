@@ -50,10 +50,12 @@ def get_persistent_data():
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
+        print('Failed to open %s. Recent room list will be empty.' % per_path)
         return {}
     try:
         persistent_data = json.loads(per.read())
     except:
+        print('Failed to parse %s. Recent room list will be empty.' % per_path)
         return {}
     return persistent_data
 
