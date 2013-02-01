@@ -24,8 +24,6 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 CHAT_VIEW = None
 SOCKET_Q = queue.Queue()
 
-CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
-
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
@@ -96,8 +94,9 @@ class AgentConnection(object):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
+            if ssl:  # ST3 on linux doesn't have the ssl module. OS X & Windows are OK.
+                cert = os.path.join(sublime.packages_path(), 'Floobits', 'startssl-ca.pem')
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
