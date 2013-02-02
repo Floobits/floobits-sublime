@@ -5,8 +5,6 @@ import sublime
 
 from . import shared as G
 
-per_path = os.path.abspath('persistent.json')
-
 
 def get_full_path(p):
     full_path = os.path.join(G.PROJECT_PATH, p)
@@ -35,6 +33,7 @@ def is_shared(p):
 
 
 def get_persistent_data():
+    per_path = os.path.join(sublime.packages_path(), 'Floobits', 'persistent.json')
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
@@ -49,6 +48,7 @@ def get_persistent_data():
 
 
 def update_persistent_data(data):
+    per_path = os.path.join(sublime.packages_path(), 'Floobits', 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(bytes(json.dumps(data), 'UTF-8'))
 
