@@ -95,7 +95,7 @@ class AgentConnection(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:  # ST3 on linux doesn't have the ssl module. OS X & Windows are OK.
-                cert = os.path.join(sublime.packages_path(), 'Floobits', 'startssl-ca.pem')
+                cert = os.path.join(G.PLUGIN_PATH, 'startssl-ca.pem')
                 self.sock = ssl.wrap_socket(self.sock, ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')

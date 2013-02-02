@@ -2,6 +2,8 @@ __VERSION__ = '0.01'
 
 DEBUG = False
 
+PLUGIN_PATH = None
+
 MAX_RETRIES = 20
 INITIAL_RECONNECT_DELAY = 500  # milliseconds
 

@@ -20,6 +20,7 @@ from .floo import utils
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
+G.PLUGIN_PATH = os.path.split(__file__)[0]
 DATA = utils.get_persistent_data()
 agent = None
 
