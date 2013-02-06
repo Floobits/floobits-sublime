@@ -4,7 +4,6 @@ import os
 import json
 import threading
 import traceback
-import subprocess
 import urllib.error
 from urllib.parse import urlparse
 
@@ -109,11 +108,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
         def on_connect(agent_connection):
-            command = [sublime.executable_path(), '--add', G.PROJECT_PATH]
-            print(('command:', command))
-            p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            poll_result = p.poll()
-            print(('poll:', poll_result))
+            G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
         def run_agent(owner, room, host, port, secure):
             global agent
