@@ -40,9 +40,10 @@ def get_persistent_data():
         print('Failed to open %s. Recent room list will be empty.' % per_path)
         return {}
     try:
-        persistent_data = json.loads(str(per.read()))
-    except:
+        persistent_data = json.loads(per.read().decode('utf-8'))
+    except Exception as e:
         print('Failed to parse %s. Recent room list will be empty.' % per_path)
+        print(e)
         return {}
     return persistent_data
 
