@@ -207,7 +207,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA.get('recent_rooms', []) if x.get('url') != None]
+        rooms = [x.get('url') for x in DATA.get('recent_rooms', []) if x.get('url') is not None]
         print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
@@ -300,4 +300,3 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 
 
 Listener.push()
-
