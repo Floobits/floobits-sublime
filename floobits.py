@@ -92,6 +92,9 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             'room_url': room_url,
         })
 
+    def is_enabled(self):
+        return not bool(agent and agent.is_ready())
+
 
 class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 
@@ -102,6 +105,9 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         self.window.run_command('floobits_join_room', {
             'room_url': room_url,
         })
+
+    def is_enabled(self):
+        return not bool(agent and agent.is_ready())
 
 
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
@@ -165,6 +171,9 @@ class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
         else:
             sublime.error_message('You are not joined to any room.')
 
+    def is_enabled(self):
+        return bool(agent and agent.is_ready())
+
 
 class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
 
@@ -174,6 +183,9 @@ class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
 
     def on_input(self, msg):
         self.window.active_view().run_command('floobits_msg', {'msg': msg})
+
+    def is_enabled(self):
+        return bool(agent and agent.is_ready())
 
 
 class FloobitsMsgCommand(sublime_plugin.TextCommand):
