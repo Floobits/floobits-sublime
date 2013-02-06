@@ -5,6 +5,7 @@ import sublime
 
 from . import shared as G
 
+
 def get_full_path(p):
     full_path = os.path.join(G.PROJECT_PATH, p)
     return unfuck_path(full_path)

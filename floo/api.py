@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
-import urllib.request, urllib.error
+import urllib.error
+import urllib.request
 
 from . import shared as G
 
