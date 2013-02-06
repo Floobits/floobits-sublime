@@ -5,4 +5,8 @@
 {
   "caption": "Floobits::Send Message",
   "command": "floobits_prompt_msg"
+},
+{
+  "caption": "Floobits::Disconnect",
+  "command": "floobits_leave_room"
 }]
