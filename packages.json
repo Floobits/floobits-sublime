@@ -8,7 +8,13 @@
 			"homepage": "https://github.com/Floobits/sublime-text-2-plugin/",
 			"last_modified": "2013-02-06 16:03:20",
 			"platforms": {
-				"*": [
+				"osx": [
+					{
+						"version": "0.2",
+						"url": "https://github.com/Floobits/sublime-text-2-plugin/archive/0.2.zip"
+					}
+				],
+				"linux": [
 					{
 						"version": "0.2",
 						"url": "https://github.com/Floobits/sublime-text-2-plugin/archive/0.2.zip"
