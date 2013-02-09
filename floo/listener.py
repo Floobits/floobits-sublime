@@ -259,6 +259,38 @@ class Listener(sublime_plugin.EventListener):
         Listener.agent.put(json.dumps(req))
 
     @staticmethod
+    def create_buf(path):
+        if not utils.is_shared(path):
+            msg.error('Skipping add ing %s because it is not in shared paths.')
+            return
+        if os.path.isdir(path):
+            for dirpath, dirnames, filenames in os.walk(path):
+                # Don't care about hidden stuff
+                dirnames[:] = [d for d in dirnames if d[0] != '.']
+                for f in filenames:
+                    f_path = os.path.join(dirpath, f)
+                    if f[0] == '.':
+                        msg.log('Not creating buf for hidden file %s' % f_path)
+                    else:
+                        Listener.create_buf(f_path)
+            return
+        try:
+            buf_fd = open(path, 'rb')
+            buf = buf_fd.read().decode('utf-8')
+            rel_path = utils.to_rel_path(path)
+            msg.log('creating buffer ', rel_path)
+            event = {
+                'name': 'create_buf',
+                'buf': buf,
+                'path': rel_path,
+            }
+            Listener.agent.put(json.dumps(event))
+        except (IOError, OSError):
+            sublime.error_message('Failed to open %s.' % path)
+        except Exception as e:
+            sublime.error_message('Failed to create buffer %s: %s' % (path, str(e)))
+
+    @staticmethod
     def update_view(buf, view=None):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
