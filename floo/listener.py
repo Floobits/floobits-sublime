@@ -261,7 +261,7 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def create_buf(path):
         if not utils.is_shared(path):
-            msg.error('Skipping add ing %s because it is not in shared paths.')
+            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
