@@ -260,7 +260,6 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
             }
             agent.put(json.dumps(event))
 
-
     def is_visible(self):
         return self.is_enabled()
 
