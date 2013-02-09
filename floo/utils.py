@@ -61,7 +61,7 @@ def rm(path):
         os.removedirs(os.path.split(path)[0])
     except OSError as e:
         if e.errno != 66:
-            sublime.error_message('Can not delete directory {0}.\n{1}'.format(path, e))
+            sublime.error_message('Cannot delete directory {0}.\n{1}'.format(path, e))
             raise
 
 
@@ -70,5 +70,5 @@ def mkdir(path):
         os.makedirs(path)
     except OSError as e:
         if e.errno != 17:
-            sublime.error_message('Can not create directory {0}.\n{1}'.format(path, e))
+            sublime.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
             raise

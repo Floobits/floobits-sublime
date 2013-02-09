@@ -235,30 +235,28 @@ class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
-    def run(self, *args, **kwargs):
-        if not agent:
+    def run(self, paths):
+        if not self.is_enabled():
             return
+        for path in paths:
+            Listener.create_buf(path)
 
-        for path in kwargs.get('paths', []):
-            if not utils.is_shared(path):
-                continue
-            try:
-                buf_fd = open(path, 'rb')
-                buf = buf_fd.read().decode('utf-8')
-            except (IOError, OSError):
-                sublime.error_message('Failed to open %s.' % path)
-                continue
-            except Exception as e:
-                sublime.error_message('Failed to read %s: %s' % (path, str(e)))
-                continue
-            rel_path = utils.to_rel_path(path)
-            msg.log('new buffer ', rel_path)
-            event = {
-                'name': 'create_buf',
-                'buf': buf,
-                'path': rel_path,
-            }
-            agent.put(json.dumps(event))
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return bool(agent and agent.is_ready())
+
+    def description(self):
+        return 'Add file or directory to currently-joined Floobits room.'
+
+
+class FloobitsDeleteFromRoomCommand(sublime_plugin.WindowCommand):
+    def run(self, paths):
+        if not self.is_enabled():
+            return
+        for path in paths:
+            Listener.delete_buf(path)
 
     def is_visible(self):
         return self.is_enabled()
