@@ -293,6 +293,17 @@ class Listener(sublime_plugin.EventListener):
         if not utils.is_shared(path):
             sublime.error_message('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+        if os.path.isdir(path):
+            for dirpath, dirnames, filenames in os.walk(path):
+                # Don't care about hidden stuff
+                dirnames[:] = [d for d in dirnames if d[0] != '.']
+                for f in filenames:
+                    f_path = os.path.join(dirpath, f)
+                    if f[0] == '.':
+                        msg.log('Not deleting buf for hidden file %s' % f_path)
+                    else:
+                        Listener.delete_buf(f_path)
+            return
         buf_to_delete = None
         rel_path = utils.to_rel_path(path)
         for buf_id, buf in BUFS.items():
