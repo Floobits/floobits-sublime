@@ -291,6 +291,27 @@ class Listener(sublime_plugin.EventListener):
             sublime.error_message('Failed to create buffer %s: %s' % (path, str(e)))
 
     @staticmethod
+    def delete_buf(path):
+        if not utils.is_shared(path):
+            sublime.error_message('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
+            return
+        buf_to_delete = None
+        rel_path = utils.to_rel_path(path)
+        for buf_id, buf in BUFS.items():
+            if rel_path == buf['path']:
+                buf_to_delete = buf
+                break
+        if buf_to_delete is None:
+            sublime.error_message('%s is not in this room' % path)
+            return
+        msg.log('deleting buffer ', rel_path)
+        event = {
+            'name': 'delete_buf',
+            'id': buf_to_delete['id'],
+        }
+        Listener.agent.put(json.dumps(event))
+
+    @staticmethod
     def update_view(buf, view=None):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
