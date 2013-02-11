@@ -93,18 +93,17 @@ def patch_apply(self, patches, text):
                             index1 += len(data)
                     print("cleaned up sematic lossless")
                     position = [start_loc, delete_len, inserted_text]
-
-        if position[0] < 4:
-            position[1] -= 4 - position[0]
-            position[2] = position[2][4 - position[0]:]
+        np_len = len(nullPadding)
+        if position[0] < np_len:
+            position[1] -= np_len - position[0]
+            position[2] = position[2][np_len - position[0]:]
             position[0] = 0
         else:
-            position[0] -= 4
+            position[0] -= np_len
 
-        extra_bytes = len(text) - position[0] - len(position[2])
-        if extra_bytes <= 4:
-            position[1] -= extra_bytes
-            position[2] = position[2][:-1 * extra_bytes]
+        too_close = (position[0] + len(position[2])) - (len(text) - 2 * np_len)
+        if too_close > 0:
+            position[2] = position[2][:-too_close]
 
         positions.append(position)
         print("pos", position)
