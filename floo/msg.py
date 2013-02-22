@@ -16,21 +16,16 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 
 
 def get_or_create_chat(cb=None):
-    chat_view_retries = 5
 
     def return_view():
-        global chat_view_retries
         if G.CHAT_VIEW:
+            print('Opened message buffer :)')
             G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
             G.CHAT_VIEW.set_read_only(True)
             if cb:
                 return cb(G.CHAT_VIEW)
-        elif chat_view_retries > 0:
-            sublime.set_timeout(return_view, 0)
-            chat_view_retries -= 1
         else:
-            sublime.error_message('Unable to open message buffer :(')
-
+            print('Unable to open message buffer :(')
 
     def open_view():
         if not G.CHAT_VIEW:
@@ -39,7 +34,7 @@ def get_or_create_chat(cb=None):
             p = utils.get_full_path('msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
 
-        sublime.set_timeout(return_view, 0)
+        sublime.set_timeout(return_view, 1)
 
     def call_in_main_thread():
         if not G.ROOM_WINDOW:

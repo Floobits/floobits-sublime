@@ -25,6 +25,7 @@ CHAT_VIEW = None
 SOCKET_Q = Queue.Queue()
 
 CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
+print("CERT is ", CERT)
 
 
 class AgentConnection(object):
