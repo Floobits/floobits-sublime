@@ -29,6 +29,8 @@ def is_shared(p):
     if not G.CONNECTED:
         return False
     p = unfuck_path(p)
+    if to_rel_path(p) == "msgs.floobits.log":
+        return False
     return G.PROJECT_PATH == p[:len(G.PROJECT_PATH)]
 
 
