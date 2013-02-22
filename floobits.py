@@ -116,7 +116,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
-                subl = '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl'
+                subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
