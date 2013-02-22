@@ -135,6 +135,9 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent = None
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+                utils.mkdir(G.PROJECT_PATH)
+                with open(utils.get_full_path('msgs.floobits.log'), 'w') as msgs_fd:
+                    msgs_fd.write('')
                 sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
@@ -217,7 +220,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') != None]
+        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
         print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
@@ -292,4 +295,3 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
         return
 
 Listener.push()
-
