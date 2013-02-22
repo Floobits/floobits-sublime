@@ -313,7 +313,7 @@ class Listener(sublime_plugin.EventListener):
                 buf_to_delete = buf
                 break
         if buf_to_delete is None:
-            sublime.error_message('%s is not in this room' % path)
+            msg.error('%s is not in this room' % path)
             return
         msg.log('deleting buffer ', rel_path)
         event = {
