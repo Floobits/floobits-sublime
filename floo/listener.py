@@ -286,14 +286,14 @@ class Listener(sublime_plugin.EventListener):
             }
             Listener.agent.put(json.dumps(event))
         except (IOError, OSError):
-            sublime.error_message('Failed to open %s.' % path)
+            msg.error('Failed to open %s.' % path)
         except Exception as e:
-            sublime.error_message('Failed to create buffer %s: %s' % (path, str(e)))
+            msg.error('Failed to create buffer %s: %s' % (path, str(e)))
 
     @staticmethod
     def delete_buf(path):
         if not utils.is_shared(path):
-            sublime.error_message('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
+            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
