@@ -245,7 +245,6 @@ class AgentConnection(object):
             elif name == 'error':
                 message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                 msg.error(message)
-                sublime.error_message(message)
             elif name == 'disconnect':
                 message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
                 msg.error(message)
