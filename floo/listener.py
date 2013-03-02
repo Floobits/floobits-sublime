@@ -205,7 +205,7 @@ class Listener(sublime_plugin.EventListener):
             )
             return Listener.get_buf(buf_id)
 
-        buf['buf'] = t[0].decode('utf-8')
+        buf['buf'] = t[0]
         buf['md5'] = cur_hash
 
         if not view:
@@ -223,7 +223,7 @@ class Listener(sublime_plugin.EventListener):
             MODIFIED_EVENTS.put(1)
             try:
                 edit = view.begin_edit()
-                view.replace(edit, region, patch_text.decode('utf-8'))
+                view.replace(edit, region, patch_text)
             except:
                 raise
             else:
