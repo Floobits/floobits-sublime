@@ -260,6 +260,11 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path):
+        # >>> (lambda x: lambda: x)(2)()
+        # TODO: check if functools can do this in st2
+        #  really_create_buf = lambda x: (lambda: Listener.create_buf(x))
+        def really_create_buf(x):
+            return (lambda: Listener.create_buf(x))
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
@@ -272,7 +277,7 @@ class Listener(sublime_plugin.EventListener):
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
                     else:
-                        Listener.create_buf(f_path)
+                        sublime.set_timeout(really_create_buf(f_path), 0)
             return
         try:
             buf_fd = open(path, 'rb')
