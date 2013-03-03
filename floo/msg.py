@@ -1,9 +1,9 @@
+import os
 import time
 
 import sublime
 
 from . import shared as G
-from . import utils
 
 LOG_LEVELS = {
     'DEBUG': 1,
