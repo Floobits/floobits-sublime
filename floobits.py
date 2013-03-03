@@ -136,7 +136,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             try:
                 G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
                 utils.mkdir(G.PROJECT_PATH)
-                with open(utils.get_full_path('msgs.floobits.log'), 'w') as msgs_fd:
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
                     msgs_fd.write('')
                 sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
