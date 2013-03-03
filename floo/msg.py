@@ -25,7 +25,7 @@ def get_or_create_chat(cb=None):
 
     def open_view():
         if not G.CHAT_VIEW:
-            p = utils.get_full_path('msgs.floobits.log')
+            p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
         sublime.set_timeout(return_view, 0)
 
