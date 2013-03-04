@@ -184,7 +184,6 @@ class AgentConnection(object):
             elif name == 'create_buf':
                 listener.BUFS[data['id']] = data
                 listener.save_buf(data)
-                listener.create_view(data)
             elif name == 'rename_buf':
                 new = utils.get_full_path(data['path'])
                 old = utils.get_full_path(data['old_path'])

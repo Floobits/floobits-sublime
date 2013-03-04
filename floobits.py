@@ -209,7 +209,7 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA.get('recent_rooms', []) if x.get('url') is not None]
+        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
         print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
@@ -242,6 +242,23 @@ class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
             return
         for path in paths:
             Listener.create_buf(path)
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return bool(agent and agent.is_ready())
+
+    def description(self):
+        return 'Add file or directory to currently-joined Floobits room.'
+
+
+class FloobitsDeleteFromRoomCommand(sublime_plugin.WindowCommand):
+    def run(self, paths):
+        if not self.is_enabled():
+            return
+        for path in paths:
+            Listener.delete_buf(path)
 
     def is_visible(self):
         return self.is_enabled()

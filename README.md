@@ -25,7 +25,7 @@ Edit your Floobits.sublime-settings file (in `Package Settings -> Floobits -> Se
     {
       "username": "user",
       "secret": "THIS-IS-YOUR-API-KEY;DO-NOT-USE-YOUR-PASSWORD",
-      "share_dir": "~/.floobits/shared/"
+      "share_dir": "~/.floobits/share/"
     }
 
 Replace username with your Floobits username. The secret is your API secret, which you can see at https://floobits.com/dash/settings/

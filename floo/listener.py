@@ -15,6 +15,7 @@ from . import shared as G
 from . import utils
 
 MODIFIED_EVENTS = queue.Queue()
+SELECTED_EVENTS = queue.Queue()
 BUFS = {}
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -243,6 +244,7 @@ class Listener(sublime_plugin.EventListener):
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
+            SELECTED_EVENTS.put(1)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -258,6 +260,11 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path):
+        # >>> (lambda x: lambda: x)(2)()
+        # TODO: check if functools can do this in st2
+        #  really_create_buf = lambda x: (lambda: Listener.create_buf(x))
+        def really_create_buf(x):
+            return (lambda: Listener.create_buf(x))
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
@@ -270,7 +277,7 @@ class Listener(sublime_plugin.EventListener):
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
                     else:
-                        Listener.create_buf(f_path)
+                        sublime.set_timeout(really_create_buf(f_path), 0)
             return
         try:
             buf_fd = open(path, 'rb')
@@ -291,7 +298,7 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def delete_buf(path):
         if not utils.is_shared(path):
-            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
+            msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
@@ -421,10 +428,15 @@ class Listener(sublime_plugin.EventListener):
             MODIFIED_EVENTS.task_done()
 
     def on_selection_modified(self, view):
-        buf = get_buf(view)
-        if buf:
-            msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
-            self.selection_changed.append((view, buf))
+        try:
+            SELECTED_EVENTS.get_nowait()
+        except queue.Empty:
+            buf = get_buf(view)
+            if buf:
+                msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
+                self.selection_changed.append((view, buf))
+        else:
+            SELECTED_EVENTS.task_done()
 
     def on_activated(self, view):
         self.add(view)
