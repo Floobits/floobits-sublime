@@ -15,6 +15,7 @@ import shared as G
 import utils
 
 MODIFIED_EVENTS = Queue.Queue()
+SELECTED_EVENTS = Queue.Queue()
 BUFS = {}
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -245,6 +246,7 @@ class Listener(sublime_plugin.EventListener):
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
         for sel in selections:
+            SELECTED_EVENTS.put(1)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -432,10 +434,15 @@ class Listener(sublime_plugin.EventListener):
             MODIFIED_EVENTS.task_done()
 
     def on_selection_modified(self, view):
-        buf = get_buf(view)
-        if buf:
-            msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
-            self.selection_changed.append((view, buf))
+        try:
+            SELECTED_EVENTS.get_nowait()
+        except Queue.Empty:
+            buf = get_buf(view)
+            if buf:
+                msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
+                self.selection_changed.append((view, buf))
+        else:
+            SELECTED_EVENTS.task_done()
 
     def on_activated(self, view):
         self.add(view)
