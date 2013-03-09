@@ -138,7 +138,7 @@ class Listener(sublime_plugin.EventListener):
 
         while Listener.selection_changed:
             view, buf = Listener.selection_changed.pop()
-            # consume highlight events to avoid leak
+            #consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
             vb_id = view.buffer_id()
@@ -338,7 +338,8 @@ class Listener(sublime_plugin.EventListener):
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
-        selections = [x for x in view.sel()]  # deep copy
+        # deep copy
+        selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
         try:
             edit = view.begin_edit()
