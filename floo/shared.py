@@ -18,7 +18,7 @@ SECRET = ''
 
 ALERT_ON_MSG = True
 
-READ_ONLY = False
+PERMS = []
 
 ROOM_WINDOW = None
 

@@ -335,7 +335,7 @@ class Listener(sublime_plugin.EventListener):
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
         region = sublime.Region(0, view.size())
-        selections = [x for x in view.sel()]  # deep copy
+        selections = [x for x in view.sel()] # deep copy
         MODIFIED_EVENTS.put(1)
         try:
             edit = view.begin_edit()
@@ -349,9 +349,11 @@ class Listener(sublime_plugin.EventListener):
         view.show(visible_region, False)
         for sel in selections:
             view.sel().add(sel)
-        view.set_read_only(G.READ_ONLY)
-        if G.READ_ONLY:
+        if 'patch' in G.PERMS:
             view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
+            view.set_read_only(False)
+        else:
+            view.set_read_only(True)
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges):

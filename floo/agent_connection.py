@@ -46,6 +46,7 @@ class AgentConnection(object):
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
+        self.room_info = {}
 
     def stop(self):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
@@ -80,6 +81,7 @@ class AgentConnection(object):
         except Exception:
             pass
         G.CONNECTED = False
+        self.room_info = {}
         self.buf = ''
         self.sock = None
         self.authed = False
@@ -201,11 +203,11 @@ class AgentConnection(object):
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
-                perms = data['perms']
+                self.room_info = data
+                G.PERMS = data['perms']
 
-                if 'patch' not in perms:
+                if 'patch' not in data['perms']:
                     msg.log('We don\'t have patch permission. Setting buffers to read-only')
-                    G.READ_ONLY = True
 
                 project_json = {
                     'folders': [
