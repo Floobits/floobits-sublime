@@ -17,7 +17,6 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 
 
 def get_or_create_chat(cb=None):
-
     def return_view():
         G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
         G.CHAT_VIEW.set_read_only(True)
@@ -29,29 +28,13 @@ def get_or_create_chat(cb=None):
             p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
 
+        if G.CHAT_VIEW.is_loading():
+            return sublime.set_timeout(open_view, 50)
+
         sublime.set_timeout(return_view, 0)
 
-    def call_in_main_thread():
-        if not G.ROOM_WINDOW:
-            w = sublime.active_window()
-            if w:
-                G.ROOM_WINDOW = w
-            else:
-                w = sublime.windows()
-                if w:
-                    G.ROOM_WINDOW = w[0]
-                else:
-                    sublime.error_message('Sublime is stupid, I can\'t make a new view')
-                    return
-
-        if G.CHAT_VIEW:
-            for view in G.ROOM_WINDOW.views():
-                if G.CHAT_VIEW.file_name() == view.file_name():
-                    G.CHAT_VIEW = view
-                    break
-        sublime.set_timeout(open_view, 0)
-
-    sublime.set_timeout(call_in_main_thread, 0)
+    # Can't call open_file outside main thread
+    sublime.set_timeout(open_view, 0)
 
 
 class MSG(object):

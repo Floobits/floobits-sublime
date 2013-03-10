@@ -25,15 +25,6 @@ DATA = utils.get_persistent_data()
 agent = None
 
 
-def set_active_window():
-    w = sublime.active_window()
-    if not w:
-        return sublime.set_timeout(set_active_window, 100)
-    G.ROOM_WINDOW = w
-
-sublime.set_timeout(set_active_window, 0)
-
-
 def update_recent_rooms(room):
     recent_rooms = DATA.get('recent_rooms', [])
     recent_rooms.insert(0, room)
@@ -111,7 +102,7 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
-        def on_connect(agent_connection):
+        def open_room_window(cb):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
@@ -122,11 +113,21 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             else:
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
-            command = [subl, '--add', G.PROJECT_PATH]
+            command = [subl]
+            if utils.get_room_window() is None:
+                command.append('--new-window')
+            command.append('--add')
+            command.append(G.PROJECT_PATH)
             print('command:', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
             print('poll:', poll_result)
+
+            def create_chat_view():
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+                    msgs_fd.write('')
+                msg.get_or_create_chat(cb)
+            utils.set_room_window(create_chat_view)
 
         def run_agent(owner, room, host, port, secure):
             global agent
@@ -134,12 +135,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent.stop()
                 agent = None
             try:
-                G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-                utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
-                    msgs_fd.write('')
-                sublime.set_timeout(msg.get_or_create_chat, 0)
-                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
+                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=None)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
                 agent.connect()
@@ -161,14 +157,20 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
         if result:
             (owner, room) = result.groups()
-            thread = threading.Thread(target=run_agent, kwargs={
-                'owner': owner,
-                'room': room,
-                'host': parsed_url.hostname,
-                'port': port,
-                'secure': secure,
-            })
-            thread.start()
+
+            def run_thread(*args):
+                thread = threading.Thread(target=run_agent, kwargs={
+                    'owner': owner,
+                    'room': room,
+                    'host': parsed_url.hostname,
+                    'port': port,
+                    'secure': secure,
+                })
+                thread.start()
+
+            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+            utils.mkdir(G.PROJECT_PATH)
+            open_room_window(run_thread)
         else:
             sublime.error_message('Unable to parse your URL!')
 
@@ -221,7 +223,6 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
         rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
-        print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
