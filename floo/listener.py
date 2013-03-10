@@ -48,6 +48,8 @@ def get_buf(view):
         return None
     if not view.file_name():
         return None
+    if view is G.CHAT_VIEW:
+        return None
     rel_path = utils.to_rel_path(view.file_name())
     for buf_id, buf in BUFS.iteritems():
         if rel_path == buf['path']:
@@ -118,7 +120,8 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-
+            if 'patch' not in G.PERMS:
+                continue
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
