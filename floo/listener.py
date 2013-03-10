@@ -120,7 +120,8 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-
+            if 'patch' not in G.PERMS:
+                continue
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
