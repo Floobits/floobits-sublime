@@ -32,24 +32,10 @@ def get_or_create_chat(cb=None):
         sublime.set_timeout(return_view, 0)
 
     def call_in_main_thread():
-        if not G.ROOM_WINDOW:
-            w = sublime.active_window()
-            if w:
-                G.ROOM_WINDOW = w
-            else:
-                w = sublime.windows()
-                if w:
-                    G.ROOM_WINDOW = w[0]
-                else:
-                    sublime.error_message('Sublime is stupid, I can\'t make a new view')
-                    return
-
-        if G.CHAT_VIEW:
-            for view in G.ROOM_WINDOW.views():
-                if G.CHAT_VIEW.file_name() == view.file_name():
-                    G.CHAT_VIEW = view
-                    break
-        sublime.set_timeout(open_view, 0)
+        if G.ROOM_WINDOW:
+            sublime.set_timeout(open_view, 0)
+        else:
+            utils.open_room_window(open_view)
 
     sublime.set_timeout(call_in_main_thread, 0)
 

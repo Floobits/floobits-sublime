@@ -20,6 +20,22 @@ class edit:
         self.view.end_edit(self.edit)
 
 
+def set_room_window(cb):
+    room_window = None
+    for w in sublime.windows():
+        for f in w.folders():
+            print('folder', f)
+            if f == G.PROJECT_PATH:
+                print('found window for', f)
+                room_window = w
+                break
+    if room_window is None:
+        print("couldn't find room window for path", G.PROJECT_PATH)
+        return sublime.set_timeout(set_room_window, 100)
+    G.ROOM_WINDOW = room_window
+    cb()
+
+
 def get_full_path(p):
     full_path = os.path.join(G.PROJECT_PATH, p)
     return unfuck_path(full_path)
@@ -30,7 +46,7 @@ def unfuck_path(p):
 
 
 def to_rel_path(p):
-    return p[len(G.PROJECT_PATH) + 1:]
+    return os.path.relpath(p, G.PROJECT_PATH)
 
 
 def to_scheme(secure):
