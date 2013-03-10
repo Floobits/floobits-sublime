@@ -113,12 +113,21 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             else:
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
-            command = [subl, '--new-window --add', G.PROJECT_PATH]
+            command = [subl]
+            if utils.get_room_window() is None:
+                command.append('--new-window')
+            command.append('--add')
+            command.append(G.PROJECT_PATH)
             print('command:', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
             print('poll:', poll_result)
-            utils.set_room_window(cb)
+
+            def create_chat_view():
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+                    msgs_fd.write('')
+                msg.get_or_create_chat(cb)
+            utils.set_room_window(create_chat_view)
 
         def run_agent(owner, room, host, port, secure):
             global agent
@@ -126,9 +135,6 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent.stop()
                 agent = None
             try:
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
-                    msgs_fd.write('')
-                sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=None)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
@@ -152,7 +158,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         if result:
             (owner, room) = result.groups()
 
-            def run_thread():
+            def run_thread(*args):
                 thread = threading.Thread(target=run_agent, kwargs={
                     'owner': owner,
                     'room': room,
@@ -217,7 +223,6 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
         rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
-        print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):

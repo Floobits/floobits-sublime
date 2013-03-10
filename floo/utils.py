@@ -20,18 +20,20 @@ class edit:
         self.view.end_edit(self.edit)
 
 
-def set_room_window(cb):
+def get_room_window():
     room_window = None
     for w in sublime.windows():
         for f in w.folders():
-            print('folder', f)
             if f == G.PROJECT_PATH:
-                print('found window for', f)
                 room_window = w
                 break
+    return room_window
+
+
+def set_room_window(cb):
+    room_window = get_room_window()
     if room_window is None:
-        print("couldn't find room window for path", G.PROJECT_PATH)
-        return sublime.set_timeout(set_room_window, 100)
+        return sublime.set_timeout(lambda: set_room_window(cb), 50)
     G.ROOM_WINDOW = room_window
     cb()
 
