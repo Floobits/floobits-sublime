@@ -4,7 +4,7 @@ Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 
 **Sublime Text 3 Beta users:** You want the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-3-plugin/).
 
-### Development status: Works, but rough around the edges. It's probably worth waiting a little while for this plugin to mature and stabilize.
+### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
 ## Windows
 This plugin does not work on Windows. However, the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-3-plugin/) does. Windows users are encouraged to install Sublime Text 3. The Python included with the Windows version of Sublime Text 2 does not have the [select](http://docs.python.org/2/library/select.html) module.
