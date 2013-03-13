@@ -37,7 +37,6 @@ def get_view(buf_id):
 
 def create_view(buf):
     path = utils.get_full_path(buf['path'])
-    # TODO: this occasionally causes a blanking patch to be sent
     view = G.ROOM_WINDOW.open_file(path)
     if view:
         msg.debug('Created view', view.name() or view.file_name())
@@ -121,6 +120,9 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
+            if view.is_loading():
+                msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
+                continue
             if 'patch' not in G.PERMS:
                 continue
             vb_id = view.buffer_id()
