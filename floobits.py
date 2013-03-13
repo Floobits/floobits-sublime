@@ -202,21 +202,15 @@ class FloobitsPromptMsgCommand(FloobitsBaseCommand):
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
     def on_input(self, msg):
-        self.window.active_view().run_command('floobits_msg', {'msg': msg})
+        self.window.run_command('floobits_msg', {'msg': msg})
 
 
-class FloobitsMsgCommand(sublime_plugin.TextCommand):
-    def run(self, edit, msg):
+class FloobitsMsgCommand(FloobitsBaseCommand):
+    def run(self, msg):
         if not msg:
             return
         if agent:
             agent.send_msg(msg)
-
-    def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
-        return agent and agent.is_ready()
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
