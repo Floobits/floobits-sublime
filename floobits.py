@@ -222,6 +222,11 @@ class FloobitsMsgCommand(sublime_plugin.TextCommand):
         return 'Send a message to the floobits room you are in (join a room first)'
 
 
+class FloobitsPingCommand(FloobitsBaseCommand):
+    def run(self):
+        pass
+
+
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
         rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
