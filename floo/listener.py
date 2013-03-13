@@ -140,7 +140,7 @@ class Listener(sublime_plugin.EventListener):
                 msg.debug('Not connected. Discarding view change.')
 
         while Listener.selection_changed:
-            view, buf = Listener.selection_changed.pop()
+            view, buf, ping = Listener.selection_changed.pop()
             #consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
@@ -153,7 +153,8 @@ class Listener(sublime_plugin.EventListener):
             highlight_json = json.dumps({
                 'id': buf['id'],
                 'name': 'highlight',
-                'ranges': [[x.a, x.b] for x in sel]
+                'ranges': [[x.a, x.b] for x in sel],
+                'ping': ping,
             })
             if Listener.agent:
                 Listener.agent.put(highlight_json)
@@ -448,10 +449,17 @@ class Listener(sublime_plugin.EventListener):
         except Queue.Empty:
             buf = get_buf(view)
             if buf:
-                msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
-                self.selection_changed.append((view, buf))
+                msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
+                self.selection_changed.append((view, buf, False))
         else:
             SELECTED_EVENTS.task_done()
+
+    @staticmethod
+    def ping(view):
+        buf = get_buf(view)
+        if buf:
+            msg.debug('pinging selection in view %s, buf id %s' % (buf['path'], buf['id']))
+            Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
         self.add(view)

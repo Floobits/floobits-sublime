@@ -218,7 +218,7 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
 
 class FloobitsPingCommand(FloobitsBaseCommand):
     def run(self):
-        pass
+        Listener.ping(self.window.active_view())
 
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
