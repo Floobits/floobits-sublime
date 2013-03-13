@@ -217,6 +217,7 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
 
 
 class FloobitsPingCommand(FloobitsBaseCommand):
+    # TODO: ghost this option if user doesn't have permissions
     def run(self):
         Listener.ping(self.window.active_view())
 

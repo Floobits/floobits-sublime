@@ -37,6 +37,7 @@ def get_view(buf_id):
 
 def create_view(buf):
     path = utils.get_full_path(buf['path'])
+    # TODO: this occasionally causes a blanking patch to be sent
     view = G.ROOM_WINDOW.open_file(path)
     if view:
         msg.debug('Created view', view.name() or view.file_name())
@@ -141,7 +142,7 @@ class Listener(sublime_plugin.EventListener):
 
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
-            #consume highlight events to avoid leak
+            # consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
             vb_id = view.buffer_id()
@@ -364,10 +365,15 @@ class Listener(sublime_plugin.EventListener):
             view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges):
+    def highlight(buf_id, region_key, username, ranges, ping=False):
+        buf = BUFS[buf_id]
         view = get_view(buf_id)
         if not view:
+            if ping:
+                view = create_view(buf)
             return
+        if ping:
+            G.ROOM_WINDOW.focus_view(view)
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
