@@ -48,6 +48,8 @@ def get_buf(view):
         return None
     if not view.file_name():
         return None
+    if view is G.CHAT_VIEW:
+        return None
     rel_path = utils.to_rel_path(view.file_name())
     for buf_id, buf in BUFS.items():
         if rel_path == buf['path']:
@@ -118,7 +120,11 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-
+            if view.is_loading():
+                msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
+                continue
+            if 'patch' not in G.PERMS:
+                continue
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
@@ -128,7 +134,7 @@ class Listener(sublime_plugin.EventListener):
 
             reported.add(vb_id)
             patch = FlooPatch(view, buf)
-            # update the current copy of the buffer
+            # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
             if Listener.agent:
@@ -137,7 +143,10 @@ class Listener(sublime_plugin.EventListener):
                 msg.debug('Not connected. Discarding view change.')
 
         while Listener.selection_changed:
-            view, buf = Listener.selection_changed.pop()
+            view, buf, ping = Listener.selection_changed.pop()
+            # consume highlight events to avoid leak
+            if 'highlight' not in G.PERMS:
+                continue
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
@@ -147,7 +156,8 @@ class Listener(sublime_plugin.EventListener):
             highlight_json = json.dumps({
                 'id': buf['id'],
                 'name': 'highlight',
-                'ranges': [[x.a, x.b] for x in sel]
+                'ranges': [[x.a, x.b] for x in sel],
+                'ping': ping,
             })
             if Listener.agent:
                 Listener.agent.put(highlight_json)
@@ -332,7 +342,9 @@ class Listener(sublime_plugin.EventListener):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
-        selections = [x for x in view.sel()]  # deep copy
+        region = sublime.Region(0, view.size())
+        # deep copy
+        selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
         try:
             view.run_command('floo_view_replace_region', {'r': (0, view.size()), 'data': buf['buf']})
@@ -343,20 +355,31 @@ class Listener(sublime_plugin.EventListener):
         view.show(visible_region, False)
         for sel in selections:
             view.sel().add(sel)
-        view.set_read_only(G.READ_ONLY)
-        if G.READ_ONLY:
+        if 'patch' in G.PERMS:
             view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
+            view.set_read_only(False)
+        else:
+            view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges):
+    def highlight(buf_id, region_key, username, ranges, ping=False):
+        if G.FOLLOW_MODE:
+            ping = True
+        buf = BUFS[buf_id]
         view = get_view(buf_id)
         if not view:
+            if ping:
+                view = create_view(buf)
             return
+            # TODO: scroll to highlight if we just created the view
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
         view.erase_regions(region_key)
         view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
+        if ping:
+            G.ROOM_WINDOW.focus_view(view)
+            view.show_at_center(regions[0])
 
     def id(self, view):
         return view.buffer_id()
@@ -433,10 +456,17 @@ class Listener(sublime_plugin.EventListener):
         except queue.Empty:
             buf = get_buf(view)
             if buf:
-                msg.debug('selection in view %s is buf id %s' % (buf['path'], buf['id']))
-                self.selection_changed.append((view, buf))
+                msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
+                self.selection_changed.append((view, buf, False))
         else:
             SELECTED_EVENTS.task_done()
+
+    @staticmethod
+    def ping(view):
+        buf = get_buf(view)
+        if buf:
+            msg.debug('pinging selection in view %s, buf id %s' % (buf['path'], buf['id']))
+            Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
         self.add(view)

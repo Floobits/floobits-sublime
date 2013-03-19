@@ -20,9 +20,11 @@ SECRET = ''
 
 ALERT_ON_MSG = True
 
-READ_ONLY = False
+PERMS = []
 
 ROOM_WINDOW = None
 
 CHAT_VIEW = None
 CHAT_VIEW_PATH = None
+
+FOLLOW_MODE = False

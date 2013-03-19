@@ -43,6 +43,7 @@ class AgentConnection(object):
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
+        self.room_info = {}
 
     def stop(self):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
@@ -77,6 +78,7 @@ class AgentConnection(object):
         except Exception:
             pass
         G.CONNECTED = False
+        self.room_info = {}
         self.buf = ''
         self.sock = None
         self.authed = False
@@ -201,11 +203,11 @@ class AgentConnection(object):
             elif name == 'room_info':
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
-                perms = data['perms']
+                self.room_info = data
+                G.PERMS = data['perms']
 
-                if 'patch' not in perms:
+                if 'patch' not in data['perms']:
                     msg.log('We don\'t have patch permission. Setting buffers to read-only')
-                    G.READ_ONLY = True
 
                 project_json = {
                     'folders': [
@@ -240,7 +242,7 @@ class AgentConnection(object):
                         view.erase_regions(region_key)
             elif name == 'highlight':
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
-                Listener.highlight(data['id'], region_key, data['username'], data['ranges'])
+                Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
             elif name == 'error':
                 message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                 msg.error(message)
@@ -263,7 +265,7 @@ class AgentConnection(object):
         try:
             # this blocks until the socket is readable or writeable
             _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
-        except (select.error, socket.error) as e:
+        except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
             return self.reconnect()
 
@@ -287,7 +289,7 @@ class AgentConnection(object):
                 self.protocol(buf)
             else:
                 self.empty_selects += 1
-                if self.empty_selects > 5:
+                if self.empty_selects > 10:
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
 

@@ -24,15 +24,6 @@ DATA = utils.get_persistent_data()
 agent = None
 
 
-def set_active_window():
-    w = sublime.active_window()
-    if not w:
-        return sublime.set_timeout(set_active_window, 100)
-    G.ROOM_WINDOW = w
-
-sublime.set_timeout(set_active_window, 0)
-
-
 def update_recent_rooms(room):
     recent_rooms = DATA.get('recent_rooms', [])
     recent_rooms.insert(0, room)
@@ -72,6 +63,14 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+
+
+class FloobitsBaseCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return agent and agent.is_ready()
 
 
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
@@ -116,17 +115,18 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         def on_connect(agent_connection):
             G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
+            def create_chat_view():
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+                    msgs_fd.write('')
+                msg.get_or_create_chat(cb)
+            utils.set_room_window(create_chat_view)
+
         def run_agent(owner, room, host, port, secure):
             global agent
             if agent:
                 agent.stop()
                 agent = None
             try:
-                G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-                utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
-                    msgs_fd.write('')
-                sublime.set_timeout(msg.get_or_create_chat, 0)
                 agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
@@ -150,19 +150,25 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
         result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
         if result:
             (owner, room) = result.groups()
-            thread = threading.Thread(target=run_agent, kwargs={
-                'owner': owner,
-                'room': room,
-                'host': parsed_url.hostname,
-                'port': port,
-                'secure': secure,
-            })
-            thread.start()
+
+            def run_thread(*args):
+                thread = threading.Thread(target=run_agent, kwargs={
+                    'owner': owner,
+                    'room': room,
+                    'host': parsed_url.hostname,
+                    'port': port,
+                    'secure': secure,
+                })
+                thread.start()
+
+            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
+            utils.mkdir(G.PROJECT_PATH)
+            run_thread()
         else:
             sublime.error_message('Unable to parse your URL!')
 
 
-class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
 
     def run(self):
         global agent
@@ -173,44 +179,37 @@ class FloobitsLeaveRoomCommand(sublime_plugin.WindowCommand):
         else:
             sublime.error_message('You are not joined to any room.')
 
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
 
-
-class FloobitsPromptMsgCommand(sublime_plugin.WindowCommand):
+class FloobitsPromptMsgCommand(FloobitsBaseCommand):
 
     def run(self, msg=''):
         print(('msg', msg))
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
     def on_input(self, msg):
-        self.window.active_view().run_command('floobits_msg', {'msg': msg})
-
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
+        self.window.run_command('floobits_msg', {'msg': msg})
 
 
-class FloobitsMsgCommand(sublime_plugin.TextCommand):
-    def run(self, edit, msg):
+class FloobitsMsgCommand(FloobitsBaseCommand):
+    def run(self, msg):
         if not msg:
             return
         if agent:
             agent.send_msg(msg)
 
-    def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
-
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
+
+
+class FloobitsPingCommand(FloobitsBaseCommand):
+    # TODO: ghost this option if user doesn't have permissions
+    def run(self):
+        Listener.ping(self.window.active_view())
 
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def run(self, *args):
         rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
-        print(rooms)
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
@@ -220,71 +219,59 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
         self.window.run_command('floobits_join_room', {'room_url': room['url']})
 
 
-class FloobitsOpenMessageViewCommand(sublime_plugin.WindowCommand):
+class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
     def run(self, *args):
         if not agent:
             return
         msg.get_or_create_chat()
 
-    def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
-
     def description(self):
         return 'Open the floobits messages view.'
 
 
-class FloobitsAddToRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsAddToRoomCommand(FloobitsBaseCommand):
     def run(self, paths):
         if not self.is_enabled():
             return
         for path in paths:
             Listener.create_buf(path)
 
-    def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
-
     def description(self):
         return 'Add file or directory to currently-joined Floobits room.'
 
 
-class FloobitsDeleteFromRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
     def run(self, paths):
         if not self.is_enabled():
             return
         for path in paths:
             Listener.delete_buf(path)
 
-    def is_visible(self):
-        return self.is_enabled()
-
-    def is_enabled(self):
-        return bool(agent and agent.is_ready())
-
     def description(self):
         return 'Add file or directory to currently-joined Floobits room.'
 
 
-class FloobitsDeleteFromRoomCommand(sublime_plugin.WindowCommand):
-    def run(self, paths):
-        if not self.is_enabled():
-            return
-        for path in paths:
-            Listener.delete_buf(path)
+class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
+    def run(self):
+        G.FOLLOW_MODE = True
+        # TODO: go to most recent highlight
 
     def is_visible(self):
         return self.is_enabled()
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready())
+        return agent and agent.is_ready() and not G.FOLLOW_MODE
 
-    def description(self):
-        return 'Add file or directory to currently-joined Floobits room.'
+
+class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
+    def run(self):
+        G.FOLLOW_MODE = False
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return agent and agent.is_ready() and G.FOLLOW_MODE
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

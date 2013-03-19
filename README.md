@@ -4,7 +4,7 @@ Real-time collaborative editing. Think Etherpad, but with Sublime Text 3.
 
 Sublime Text 2 users: You want the [Sublime Text 2 plugin](https://github.com/Floobits/sublime-text-2-plugin/).
 
-### Development status: Works, but rough around the edges. It's probably worth waiting a little while for this plugin to mature and stabilize.
+### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
 # Installation instructions
 

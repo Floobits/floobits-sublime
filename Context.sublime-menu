@@ -1,12 +1,26 @@
-[{
-  "caption": "Floobits::Join room",
-  "command": "floobits_prompt_join_room"
-},
-{
-  "caption": "Floobits::Send Message",
-  "command": "floobits_prompt_msg"
-},
-{
-  "caption": "Floobits::Disconnect",
-  "command": "floobits_leave_room"
-}]
+[
+  {
+    "caption": "Floobits::Ping",
+    "command": "floobits_ping"
+  },
+  {
+    "caption": "Floobits::Join room",
+    "command": "floobits_prompt_join_room"
+  },
+  {
+    "caption": "Floobits::Send Message",
+    "command": "floobits_prompt_msg"
+  },
+  {
+    "caption": "Floobits::Disconnect",
+    "command": "floobits_leave_room"
+  },
+  {
+    "caption": "Floobits::Follow changes",
+    "command": "floobits_enable_follow_mode"
+  },
+  {
+    "caption": "Floobits::Don't follow changes",
+    "command": "floobits_disable_follow_mode"
+  }
+]
