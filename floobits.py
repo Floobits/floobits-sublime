@@ -67,10 +67,10 @@ reload_settings()
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
-        return self.is_enabled()
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
 
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
@@ -112,10 +112,9 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
-        def on_connect(agent_connection):
-            G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-
+        def open_room_window(cb):
             def create_chat_view():
+                G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
                 with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
                     msgs_fd.write('')
                 msg.get_or_create_chat(cb)
@@ -127,7 +126,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent.stop()
                 agent = None
             try:
-                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=on_connect)
+                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=None)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
                 agent.connect()
@@ -163,7 +162,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
             G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
             utils.mkdir(G.PROJECT_PATH)
-            run_thread()
+            open_room_window(run_thread)
         else:
             sublime.error_message('Unable to parse your URL!')
 
