@@ -266,6 +266,29 @@ class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
         return 'Add file or directory to currently-joined Floobits room.'
 
 
+class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
+    def run(self):
+        G.FOLLOW_MODE = True
+        # TODO: go to most recent highlight
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return agent and agent.is_ready() and G.FOLLOW_MODE == False
+
+
+class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
+    def run(self):
+        G.FOLLOW_MODE = False
+
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return agent and agent.is_ready() and G.FOLLOW_MODE == True
+
+
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
         pass

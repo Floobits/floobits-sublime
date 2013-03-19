@@ -286,9 +286,6 @@ class AgentConnection(object):
             if buf:
                 self.empty_selects = 0
                 self.protocol(buf)
-            elif self.authed:
-                msg.error('Not connected')
-                return self.reconnect()
             else:
                 self.empty_selects += 1
                 if self.empty_selects > 10:

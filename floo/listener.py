@@ -134,7 +134,7 @@ class Listener(sublime_plugin.EventListener):
 
             reported.add(vb_id)
             patch = FlooPatch(view, buf)
-            # update the current copy of the buffer
+            # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
             if Listener.agent:
@@ -368,19 +368,23 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges, ping=False):
+        if G.FOLLOW_MODE:
+            ping = True
         buf = BUFS[buf_id]
         view = get_view(buf_id)
         if not view:
             if ping:
                 view = create_view(buf)
             return
-        if ping:
-            G.ROOM_WINDOW.focus_view(view)
+            # TODO: scroll to highlight if we just created the view
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
         view.erase_regions(region_key)
         view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
+        if ping:
+            G.ROOM_WINDOW.focus_view(view)
+            view.show_at_center(regions[0])
 
     def id(self, view):
         return view.buffer_id()
