@@ -275,7 +275,7 @@ class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready() and G.FOLLOW_MODE == False
+        return agent and agent.is_ready() and not G.FOLLOW_MODE
 
 
 class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
@@ -286,7 +286,7 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         return self.is_enabled()
 
     def is_enabled(self):
-        return agent and agent.is_ready() and G.FOLLOW_MODE == True
+        return agent and agent.is_ready() and G.FOLLOW_MODE
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
