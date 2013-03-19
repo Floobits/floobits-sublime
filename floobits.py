@@ -272,10 +272,10 @@ class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
         # TODO: go to most recent highlight
 
     def is_visible(self):
-        return self.is_enabled()
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return agent and agent.is_ready() and not G.FOLLOW_MODE
+        return bool(agent and agent.is_ready() and not G.FOLLOW_MODE)
 
 
 class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
@@ -283,10 +283,10 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         G.FOLLOW_MODE = False
 
     def is_visible(self):
-        return self.is_enabled()
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return agent and agent.is_ready() and G.FOLLOW_MODE
+        return bool(agent and agent.is_ready() and G.FOLLOW_MODE)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
