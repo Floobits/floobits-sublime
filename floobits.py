@@ -113,16 +113,19 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
         def open_room_window(cb):
-            def create_chat_view():
-                G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
-                    msgs_fd.write('')
-                msg.get_or_create_chat(cb)
-            utils.set_room_window(create_chat_view)
+            G.ROOM_WINDOW = utils.get_room_window()
+            if not G.ROOM_WINDOW:
+                G.ROOM_WINDOW = sublime.active_window()
+            msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
+            G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
+            with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+                msgs_fd.write('')
+            msg.get_or_create_chat(cb)
 
         def run_agent(owner, room, host, port, secure):
             global agent
             if agent:
+                msg.debug('Stopping agent.')
                 agent.stop()
                 agent = None
             try:
@@ -138,6 +141,11 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 joined_room = {'url': room_url}
                 update_recent_rooms(joined_room)
 
+        global agent
+        if agent:
+            msg.debug('Stopping agent.')
+            agent.stop()
+            agent = None
         reload_settings()
         secure = G.SECURE
         parsed_url = urlparse(room_url)
