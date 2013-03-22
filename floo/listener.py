@@ -361,9 +361,9 @@ class Listener(sublime_plugin.EventListener):
         for sel in selections:
             view.sel().add(sel)
         if 'patch' in G.PERMS:
-            view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             view.set_read_only(False)
         else:
+            view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             view.set_read_only(True)
 
     @staticmethod
