@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import socket
 import Queue
@@ -129,6 +130,8 @@ class AgentConnection(object):
             'secret': self.secret,
             'room': self.room,
             'room_owner': self.owner,
+            'client': 'SublimeText-2',
+            'platform': sys.platform(),
             'version': G.__VERSION__
         }))
 
