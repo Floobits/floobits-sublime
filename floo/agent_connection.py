@@ -131,7 +131,7 @@ class AgentConnection(object):
             'room': self.room,
             'room_owner': self.owner,
             'client': 'SublimeText-2',
-            'platform': sys.platform(),
+            'platform': sys.platform,
             'version': G.__VERSION__
         }))
 
