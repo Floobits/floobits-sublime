@@ -42,8 +42,34 @@ def update_recent_rooms(room):
     utils.update_persistent_data(DATA)
 
 
+def load_floorc():
+    """try to read settings out of the .floorc file"""
+    s = {}
+    try:
+        fd = open(os.path.expanduser('~/.floorc'), 'rb')
+    except IOError as e:
+        if e.errno == 2:
+            return s
+        raise
+
+    default_settings = fd.read().split('\n')
+    fd.close()
+
+    for setting in default_settings:
+        sep = setting.find('=')
+        if sep <= 0:
+            continue
+        name = setting[:sep]
+        value = setting[sep + 1:]
+        s[name] = value
+    return s
+
+
 def reload_settings():
     print('Reloading settings...')
+    default_settings = load_floorc()
+    for name, val in default_settings.items():
+        setattr(G, name, val)
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
