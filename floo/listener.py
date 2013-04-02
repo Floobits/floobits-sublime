@@ -398,6 +398,11 @@ class Listener(sublime_plugin.EventListener):
     def on_clone(self, view):
         msg.debug('clone', self.name(view))
 
+    def on_close(self, view):
+        msg.debug('close', self.name(view))
+        if view.file_name() == G.CHAT_VIEW.file_name():
+            G.CHAT_VIEW = None
+
     def on_load(self, view):
         msg.debug('load', self.name(view))
 
