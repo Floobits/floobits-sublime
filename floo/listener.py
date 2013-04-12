@@ -400,7 +400,7 @@ class Listener(sublime_plugin.EventListener):
 
     def on_close(self, view):
         msg.debug('close', self.name(view))
-        if view.file_name() == G.CHAT_VIEW.file_name():
+        if G.CHAT_VIEW and view.file_name() == G.CHAT_VIEW.file_name():
             G.CHAT_VIEW = None
 
     def on_load(self, view):
