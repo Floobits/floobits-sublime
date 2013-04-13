@@ -262,9 +262,12 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
     def run(self, *args):
-        if not agent:
-            return
-        msg.get_or_create_chat()
+        def print_msg(chat_view):
+            msg.log('Opened message view')
+            if not agent:
+                msg.log('Not joined to a room.')
+
+        msg.get_or_create_chat(print_msg)
 
     def description(self):
         return 'Open the floobits messages view.'
