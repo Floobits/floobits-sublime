@@ -30,7 +30,6 @@ def update_recent_rooms(room):
     recent_rooms = recent_rooms[:25]
     seen = set()
     new = []
-    print(room)
     for r in recent_rooms:
         stringified = json.dumps(r)
         if stringified not in seen:
@@ -55,23 +54,20 @@ def load_floorc():
     fd.close()
 
     for setting in default_settings:
-        sep = setting.find(' ')
-        if sep <= 0:
+        # TODO: this is horrible
+        if len(setting) == 0 or setting[0] == '#':
             continue
-        name = setting[:sep]
-        value = setting[sep + 1:]
-        s[name] = value
+        try:
+            name, value = setting.split(' ', 1)
+        except IndexError:
+            continue
+        s[name.upper()] = value
     return s
 
 
 def reload_settings():
     global settings
     print('Reloading settings...')
-    default_settings = load_floorc()
-    for name, val in default_settings.items():
-        setattr(G, name, val)
-
-    settings = sublime.load_settings('Floobits.sublime-settings')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
@@ -85,6 +81,10 @@ def reload_settings():
         G.SECURE = True
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
+    floorc_settings = load_floorc()
+    for name, val in floorc_settings.items():
+        setattr(G, name, val)
+    settings = sublime.load_settings('Floobits.sublime-settings')
     if agent and agent.is_ready():
         msg.log('Reconnecting due to settings change')
         agent.reconnect()
