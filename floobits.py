@@ -71,6 +71,7 @@ def reload_settings():
     default_settings = load_floorc()
     for name, val in default_settings.items():
         setattr(G, name, val)
+    settings = sublime.load_settings('Floobits.sublime-settings')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
