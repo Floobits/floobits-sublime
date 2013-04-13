@@ -365,7 +365,9 @@ class Listener(sublime_plugin.EventListener):
     def highlight(buf_id, region_key, username, ranges, ping=False):
         if G.FOLLOW_MODE:
             ping = True
-        buf = BUFS[buf_id]
+        buf = BUFS.get(buf_id)
+        if not buf:
+            return
         view = get_view(buf_id)
         if not view:
             if ping:
