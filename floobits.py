@@ -69,6 +69,7 @@ def load_floorc():
 def reload_settings():
     global settings
     print('Reloading settings...')
+    settings = sublime.load_settings('Floobits.sublime-settings')
     G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
     G.DEBUG = settings.get('debug', False)
     G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
@@ -83,7 +84,6 @@ def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
-    settings = sublime.load_settings('Floobits.sublime-settings')
     if agent and agent.is_ready():
         msg.log('Reconnecting due to settings change')
         agent.reconnect()
