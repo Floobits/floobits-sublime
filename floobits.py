@@ -56,7 +56,7 @@ def load_floorc():
     fd.close()
 
     for setting in default_settings:
-        sep = setting.find('=')
+        sep = setting.find(' ')
         if sep <= 0:
             continue
         name = setting[:sep]
@@ -66,6 +66,7 @@ def load_floorc():
 
 
 def reload_settings():
+    global settings
     print('Reloading settings...')
     default_settings = load_floorc()
     for name, val in default_settings.items():
