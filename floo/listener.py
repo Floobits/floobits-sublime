@@ -18,8 +18,6 @@ MODIFIED_EVENTS = queue.Queue()
 SELECTED_EVENTS = queue.Queue()
 BUFS = {}
 
-settings = sublime.load_settings('Floobits.sublime-settings')
-
 
 def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
@@ -342,7 +340,6 @@ class Listener(sublime_plugin.EventListener):
         view = view or get_view(buf['id'])
         visible_region = view.visible_region()
         viewport_position = view.viewport_position()
-        region = sublime.Region(0, view.size())
         # deep copy
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
