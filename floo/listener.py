@@ -1,6 +1,5 @@
 import os
 import Queue
-import json
 import hashlib
 from datetime import datetime
 
@@ -92,14 +91,14 @@ class FlooPatch(object):
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
-        return json.dumps({
+        return {
             'id': self.buf['id'],
             'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
             'name': 'patch'
-        })
+        }
 
 
 class Listener(sublime_plugin.EventListener):
@@ -153,12 +152,12 @@ class Listener(sublime_plugin.EventListener):
 
             reported.add(vb_id)
             sel = view.sel()
-            highlight_json = json.dumps({
+            highlight_json = {
                 'id': buf['id'],
                 'name': 'highlight',
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
-            })
+            }
             if Listener.agent:
                 Listener.agent.put(highlight_json)
             else:
@@ -268,7 +267,7 @@ class Listener(sublime_plugin.EventListener):
             'name': 'get_buf',
             'id': buf_id
         }
-        Listener.agent.put(json.dumps(req))
+        Listener.agent.put(req)
 
     @staticmethod
     def create_buf(path):
@@ -301,7 +300,7 @@ class Listener(sublime_plugin.EventListener):
                 'buf': buf,
                 'path': rel_path,
             }
-            Listener.agent.put(json.dumps(event))
+            Listener.agent.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
@@ -337,7 +336,7 @@ class Listener(sublime_plugin.EventListener):
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
         }
-        Listener.agent.put(json.dumps(event))
+        Listener.agent.put(event)
 
     @staticmethod
     def update_view(buf, view=None):
@@ -450,7 +449,7 @@ class Listener(sublime_plugin.EventListener):
                 }
 
         if event and Listener.agent:
-            Listener.agent.put(json.dumps(event))
+            Listener.agent.put(event)
 
         cleanup()
 

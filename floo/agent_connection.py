@@ -60,7 +60,7 @@ class AgentConnection(object):
         msg.log('Disconnected.')
 
     def send_msg(self, msg):
-        self.put(json.dumps({'name': 'msg', 'data': msg}))
+        self.put({'name': 'msg', 'data': msg})
         self.chat(self.username, time.time(), msg, True)
 
     def is_ready(self):
@@ -68,10 +68,9 @@ class AgentConnection(object):
 
     @staticmethod
     def put(item):
-        #TODO: move json_dumps here
         if not item:
             return
-        SOCKET_Q.put(item + '\n')
+        SOCKET_Q.put(json.dumps(item) + '\n')
         qsize = SOCKET_Q.qsize()
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
@@ -125,7 +124,7 @@ class AgentConnection(object):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
         SOCKET_Q = Queue.Queue()
-        self.put(json.dumps({
+        self.put({
             'username': self.username,
             'secret': self.secret,
             'room': self.room,
@@ -133,7 +132,7 @@ class AgentConnection(object):
             'client': 'SublimeText-2',
             'platform': sys.platform,
             'version': G.__VERSION__
-        }))
+        })
 
     def get_patches(self):
         while True:
