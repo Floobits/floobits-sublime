@@ -8,6 +8,7 @@ import select
 import collections
 try:
     import ssl
+    assert ssl
 except ImportError:
     ssl = False
 
