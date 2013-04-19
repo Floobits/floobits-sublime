@@ -260,6 +260,12 @@ class AgentConnection(object):
                 msg.error('unknown name!', name, 'data:', data)
             self.buf = after
 
+    def record(event):
+        if G.record:
+            fd = os.open(G.RECORD_PATH + '.floobits-record', 'a')
+            fd.write(event + '\n')
+            fd.close()
+
     def select(self):
         if not self.sock:
             msg.error('select(): No socket.')
@@ -296,10 +302,13 @@ class AgentConnection(object):
                     return self.reconnect()
 
         if _out:
+
             for p in self.get_patches():
                 if p is None:
                     SOCKET_Q.task_done()
                     continue
+                self.record(p)
+
                 try:
                     msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p)

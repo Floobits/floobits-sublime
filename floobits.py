@@ -7,6 +7,7 @@ import threading
 import traceback
 import subprocess
 import urllib2
+import shutil
 from urlparse import urlparse
 
 import sublime_plugin
@@ -333,5 +334,71 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
     def description(self):
         return
+
+
+class FloobitsRecord(sublime_plugin.WindowCommand):
+    def on_input(self, name):
+        G.RECORD = True
+        G.RECORD_PATH = '~/.floobits/recordings/' + name
+        utils.mkdir('~/.floobits/recordings/')
+        shutil.copytree(G.PROJECT_PATH, G.RECORD_PATH)
+
+    def run(self, name):
+        self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
+
+    def is_visible(self):
+        return bool(self.is_enabled())
+
+    def is_enabled(self):
+        return not G.RECORD and bool(G.PROJECT_PATH)
+
+
+class FloobitsStopRecording(sublime_plugin.WindowCommand):
+    def run(self, name):
+        G.RECORD = False
+
+    def is_visible(self):
+        return bool(self.is_enabled())
+
+    def is_enabled(self):
+        return not G.RECORD
+
+
+class FloobitsOpenRecording(sublime_plugin.WindowCommand):
+    def run(self, name):
+        G.RECORD = True
+        G.RECORD_PATH = '~/.floobits/recordings/' + name
+
+        if sublime.platform() == 'linux':
+            subl = open('/proc/self/cmdline').read().split(chr(0))[0]
+        elif sublime.platform() == 'osx':
+            # TODO: totally explodes if you install ST2 somewhere else
+            subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
+        elif sublime.platform() == 'windows':
+            subl = sys.executable
+        else:
+            raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
+
+        command = [subl]
+        command.append('--new-window')
+        command.append('--add')
+        command.append(G.RECORD_PATH)
+        print('command:', command)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        poll_result = p.poll()
+        print('poll:', poll_result)
+
+
+class FloobitsPlayRecording(sublime_plugin.WindowCommand):
+    def run(self, name):
+
+        fd = open('~/.floobits/recordings/' + name + '.floobits-record', 'r')
+
+        def playback():
+            line = fd.readline()
+            if not line:
+                return
+            agent.protocol(line)
+            sublime.setTimeout(playback, 1000)
 
 Listener.push()

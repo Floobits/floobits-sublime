@@ -33,6 +33,23 @@
     { "command": "floobits_open_message_view",
       "caption": "Open Messages View",
       "id": "floobits_open_message_view"
+    },
+
+    { "command": "floobits_record",
+      "caption": "Record Playback",
+      "id": "floobits_record"
+    },
+    { "command": "floobits_stop_recording",
+      "caption": "Stop Recording",
+      "id": "floobits_stop_recording"
+    },
+    { "command": "floobits_open_recording",
+      "caption": "Open a floobits recording",
+      "id": "floobits_open_recording"
+    },
+    { "command": "floobits_play_recording",
+      "caption": "Play the record",
+      "id": "floobits_play_recording"
     }
   ]
   }]

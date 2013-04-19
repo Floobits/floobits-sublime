@@ -12,7 +12,7 @@ PROJECT_PATH = ''
 DEFAULT_HOST = ''
 DEFAULT_PORT = ''
 SECURE = True
-
+RECORD = False
 USERNAME = ''
 SECRET = ''
 
