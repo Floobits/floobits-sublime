@@ -1,4 +1,4 @@
-# Floobits plugin for Sublime Text 3
+# [Floobits](https://floobits.com/) plugin for Sublime Text 3
 
 Real-time collaborative editing. Think Etherpad, but with Sublime Text 3.
 
