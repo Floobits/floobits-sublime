@@ -36,5 +36,9 @@
   {
     "command": "floobits_disable_follow_mode",
     "caption": "Don't Follow Changes"
+  },
+  {
+    "command": "floobits_share_dir",
+    "caption": "Share a directory"
   }
 ]
