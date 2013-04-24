@@ -34,7 +34,7 @@ def unfuck_path(p):
 
 
 def to_rel_path(p):
-    return os.path.relpath(p, G.PROJECT_PATH)
+    return os.path.relpath(p, G.PROJECT_PATH).replace(os.sep, '/')
 
 
 def to_scheme(secure):
