@@ -1,0 +1,15 @@
+[
+	{
+		"keys": ["shift+ctrl+j"],
+		"command": "floobits_prompt_join_room",
+		"args": {"room": "https://floobits.com/r/"}
+	},
+	{
+		"keys": ["ctrl+alt+m"],
+		"command": "floobits_prompt_msg"
+	},
+	{
+		"keys": ["shift+ctrl+alt+j"],
+		"command": "floobits_join_recent_room"
+	}
+]
