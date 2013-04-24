@@ -119,7 +119,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         if not os.path.isdir(path):
             return sublime.error_message('The directory %s doesn\'t appear to exist' % path)
 
-        floo_file = os.path.join(path, ".floo")
+        floo_file = os.path.join(path, '.floo')
 
         info = {}
         try:
@@ -203,7 +203,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
-        webbrowser.open(room_url + "/settings", new=2, autoraise=True)
+        webbrowser.open(room_url + '/settings', new=2, autoraise=True)
 
         self.window.run_command('floobits_join_room', {
             'room_url': room_url,

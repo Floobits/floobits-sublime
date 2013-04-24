@@ -222,7 +222,18 @@ class AgentConnection(object):
                 with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
-                # TODO: write out .floo file
+                floo_json = {
+                    'url': utils.to_room_url({
+                        'host': self.host,
+                        'owner': self.owner,
+                        'port': self.port,
+                        'room': self.room,
+                        'secure': self.secure,
+                    })
+                }
+                with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
+                    floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+
                 for buf_id, buf in data['bufs'].iteritems():
                     buf_id = int(buf_id)  # json keys must be strings
                     new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
