@@ -145,6 +145,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                     })
         # go make sym link
         try:
+            utils.mkdir(os.path.dirname(maybe_shared_dir))
             os.symlink(path, maybe_shared_dir)
         except OSError as e:
             if e.errno != 17:
