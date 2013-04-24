@@ -33,6 +33,10 @@
     { "command": "floobits_open_message_view",
       "caption": "Open Messages View",
       "id": "floobits_open_message_view"
+    },
+    { "command": "floobits_share_dir",
+      "caption": "Share a directory",
+      "id": "floobits_share_dir"
     }
   ]
   }]

@@ -1,5 +1,7 @@
 import os
 import json
+import re
+from urlparse import urlparse
 
 import sublime
 
@@ -18,6 +20,30 @@ class edit:
 
     def __exit__(self, type, value, traceback):
         self.view.end_edit(self.edit)
+
+
+def parse_url(room_url):
+    secure = G.SECURE
+    owner = None
+    room_name = None
+    parsed_url = urlparse(room_url)
+    port = parsed_url.port
+    if parsed_url.scheme == 'http':
+        if not port:
+            port = 3148
+        secure = False
+    result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
+    if result:
+        (owner, room_name) = result.groups()
+    else:
+        raise ValueError('%s is not a valid Floobits URL' % room_url)
+    return {
+        'owner': owner,
+        'room': room_name,
+        'port': port,
+        'secure': secure,
+        'host': parsed_url.hostname
+    }
 
 
 def get_room_window():

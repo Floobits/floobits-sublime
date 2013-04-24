@@ -1,5 +1,4 @@
 # coding: utf-8
-import re
 import os
 import sys
 import json
@@ -7,7 +6,7 @@ import threading
 import traceback
 import subprocess
 import urllib2
-from urlparse import urlparse
+import webbrowser
 
 import sublime_plugin
 import sublime
@@ -23,6 +22,7 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = utils.get_persistent_data()
 agent = None
+ON_CONNECT = None
 
 
 def update_recent_rooms(room):
@@ -100,19 +100,109 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
         return agent and agent.is_ready()
 
 
+class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
+
+    def run(self, path=''):
+        self.window.show_input_panel('Directory:', path, self.on_input, None, None)
+
+    def on_input(self, path):
+        global ON_CONNECT
+        path = os.path.expanduser(path)
+        path = utils.unfuck_path(path)
+        room_name = os.path.basename(path)
+        maybe_shared_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
+        print(G.COLAB_DIR, G.USERNAME, room_name, maybe_shared_dir)
+
+        if os.path.isfile(path):
+            return sublime.error_message('give me a directory please')
+
+        if not os.path.isdir(path):
+            return sublime.error_message('The directory %s doesn\'t appear to exist' % path)
+
+        floo_file = os.path.join(path, ".floo")
+
+        info = {}
+        try:
+            floo_info = open(floo_file, 'rb').read()
+            info = json.loads(floo_info)
+        except (IOError, OSError):
+            pass
+        except Exception:
+            msg.warn("couldn't read the floo_info file: %s" % floo_file)
+
+        room_url = info.get('url')
+        if room_url:
+            try:
+                result = utils.parse_url(room_url)
+            except Exception as e:
+                sublime.error_message(str(e))
+            else:
+                room_name = result['room']
+                maybe_shared_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
+                if os.path.realpath(maybe_shared_dir) == os.path.realpath(path):
+                    return self.window.run_command('floobits_join_room', {
+                        'room_url': room_url,
+                    })
+        # go make sym link
+        try:
+            os.symlink(path, maybe_shared_dir)
+        except OSError as e:
+            if e.errno != 17:
+                raise
+        except Exception as e:
+            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (path, maybe_shared_dir, str(e)))
+
+        # make & join room
+        ON_CONNECT = lambda x: Listener.create_buf(path)
+        self.window.run_command('floobits_create_room', {
+            'room': room_name,
+            'path': maybe_shared_dir,
+        })
+
+    def is_enabled(self):
+        return not bool(agent and agent.is_ready())
+
+
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, room=''):
-        self.window.show_input_panel('Room name:', room, self.on_input, None, None)
+    def run(self, room='', path=None, prompt='Room name:'):
+        self.path = path
+        self.window.show_input_panel(prompt, room, self.on_input, None, None)
 
     def on_input(self, room):
         try:
             api.create_room(room)
             room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room)
             msg.log('Created room %s' % room_url)
-        except urllib2.URLError as e:
+        except urllib2.HTTPError, e:
+            if e.code != 409:
+                raise
+            args = {
+                'room': room,
+                'prompt': 'Room %s already exists. Choose another name:' % room
+            }
+
+            if self.path:
+                while True:
+                    room = room + '1'
+                    new_path = os.path.join(os.path.dirname(self.path), room)
+                    try:
+                        os.rename(self.path, new_path)
+                    except OSError:
+                        continue
+                    args = {
+                        'path': new_path,
+                        'room': room,
+                        'prompt': 'Room %s already exists. Choose another name:' % room
+                    }
+                    break
+
+            return self.window.run_command('floobits_create_room', args)
+        except urllib2.URLError, e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
+
+        webbrowser.open(room_url + "/settings", new=2, autoraise=True)
 
         self.window.run_command('floobits_join_room', {
             'room_url': room_url,
@@ -172,7 +262,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 agent.stop()
                 agent = None
             try:
-                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=None)
+                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
                 # owner and room name are slugfields so this should be safe
                 Listener.set_agent(agent)
                 agent.connect()
@@ -184,32 +274,18 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 joined_room = {'url': room_url}
                 update_recent_rooms(joined_room)
 
-        secure = G.SECURE
-        parsed_url = urlparse(room_url)
-        port = parsed_url.port
-        if parsed_url.scheme == 'http':
-            if not port:
-                port = 3148
-            secure = False
-        result = re.match('^/r/([-\w]+)/([-\w]+)/?$', parsed_url.path)
-        if result:
-            (owner, room) = result.groups()
+        try:
+            result = utils.parse_url(room_url)
+        except Exception as e:
+            return sublime.error_message(str(e))
 
-            def run_thread(*args):
-                thread = threading.Thread(target=run_agent, kwargs={
-                    'owner': owner,
-                    'room': room,
-                    'host': parsed_url.hostname,
-                    'port': port,
-                    'secure': secure,
-                })
-                thread.start()
+        def run_thread(*args):
+            thread = threading.Thread(target=run_agent, kwargs=result)
+            thread.start()
 
-            G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, owner, room))
-            utils.mkdir(G.PROJECT_PATH)
-            open_room_window(run_thread)
-        else:
-            sublime.error_message('Unable to parse your URL!')
+        G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+        utils.mkdir(G.PROJECT_PATH)
+        open_room_window(run_thread)
 
 
 class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
