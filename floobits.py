@@ -200,7 +200,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
                     break
 
             return self.window.run_command('floobits_create_room', args)
-        except urllib.error.URLError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
