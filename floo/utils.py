@@ -24,12 +24,28 @@ def parse_url(room_url):
     else:
         raise ValueError('%s is not a valid Floobits URL' % room_url)
     return {
+        'host': parsed_url.hostname,
         'owner': owner,
-        'room': room_name,
         'port': port,
+        'room': room_name,
         'secure': secure,
-        'host': parsed_url.hostname
     }
+
+
+def to_room_url(r):
+    port = int(r['port'])
+    if r['secure']:
+        proto = 'https'
+        if port == 3448:
+            port = ''
+    else:
+        proto = 'http'
+        if port == 3148:
+            port = ''
+    if port != '':
+        port = ':%s' % port
+    room_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['room'])
+    return room_url
 
 
 def get_room_window():
