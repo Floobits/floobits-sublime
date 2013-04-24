@@ -1,4 +1,4 @@
-# Floobits plugin for Sublime Text 2
+# [Floobits](https://floobits.com/) plugin for Sublime Text 2
 
 Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 
