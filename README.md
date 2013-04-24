@@ -2,7 +2,7 @@
 
 Real-time collaborative editing. Think Etherpad, but with Sublime Text 2.
 
-**Sublime Text 3 Beta users:** You want the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-3-plugin/).
+**Sublime Text 3 Beta users:** You want the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-2-plugin/tree/st3).
 
 ### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
@@ -27,8 +27,7 @@ Edit your Floobits.sublime-settings file (in `Package Settings -> Floobits -> Se
 
     {
       "username": "user",
-      "secret": "THIS-IS-YOUR-API-KEY;DO-NOT-USE-YOUR-PASSWORD",
-      "share_dir": "~/.floobits/share/"
+      "secret": "THIS-IS-YOUR-API-KEY DO-NOT-USE-YOUR-PASSWORD",
     }
 
-Replace username with your Floobits username. The secret is your API secret, which you can see at https://floobits.com/dash/settings/
+Replace user with your Floobits username. The secret is your API secret, which you can see in [your settings](https://floobits.com/dash/settings/).
