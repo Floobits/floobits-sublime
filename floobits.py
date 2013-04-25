@@ -284,8 +284,25 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             thread = threading.Thread(target=run_agent, kwargs=result)
             thread.start()
 
+        def link_dir(d):
+            if d == '':
+                utils.mkdir(G.PROJECT_PATH)
+            else:
+                try:
+                    d = os.path.realpath(os.path.expanduser(d))
+                    if not os.path.isdir(d):
+                        return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, link_dir, None, None)
+                    os.symlink(d, G.PROJECT_PATH)
+                except Exception as e:
+                    return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
+
+            open_room_window(run_thread)
+
         G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
-        utils.mkdir(G.PROJECT_PATH)
+        if not os.path.isdir(G.PROJECT_PATH):
+            # TODO: really bad prompt here
+            return self.window.show_input_panel('Give me a directory to destructively dump data into (or just press enter):', '', link_dir, None, None)
+
         open_room_window(run_thread)
 
 
