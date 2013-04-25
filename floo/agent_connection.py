@@ -1,5 +1,6 @@
 import os
 import sys
+import hashlib
 import json
 import socket
 import queue
@@ -236,10 +237,21 @@ class AgentConnection(object):
 
                 for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
-                    new_dir = os.path.split(utils.get_full_path(buf['path']))[0]
+                    buf_path = utils.get_full_path(buf['path'])
+                    new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
-                    Listener.get_buf(buf_id)
+                    try:
+                        buf_fd = open(buf_path, 'r')
+                        buf_buf = buf_fd.read().decode('utf-8')
+                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                        if md5 == buf['md5']:
+                            msg.debug('md5 sums match. not getting buffer')
+                            buf['buf'] = buf_buf
+                        else:
+                            raise Exception('different md5')
+                    except Exception:
+                        Listener.get_buf(buf_id)
 
                 self.authed = True
                 G.CONNECTED = True
