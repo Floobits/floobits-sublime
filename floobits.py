@@ -124,7 +124,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
         info = {}
         try:
-            floo_info = open(floo_file, 'rb').read()
+            floo_info = open(floo_file, 'rb').read().decode('utf-8')
             info = json.loads(floo_info)
         except (IOError, OSError):
             pass
