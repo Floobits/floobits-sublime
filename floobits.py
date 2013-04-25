@@ -289,6 +289,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 utils.mkdir(G.PROJECT_PATH)
             else:
                 try:
+                    utils.mkdir(os.path.dirname(G.PROJECT_PATH))
                     d = os.path.realpath(os.path.expanduser(d))
                     if not os.path.isdir(d):
                         return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, link_dir, None, None)
