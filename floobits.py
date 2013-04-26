@@ -103,24 +103,24 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
-    def run(self, path=''):
-        self.window.show_input_panel('Directory:', path, self.on_input, None, None)
+    def run(self, dir_to_share=''):
+        self.window.show_input_panel('Directory:', dir_to_share, self.on_input, None, None)
 
-    def on_input(self, path):
+    def on_input(self, dir_to_share):
         global ON_CONNECT
-        path = os.path.expanduser(path)
-        path = utils.unfuck_path(path)
-        room_name = os.path.basename(path)
-        maybe_shared_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
-        print(G.COLAB_DIR, G.USERNAME, room_name, maybe_shared_dir)
+        dir_to_share = os.path.expanduser(dir_to_share)
+        dir_to_share = utils.unfuck_path(dir_to_share)
+        room_name = os.path.basename(dir_to_share)
+        floo_room_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
+        print(G.COLAB_DIR, G.USERNAME, room_name, floo_room_dir)
 
-        if os.path.isfile(path):
+        if os.path.isfile(dir_to_share):
             return sublime.error_message('give me a directory please')
 
-        if not os.path.isdir(path):
-            return sublime.error_message('The directory %s doesn\'t appear to exist' % path)
+        if not os.path.isdir(dir_to_share):
+            return sublime.error_message('The directory %s doesn\'t appear to exist' % dir_to_share)
 
-        floo_file = os.path.join(path, '.floo')
+        floo_file = os.path.join(dir_to_share, '.floo')
 
         info = {}
         try:
@@ -129,7 +129,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         except (IOError, OSError):
             pass
         except Exception:
-            msg.warn("couldn't read the floo_info file: %s" % floo_file)
+            print("couldn't read the floo_info file: %s" % floo_file)
 
         room_url = info.get('url')
         if room_url:
@@ -139,26 +139,31 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                 sublime.error_message(str(e))
             else:
                 room_name = result['room']
-                maybe_shared_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
-                if os.path.realpath(maybe_shared_dir) == os.path.realpath(path):
-                    return self.window.run_command('floobits_join_room', {
-                        'room_url': room_url,
-                    })
+                floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
+                if os.path.realpath(floo_room_dir) == os.path.realpath(dir_to_share):
+                    if result['owner'] == G.USERNAME:
+                        try:
+                            api.create_room(room_name)
+                            print('Created room %s' % room_url)
+                        except Exception as e:
+                            print('Tried to create room' + str(e))
+                    # they wanted to share teh dir, so always share it
+                    return self.window.run_command('floobits_join_room', {'room_url': room_url})
         # go make sym link
         try:
-            utils.mkdir(os.path.dirname(maybe_shared_dir))
-            os.symlink(path, maybe_shared_dir)
+            utils.mkdir(os.path.dirname(floo_room_dir))
+            os.symlink(dir_to_share, floo_room_dir)
         except OSError as e:
             if e.errno != 17:
                 raise
         except Exception as e:
-            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (path, maybe_shared_dir, str(e)))
+            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
 
         # make & join room
-        ON_CONNECT = lambda x: Listener.create_buf(path)
+        ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
         self.window.run_command('floobits_create_room', {
-            'room': room_name,
-            'path': maybe_shared_dir,
+            'room_name': room_name,
+            'ln_path': floo_room_dir,
         })
 
     def is_enabled(self):
@@ -167,35 +172,35 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
 
-    def run(self, room='', path=None, prompt='Room name:'):
-        self.path = path
-        self.window.show_input_panel(prompt, room, self.on_input, None, None)
+    def run(self, room_name='', ln_path=None, prompt='Room name:'):
+        self.ln_path = ln_path
+        self.window.show_input_panel(prompt, room_name, self.on_input, None, None)
 
-    def on_input(self, room):
+    def on_input(self, room_name):
         try:
-            api.create_room(room)
-            room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room)
-            msg.log('Created room %s' % room_url)
+            api.create_room(room_name)
+            room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
+            print('Created room %s' % room_url)
         except urllib.error.HTTPError as e:
             if e.code != 409:
                 raise
             args = {
-                'room': room,
-                'prompt': 'Room %s already exists. Choose another name:' % room
+                'room_name': room_name,
+                'prompt': 'Room %s already exists. Choose another name:' % room_name
             }
 
-            if self.path:
+            if self.ln_path:
                 while True:
-                    room = room + '1'
-                    new_path = os.path.join(os.path.dirname(self.path), room)
+                    room_name = room_name + '1'
+                    new_path = os.path.join(os.path.dirname(self.ln_path), room_name)
                     try:
-                        os.rename(self.path, new_path)
+                        os.rename(self.ln_path, new_path)
                     except OSError:
                         continue
                     args = {
-                        'path': new_path,
-                        'room': room,
-                        'prompt': 'Room %s already exists. Choose another name:' % room
+                        'ln_path': new_path,
+                        'room_name': room_name,
+                        'prompt': 'Room %s already exists. Choose another name:' % room_name
                     }
                     break
 
