@@ -472,7 +472,7 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in Listener.agent.room_info['users'].iteritems():
+        for user_id, username in Listener.agent.room_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     @staticmethod
