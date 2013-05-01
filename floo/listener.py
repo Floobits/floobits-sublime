@@ -465,6 +465,17 @@ class Listener(sublime_plugin.EventListener):
             SELECTED_EVENTS.task_done()
 
     @staticmethod
+    def clear_highlights(view):
+        if not Listener.agent:
+            return
+        buf = get_buf(view)
+        if not buf:
+            return
+        msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
+        for user_id, username in Listener.agent.room_info['users'].iteritems():
+            view.erase_regions('floobits-highlight-%s' % user_id)
+
+    @staticmethod
     def ping(view):
         buf = get_buf(view)
         if buf:

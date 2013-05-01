@@ -261,8 +261,10 @@ class AgentConnection(object):
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the room' % data['username'])
+                self.room_info['users'][data['user_id']] = data['username']
             elif name == 'part':
                 msg.log('%s left the room' % data['username'])
+                del self.room_info['users'][data['user_id']]
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 for window in sublime.windows():
                     for view in window.views():
