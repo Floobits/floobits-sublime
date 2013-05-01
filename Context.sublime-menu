@@ -4,6 +4,10 @@
     "command": "floobits_ping"
   },
   {
+    "caption": "Floobits::Clear highlights",
+    "command": "floobits_clear_highlights"
+  },
+  {
     "caption": "Floobits::Join room",
     "command": "floobits_prompt_join_room"
   },

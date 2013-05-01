@@ -345,6 +345,11 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
         return 'Send a message to the floobits room you are in (join a room first)'
 
 
+class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
+    def run(self):
+        Listener.clear_highlights(self.window.active_view())
+
+
 class FloobitsPingCommand(FloobitsBaseCommand):
     # TODO: ghost this option if user doesn't have permissions
     def run(self):
