@@ -131,7 +131,7 @@ class AgentConnection(object):
             'secret': self.secret,
             'room': self.room,
             'room_owner': self.owner,
-            'client': 'SublimeText-2',
+            'client': 'SublimeText-3',
             'platform': sys.platform,
             'version': G.__VERSION__
         })
@@ -264,7 +264,10 @@ class AgentConnection(object):
                 self.room_info['users'][data['user_id']] = data['username']
             elif name == 'part':
                 msg.log('%s left the room' % data['username'])
-                del self.room_info['users'][data['user_id']]
+                try:
+                    del self.room_info['users'][data['user_id']]
+                except Exception as e:
+                    print('Unable to delete user %s from user list' % (data))
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
                 for window in sublime.windows():
                     for view in window.views():
