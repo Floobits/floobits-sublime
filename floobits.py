@@ -309,6 +309,37 @@ class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
             sublime.error_message('You are not joined to any room.')
 
 
+class FloobitsRejoinRoomCommand(FloobitsBaseCommand):
+
+    def run(self):
+        global agent
+        if agent:
+            room_url = utils.to_room_url({
+                'host': agent.host,
+                'owner': agent.owner,
+                'port': agent.port,
+                'room': agent.room,
+                'secure': agent.secure,
+            })
+            agent.stop()
+            agent = None
+        else:
+            try:
+                room_url = DATA['recent_rooms'][0]['url']
+            except Exception:
+                sublime.error_message('No recent room to rejoin.')
+                return
+        self.window.run_command('floobits_join_room', {
+            'room_url': room_url,
+        })
+
+    def is_visible(self):
+        return bool(self.is_enabled())
+
+    def is_enabled(self):
+        return True
+
+
 class FloobitsPromptMsgCommand(FloobitsBaseCommand):
 
     def run(self, msg=''):

@@ -8,16 +8,20 @@
     "command": "floobits_clear_highlights"
   },
   {
-    "caption": "Floobits::Join room",
-    "command": "floobits_prompt_join_room"
-  },
-  {
     "caption": "Floobits::Send Message",
     "command": "floobits_prompt_msg"
   },
   {
+    "caption": "Floobits::Join room",
+    "command": "floobits_prompt_join_room"
+  },
+  {
     "caption": "Floobits::Disconnect",
     "command": "floobits_leave_room"
+  },
+  {
+    "caption": "Floobits::Reconnect",
+    "command": "floobits_rejoin_room"
   },
   {
     "caption": "Floobits::Follow changes",
