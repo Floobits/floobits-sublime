@@ -223,7 +223,7 @@ class AgentConnection(object):
                 }
 
                 utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
+                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w', encoding='utf8') as project_fd:
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
 
                 floo_json = {
@@ -245,8 +245,8 @@ class AgentConnection(object):
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
                     try:
-                        buf_fd = open(buf_path, 'r')
-                        buf_buf = buf_fd.read().decode('utf-8')
+                        buf_fd = open(buf_path, 'r', encoding='utf8')
+                        buf_buf = buf_fd.read()
                         md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
                         if md5 == buf['md5']:
                             msg.debug('md5 sums match. not getting buffer')
