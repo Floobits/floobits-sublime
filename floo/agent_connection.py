@@ -251,7 +251,8 @@ class AgentConnection(object):
                         else:
                             msg.debug('md5 for %s should be %s but is %s. getting buffer' % (buf['path'], buf['md5'], md5))
                             raise Exception('different md5')
-                    except Exception:
+                    except Exception as e:
+                        msg.debug('Error calculating md5:', e)
                         Listener.get_buf(buf_id)
 
                 self.authed = True
