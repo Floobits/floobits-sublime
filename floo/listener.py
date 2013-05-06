@@ -57,8 +57,8 @@ def get_buf(view):
 def save_buf(buf):
     path = utils.get_full_path(buf['path'])
     utils.mkdir(os.path.split(path)[0])
-    with open(path, 'wb') as fd:
-        fd.write(buf['buf'].encode('utf-8'))
+    with open(path, 'w', encoding='utf-8') as fd:
+        fd.write(buf['buf'])
 
 
 def delete_buf(buf_id):
@@ -287,8 +287,8 @@ class Listener(sublime_plugin.EventListener):
                         sublime.set_timeout(really_create_buf(f_path), 0)
             return
         try:
-            buf_fd = open(path, 'rb')
-            buf = buf_fd.read().decode('utf-8')
+            buf_fd = open(path, 'r', encoding='utf-8')
+            buf = buf_fd.read()
             rel_path = utils.to_rel_path(path)
             msg.log('creating buffer ', rel_path)
             event = {

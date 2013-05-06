@@ -44,13 +44,13 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(os.path.expanduser('~/.floorc'), 'rb')
+        fd = open(os.path.expanduser('~/.floorc'), 'r', encoding='utf-8')
     except IOError as e:
         if e.errno == 2:
             return s
         raise
 
-    default_settings = fd.read().decode('utf-8').split('\n')
+    default_settings = fd.read().split('\n')
     fd.close()
 
     for setting in default_settings:
@@ -68,9 +68,15 @@ def load_floorc():
 def reload_settings():
     global settings
     print('Reloading settings...')
+    # TODO: settings doesn't seem to load most settings.
+    # Also, settings.get('key', 'default_value') returns None
     settings = sublime.load_settings('Floobits.sublime-settings')
-    G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
-    G.DEBUG = settings.get('debug', False)
+    G.ALERT_ON_MSG = settings.get('alert_on_msg')
+    if G.ALERT_ON_MSG is None:
+        G.ALERT_ON_MSG = True
+    G.DEBUG = settings.get('debug')
+    if G.DEBUG is None:
+        G.DEBUG = False
     G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
@@ -88,6 +94,7 @@ def reload_settings():
     if agent and agent.is_ready():
         msg.log('Reconnecting due to settings change')
         agent.reconnect()
+    print('Floobits debug is %s' % G.DEBUG)
 
 settings.add_on_change('', reload_settings)
 reload_settings()
@@ -124,7 +131,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
         info = {}
         try:
-            floo_info = open(floo_file, 'rb').read().decode('utf-8')
+            floo_info = open(floo_file, 'r', encoding='utf8').read()
             info = json.loads(floo_info)
         except (IOError, OSError):
             pass

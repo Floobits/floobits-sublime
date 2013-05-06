@@ -97,12 +97,12 @@ def is_shared(p):
 def get_persistent_data():
     per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
     try:
-        per = open(per_path, 'rb')
+        per = open(per_path, 'r', encoding='utf-8')
     except (IOError, OSError):
         print('Failed to open %s. Recent room list will be empty.' % per_path)
         return {}
     try:
-        persistent_data = json.loads(per.read().decode('utf-8'))
+        persistent_data = json.loads(per.read())
     except Exception as e:
         print('Failed to parse %s. Recent room list will be empty.' % per_path)
         print(e)
@@ -112,8 +112,8 @@ def get_persistent_data():
 
 def update_persistent_data(data):
     per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
-    with open(per_path, 'wb') as per:
-        per.write(bytes(json.dumps(data), 'UTF-8'))
+    with open(per_path, 'w', encoding='utf-8') as per:
+        per.write(json.dumps(data))
 
 
 def rm(path):
