@@ -202,7 +202,10 @@ class AgentConnection(object):
                     view.retarget(new)
             elif name == 'delete_buf':
                 path = utils.get_full_path(data['path'])
-                utils.rm(path)
+                try:
+                    utils.rm(path)
+                except Exception:
+                    pass
                 listener.delete_buf(data['id'])
             elif name == 'room_info':
                 # Success! Reset counter
