@@ -249,6 +249,7 @@ class AgentConnection(object):
                             msg.debug('md5 sums match. not getting buffer')
                             buf['buf'] = buf_buf
                         else:
+                            msg.debug('md5 for %s should be %s but is %s. getting buffer' % (buf['path'], buf['md5'], md5))
                             raise Exception('different md5')
                     except Exception:
                         Listener.get_buf(buf_id)
