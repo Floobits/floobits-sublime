@@ -116,8 +116,10 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         if os.path.isfile(dir_to_share):
             return sublime.error_message('give me a directory please')
 
-        if not os.path.isdir(dir_to_share):
-            return sublime.error_message('The directory %s doesn\'t appear to exist' % dir_to_share)
+        try:
+            utils.mkdir(dir_to_share)
+        except Exception:
+            return sublime.error_message("The directory %s doesn't exist and I can't make it." % dir_to_share)
 
         floo_file = os.path.join(dir_to_share, '.floo')
 
