@@ -291,16 +291,30 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
         def link_dir(d):
             if d == '':
-                utils.mkdir(G.PROJECT_PATH)
-            else:
                 try:
-                    utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-                    d = os.path.realpath(os.path.expanduser(d))
-                    if not os.path.isdir(d):
-                        return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, link_dir, None, None)
-                    os.symlink(d, G.PROJECT_PATH)
+                    utils.mkdir(G.PROJECT_PATH)
                 except Exception as e:
-                    return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
+                    return sublime.error_message("Couldn't create directory %s: %s" % (G.PROJECT_PATH, str(e)))
+                return open_room_window(run_thread)
+
+            try:
+                utils.mkdir(os.path.dirname(G.PROJECT_PATH))
+            except Exception as e:
+                return sublime.error_message("Couldn't create directory %s: %s" % (os.path.dirname(G.PROJECT_PATH), str(e)))
+
+            d = os.path.realpath(os.path.expanduser(d))
+            if not os.path.isdir(d):
+                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?')
+                if not make_dir:
+                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, link_dir, None, None)
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    return sublime.error_message("Could not create directory %s: %s" % (d, str(e)))
+            try:
+                os.symlink(d, G.PROJECT_PATH)
+            except Exception as e:
+                return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
 
             open_room_window(run_thread)
 
