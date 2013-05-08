@@ -275,8 +275,8 @@ class AgentConnection(object):
                     for view in window.views():
                         view.erase_regions(region_key)
             elif name == 'highlight':
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
-                Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
+                region_key = 'floobits-highlight-%s' % data['user_id']
+                Listener.highlight(data['id'], data['username'], data['ranges'], data.get('client'), data.get('platform'), region_key, data.get('ping', False))
             elif name == 'error':
                 message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                 msg.error(message)

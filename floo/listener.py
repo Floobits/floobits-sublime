@@ -1,4 +1,5 @@
 import os
+import time
 import Queue
 import hashlib
 from datetime import datetime
@@ -105,6 +106,7 @@ class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
     agent = None
+    highlights = {}
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
@@ -366,7 +368,8 @@ class Listener(sublime_plugin.EventListener):
             view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges, ping=False):
+    def highlight(buf_id, username, ranges, client, platform, region_key, ping=False):
+        Listener.highlights[username] = (buf_id, username, ranges, client, platform, region_key, True)
         if G.FOLLOW_MODE:
             ping = True
         buf = BUFS.get(buf_id)

@@ -37,6 +37,10 @@
     { "command": "floobits_share_dir",
       "caption": "Share a directory",
       "id": "floobits_share_dir"
+    },
+    {"command": "floobits_recent_highlights",
+      "caption": "Jump to Recent Events",
+      "id": "floobits_recent_highlights"
     }
   ]
   }]
