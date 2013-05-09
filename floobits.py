@@ -124,8 +124,10 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         if os.path.isfile(dir_to_share):
             return sublime.error_message('give me a directory please')
 
-        if not os.path.isdir(dir_to_share):
-            return sublime.error_message('The directory %s doesn\'t appear to exist' % dir_to_share)
+        try:
+            utils.mkdir(dir_to_share)
+        except Exception:
+            return sublime.error_message("The directory %s doesn't exist and I can't make it." % dir_to_share)
 
         floo_file = os.path.join(dir_to_share, '.floo')
 
@@ -394,8 +396,11 @@ class FloobitsPingCommand(FloobitsBaseCommand):
 
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
+    def _get_recent_rooms(self):
+        return [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+        rooms = self._get_recent_rooms()
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
@@ -403,6 +408,9 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
             return
         room = DATA['recent_rooms'][item]
         self.window.run_command('floobits_join_room', {'room_url': room['url']})
+
+    def is_enabled(self):
+        return not bool(agent and agent.is_ready() and len(self._get_recent_rooms()) > 0)
 
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):

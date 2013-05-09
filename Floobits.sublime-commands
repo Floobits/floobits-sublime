@@ -1,18 +1,1 @@
-[
-  {
-    "command": "floobits_prompt_join_room",
-    "caption": "Join Room"
-  },
-  { "command": "floobits_prompt_msg",
-    "caption": "Send Message"
-  },
-  { "command": "floobits_join_recent_room",
-    "caption": "Join Recent Room"
-  },
-  { "command": "floobits_open_message_view",
-    "caption": "Open Messages View"
-  },
-  { "command": "floobits_share_dir",
-    "caption": "Share a directory"
-  }
-]
+[]
