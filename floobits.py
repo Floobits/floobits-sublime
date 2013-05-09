@@ -492,4 +492,17 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def description(self):
         return
 
+class FloobitsRecentHighlightsCommand(sublime_plugin.WindowCommand):
+    def run(self, *args):
+        self.mapping = ["%s in %s on %s" % (name, v[3], v[4]) for name, v in Listener.highlights.items()]
+        self.window.show_quick_panel(self.mapping, self.on_done)
+
+    def on_done(self, item):
+        if item == -1:
+            return
+        event = Listener.highlights[self.mapping[item]]
+        Listener.highlight(*event)
+
+        print item
+
 Listener.push()
