@@ -263,7 +263,7 @@ class AgentConnection(object):
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the room' % data['username'])
-                self.room_info['users'][data['user_id']] = data['username']
+                self.room_info['users'][data['user_id']] = data
             elif name == 'part':
                 msg.log('%s left the room' % data['username'])
                 try:
@@ -276,7 +276,10 @@ class AgentConnection(object):
                         view.erase_regions(region_key)
             elif name == 'highlight':
                 region_key = 'floobits-highlight-%s' % data['user_id']
-                Listener.highlight(data['id'], data['username'], data['ranges'], data.get('client'), data.get('platform'), region_key, data.get('ping', False))
+                userinfo = self.room_info['users']
+                client = userinfo.get('client')
+                platform = userinfo.get('platform')
+                Listener.highlight(data['id'], data['username'], data['ranges'], client, platform, region_key, data.get('ping', False))
             elif name == 'error':
                 message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                 msg.error(message)
