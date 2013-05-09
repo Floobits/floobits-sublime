@@ -45,8 +45,24 @@
     "command": "floobits_ping",
     "caption": "Floobits::Ping (aliases Summon)"
   },
-  { 
+  {
     "caption": "Floobits::Leave Room",
     "command": "floobits_leave_room"
+  },
+  {
+    "command": "floobits_add_to_room",
+    "caption": "Floobits::Add To Room",
+    "args": {
+        "paths": null,
+        "current_file": true
+    }
+  },
+  {
+    "command": "floobits_delete_from_room",
+    "caption": "Floobits::Delete From Room",
+    "args": {
+        "paths": null,
+        "current_file": true
+    }
   }
 ]

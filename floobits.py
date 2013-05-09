@@ -214,7 +214,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
                     break
 
             return self.window.run_command('floobits_create_room', args)
-        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        except Exception as e:
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
@@ -427,9 +427,13 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
 
 
 class FloobitsAddToRoomCommand(FloobitsBaseCommand):
-    def run(self, paths):
+    def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
+
+        if paths is None and current_file:
+            paths = [self.window.active_view().file_name()]
+
         for path in paths:
             Listener.create_buf(path)
 
@@ -438,9 +442,13 @@ class FloobitsAddToRoomCommand(FloobitsBaseCommand):
 
 
 class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
-    def run(self, paths):
+    def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
+
+        if paths is None and current_file:
+            paths = [self.window.active_view().file_name()]
+
         for path in paths:
             Listener.delete_buf(path)
 
