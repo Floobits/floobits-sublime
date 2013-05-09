@@ -404,8 +404,11 @@ class FloobitsPingCommand(FloobitsBaseCommand):
 
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
+    def _get_recent_rooms(self):
+        return [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+
     def run(self, *args):
-        rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+        rooms = self._get_recent_rooms()
         self.window.show_quick_panel(rooms, self.on_done)
 
     def on_done(self, item):
@@ -415,7 +418,7 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
         self.window.run_command('floobits_join_room', {'room_url': room['url']})
 
     def is_enabled(self):
-        return not bool(agent and agent.is_ready())
+        return not bool(agent and agent.is_ready() and len(self._get_recent_rooms()) > 0)
 
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
