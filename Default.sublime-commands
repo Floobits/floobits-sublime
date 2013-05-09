@@ -1,0 +1,52 @@
+[
+ {
+    "command": "open_file",
+    "args": {
+      "file": "${packages}/Floobits/Floobits.sublime-settings"
+    },
+    "caption": "Settings – Default"
+  },
+  {
+    "command": "open_file",
+    "args": {
+      "file": "${packages}/User/Floobits.sublime-settings"
+    },
+    "caption": "Settings – User"
+  },
+  { "command": "floobits_join_recent_room",
+    "caption": "Floobits::Join Recent Room"
+  },
+  {
+    "command": "floobits_prompt_join_room",
+    "caption": "Floobits::Join Room"
+  },
+  { "command": "floobits_prompt_msg",
+    "caption": "Floobits::Send Message"
+  },
+  { "command": "floobits_open_message_view",
+    "caption": "Floobits::Open Messages View"
+  },
+  { "command": "floobits_share_dir",
+    "caption": "Floobits::Share Directory"
+  },
+  {
+    "command": "floobits_enable_follow_mode",
+    "caption": "Floobits::Follow Changes"
+  },
+  {
+    "command": "floobits_disable_follow_mode",
+    "caption": "Floobits::Don't Follow Changes"
+  },
+  {
+    "command": "floobits_ping",
+     "caption": "Floobits::Summon Everyone"
+  },
+  {
+    "command": "floobits_ping",
+    "caption": "Floobits::Ping (aliases Summon)"
+  },
+  { 
+    "caption": "Floobits::Leave Room",
+    "command": "floobits_leave_room"
+  }
+]

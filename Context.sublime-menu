@@ -1,6 +1,6 @@
 [
   {
-    "caption": "Floobits::Ping",
+    "caption": "Floobits::Summon",
     "command": "floobits_ping"
   },
   {
@@ -15,8 +15,11 @@
     "caption": "Floobits::Join room",
     "command": "floobits_prompt_join_room"
   },
+  { "command": "floobits_join_recent_room",
+    "caption": "Floobits::Join Recent Room"
+  },
   {
-    "caption": "Floobits::Disconnect",
+    "caption": "Floobits::Leave Room",
     "command": "floobits_leave_room"
   },
   {
