@@ -412,6 +412,9 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
         room = DATA['recent_rooms'][item]
         self.window.run_command('floobits_join_room', {'room_url': room['url']})
 
+    def is_enabled(self):
+        return not bool(agent and agent.is_ready())
+
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
     def run(self, *args):

@@ -1,4 +1,18 @@
 [
+ {
+    "command": "open_file",
+    "args": {
+      "file": "${packages}/Floobits/Floobits.sublime-settings"
+    },
+    "caption": "Settings – Default"
+  },
+  {
+    "command": "open_file",
+    "args": {
+      "file": "${packages}/User/Floobits.sublime-settings"
+    },
+    "caption": "Settings – User"
+  },
   {
     "command": "floobits_prompt_join_room",
     "caption": "Join Room"
@@ -14,5 +28,21 @@
   },
   { "command": "floobits_share_dir",
     "caption": "Share a directory"
+  },
+  {
+    "command": "floobits_enable_follow_mode",
+    "caption": "Follow Changes"
+  },
+  {
+    "command": "floobits_disable_follow_mode",
+    "caption": "Don't Follow Changes"
+  },
+  {
+    "caption": "Summon",
+    "command": "floobits_ping"
+  },
+  {
+    "caption": "Ping",
+    "command": "floobits_ping"
   }
 ]
