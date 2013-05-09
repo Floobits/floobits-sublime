@@ -435,9 +435,13 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
 
 
 class FloobitsAddToRoomCommand(FloobitsBaseCommand):
-    def run(self, paths):
+    def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
+
+        if paths is None and current_file:
+            paths = [self.window.active_view().file_name()]
+
         for path in paths:
             Listener.create_buf(path)
 
@@ -446,9 +450,13 @@ class FloobitsAddToRoomCommand(FloobitsBaseCommand):
 
 
 class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
-    def run(self, paths):
+    def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
+
+        if paths is None and current_file:
+            paths = [self.window.active_view().file_name()]
+
         for path in paths:
             Listener.delete_buf(path)
 
