@@ -298,7 +298,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
             d = os.path.realpath(os.path.expanduser(d))
             if not os.path.isdir(d):
-                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?')
+                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
                 if not make_dir:
                     return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, link_dir, None, None)
                 try:
