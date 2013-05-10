@@ -31,3 +31,9 @@ Edit your Floobits.sublime-settings file (in `Package Settings -> Floobits -> Se
     }
 
 Replace user with your Floobits username. The secret is your API secret, which you can see in [your settings](https://floobits.com/dash/settings/).
+
+# Using Floobits to Collaborate
+
+After creating your account, you’ll want to create a room or two. A room is a collection of files and buffers that users can collaborate on.
+
+See https://floobits.com/help for instructions on how to set up rooms and collaborate with others.
