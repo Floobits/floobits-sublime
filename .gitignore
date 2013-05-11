@@ -1,4 +1,5 @@
 *.pyc
-Floobits.sublime-settings
 .DS_store
+.sublime-project
+Floobits.sublime-settings
 persistent.json
