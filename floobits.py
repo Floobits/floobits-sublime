@@ -17,6 +17,7 @@ from .floo import shared as G
 from .floo import utils
 
 
+
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 G.PLUGIN_PATH = os.path.split(__file__)[0]
@@ -96,6 +97,7 @@ def reload_settings():
         msg.log('Reconnecting due to settings change')
         agent.reconnect()
     print('Floobits debug is %s' % G.DEBUG)
+
 
 
 settings.add_on_change('', reload_settings)
