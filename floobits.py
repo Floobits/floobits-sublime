@@ -16,6 +16,7 @@ from .floo import msg
 from .floo import shared as G
 from .floo import utils
 
+
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 G.PLUGIN_PATH = os.path.split(__file__)[0]
@@ -96,6 +97,7 @@ def reload_settings():
         agent.reconnect()
     print('Floobits debug is %s' % G.DEBUG)
 
+
 settings.add_on_change('', reload_settings)
 reload_settings()
 
@@ -111,6 +113,7 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
     def run(self, dir_to_share=''):
+        reload_settings()
         self.window.show_input_panel('Directory:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
@@ -182,6 +185,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_name='', ln_path=None, prompt='Room name:'):
+        reload_settings()
         self.ln_path = ln_path
         self.window.show_input_panel(prompt, room_name, self.on_input, None, None)
 
@@ -312,6 +316,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
             open_room_window(run_thread)
 
+        reload_settings()
         G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
         if not os.path.isdir(G.PROJECT_PATH):
             # TODO: really bad prompt here
