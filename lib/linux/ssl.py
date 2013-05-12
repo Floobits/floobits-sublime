@@ -1,4 +1,4 @@
-# This code was taken from Python's lib/ssl.py. All code in this file is under 
+# This code was taken from Python's lib/ssl.py. All code in this file is under
 # the PSF License, which is included as the LICENSE file in this directory.
 
 # Wrapper module for _ssl, providing some additional facilities
@@ -67,21 +67,26 @@ from _ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
 from _ssl import PROTOCOL_SSLv3, PROTOCOL_SSLv23, PROTOCOL_TLSv1
 from _ssl import RAND_status, RAND_egd, RAND_add
 from _ssl import \
-     SSL_ERROR_ZERO_RETURN, \
-     SSL_ERROR_WANT_READ, \
-     SSL_ERROR_WANT_WRITE, \
-     SSL_ERROR_WANT_X509_LOOKUP, \
-     SSL_ERROR_SYSCALL, \
-     SSL_ERROR_SSL, \
-     SSL_ERROR_WANT_CONNECT, \
-     SSL_ERROR_EOF, \
-     SSL_ERROR_INVALID_ERROR_CODE
+    SSL_ERROR_ZERO_RETURN, \
+    SSL_ERROR_WANT_READ, \
+    SSL_ERROR_WANT_WRITE, \
+    SSL_ERROR_WANT_X509_LOOKUP, \
+    SSL_ERROR_SYSCALL, \
+    SSL_ERROR_SSL, \
+    SSL_ERROR_WANT_CONNECT, \
+    SSL_ERROR_EOF, \
+    SSL_ERROR_INVALID_ERROR_CODE
 
 from socket import socket, _fileobject, _delegate_methods
 from socket import error as socket_error
 from socket import getnameinfo as _getnameinfo
 import base64        # for DER-to-PEM translation
 import errno
+
+assert CERT_OPTIONAL and RAND_add and RAND_egd and RAND_status and SSL_ERROR_SYSCALL and \
+    SSL_ERROR_WANT_X509_LOOKUP and SSL_ERROR_ZERO_RETURN and SSL_ERROR_INVALID_ERROR_CODE and \
+    SSL_ERROR_WANT_CONNECT and SSL_ERROR_SSL and _getnameinfo
+
 
 class SSLSocket(socket):
 
@@ -227,8 +232,8 @@ class SSLSocket(socket):
         if self._sslobj:
             if flags != 0:
                 raise ValueError(
-                  "non-zero flags not allowed in calls to recv_into() on %s" %
-                  self.__class__)
+                    "non-zero flags not allowed in calls to recv_into() on %s" %
+                    self.__class__)
             tmp_buffer = self.read(nbytes)
             v = len(tmp_buffer)
             buffer[:v] = tmp_buffer
@@ -327,7 +332,6 @@ class SSLSocket(socket):
         return _fileobject(self, mode, bufsize, close=True)
 
 
-
 def wrap_socket(sock, keyfile=None, certfile=None,
                 server_side=False, cert_reqs=CERT_NONE,
                 ssl_version=PROTOCOL_SSLv23, ca_certs=None,
@@ -355,6 +359,7 @@ def cert_time_to_seconds(cert_time):
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
 
+
 def DER_cert_to_PEM_cert(der_cert_bytes):
 
     """Takes a certificate in binary DER format and returns the
@@ -371,6 +376,7 @@ def DER_cert_to_PEM_cert(der_cert_bytes):
                 base64.encodestring(der_cert_bytes) +
                 PEM_FOOTER + '\n')
 
+
 def PEM_cert_to_DER_cert(pem_cert_string):
 
     """Takes a certificate in ASCII PEM format and returns the
@@ -384,6 +390,7 @@ def PEM_cert_to_DER_cert(pem_cert_string):
                          % PEM_FOOTER)
     d = pem_cert_string.strip()[len(PEM_HEADER):-len(PEM_FOOTER)]
     return base64.decodestring(d)
+
 
 def get_server_certificate(addr, ssl_version=PROTOCOL_SSLv3, ca_certs=None):
 
@@ -403,6 +410,7 @@ def get_server_certificate(addr, ssl_version=PROTOCOL_SSLv3, ca_certs=None):
     dercert = s.getpeercert(True)
     s.close()
     return DER_cert_to_PEM_cert(dercert)
+
 
 def get_protocol_name(protocol_code):
     if protocol_code == PROTOCOL_TLSv1:
