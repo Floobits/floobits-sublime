@@ -30,9 +30,6 @@ PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
-G.PLUGIN_PATH = os.path.split(__file__)[0]
-if G.PLUGIN_PATH == '.':
-    G.PLUGIN_PATH = os.getcwd()
 DATA = utils.get_persistent_data()
 agent = None
 ON_CONNECT = None

@@ -45,23 +45,26 @@ if ssl is False and sublime.platform() == 'linux':
     for version in ssl_versions:
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
-            filename, path, desc = imp.find_module('_ssl', so_path)
+            filename, path, desc = imp.find_module('_ssl', [so_path])
             if filename is None:
-                msg.debug('Module not found at %s' % so_path)
+                print('Module not found at %s' % so_path)
                 continue
             _ssl = imp.load_module('_ssl', filename, path, desc)
             break
         except ImportError as e:
-            msg.debug('Failed loading module %s: %s' % (so_path, str(e)))
+            print('Failed loading _ssl module %s: %s' % (so_path, str(e)))
     if _ssl:
-        filename, path, desc = imp.find_module('ssl', ssl_path)
+        print('Hooray! %s is a winner!' % so_path)
+        filename, path, desc = imp.find_module('ssl', [ssl_path])
         if filename is None:
-            msg.debug("Couldn't find ssl module at %s" % ssl_path)
+            print("Couldn't find ssl module at %s" % ssl_path)
         else:
             try:
-                imp.load_module('ssl', filename, path, desc)
+                ssl = imp.load_module('ssl', filename, path, desc)
             except ImportError as e:
-                msg.debug('Failed loading ssl module at: %s' % str(e))
+                print('Failed loading ssl module at: %s' % str(e))
+    else:
+        print("Couldn't find an _ssl shared lib that's compatible with your version of linux. Sorry :(")
 
 
 class AgentConnection(object):
