@@ -35,6 +35,8 @@ try:
   from urllib import parse
 except ImportError:
   import urlparse as parse
+  str = (str, basestring)
+
 
 class diff_match_patch:
   """Class containing the diff, match and patch methods.
