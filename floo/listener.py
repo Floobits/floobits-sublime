@@ -229,7 +229,7 @@ class Listener(sublime_plugin.EventListener):
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             MODIFIED_EVENTS.put(1)
-            view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text})
+            view.run_command('floo_view_replace_region', {'r': [offset, offset + length], 'data': patch_text})
             new_sels = []
             for sel in selections:
                 a = sel.a
@@ -339,7 +339,7 @@ class Listener(sublime_plugin.EventListener):
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
         try:
-            view.run_command('floo_view_replace_region', {'r': (0, view.size()), 'data': buf['buf']})
+            view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
         sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
