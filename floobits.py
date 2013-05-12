@@ -1,6 +1,8 @@
 # coding: utf-8
+import sys
 import os
 import json
+import subprocess
 import threading
 import traceback
 import webbrowser
@@ -22,6 +24,8 @@ except ValueError:
     from floo.listener import Listener
     from floo import shared as G
 
+
+PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
@@ -255,7 +259,40 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
-        def open_room_window(cb):
+        def open_room_window2(cb):
+            if sublime.platform() == 'linux':
+                subl = open('/proc/self/cmdline').read().split(chr(0))[0]
+            elif sublime.platform() == 'osx':
+                # TODO: totally explodes if you install ST2 somewhere else
+                subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
+            elif sublime.platform() == 'windows':
+                subl = sys.executable
+            else:
+                raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
+
+            command = [subl]
+            if utils.get_room_window() is None:
+                command.append('--new-window')
+            command.append('--add')
+            command.append(G.PROJECT_PATH)
+            print('command:', command)
+            p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            poll_result = p.poll()
+            print('poll:', poll_result)
+
+            def truncate_chat_view(chat_view):
+                chat_view.set_read_only(False)
+                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                chat_view.set_read_only(True)
+                cb()
+
+            def create_chat_view():
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                    msgs_fd.write('')
+                msg.get_or_create_chat(truncate_chat_view)
+            utils.set_room_window(create_chat_view)
+            
+        def open_room_window3(cb):
             G.ROOM_WINDOW = utils.get_room_window()
             if not G.ROOM_WINDOW:
                 G.ROOM_WINDOW = sublime.active_window()
@@ -271,6 +308,12 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                 msgs_fd.write('')
             msg.get_or_create_chat(truncate_chat_view)
+
+        def open_room_window(cb):
+            if PY2:
+                open_room_window2(cb)
+            else:
+                open_room_window3(cb)
 
         def run_agent(owner, room, host, port, secure):
             global agent
