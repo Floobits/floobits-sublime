@@ -34,7 +34,7 @@ import time
 try:
   from urllib import parse
 except ImportError:
-  from urlparse import urlparse as parse
+  import urlparse as parse
 
 class diff_match_patch:
   """Class containing the diff, match and patch methods.
