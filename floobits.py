@@ -505,4 +505,41 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def description(self):
         return
 
+
+# The new ST3 plugin API sucks
+class FlooViewSetMsg(sublime_plugin.TextCommand):
+    def run(self, edit, data, *args, **kwargs):
+        size = self.view.size()
+        self.view.set_read_only(False)
+        self.view.insert(edit, size, data)
+        self.view.set_read_only(True)
+        # TODO: this scrolling is lame and centers text :/
+        self.view.show(size)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return True
+
+    def description(self):
+        return
+
+
+# The new ST3 plugin API sucks
+class FlooViewReplaceRegion(sublime_plugin.TextCommand):
+    def run(self, edit, r, data, *args, **kwargs):
+        region = sublime.Region(long(r[0]), long(r[1]))
+        self.view.replace(edit, region, data)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return True
+
+    def description(self):
+        return
+
+
 Listener.push()
