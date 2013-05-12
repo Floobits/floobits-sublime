@@ -31,7 +31,10 @@ __author__ = 'fraser@google.com (Neil Fraser)'
 import re
 import sys
 import time
-import urllib.parse
+try:
+  from urllib import parse
+except ImportError:
+  from urlparse import urlparse as parse
 
 class diff_match_patch:
   """Class containing the diff, match and patch methods.
@@ -1152,7 +1155,7 @@ class diff_match_patch:
       if op == self.DIFF_INSERT:
         # High ascii will raise UnicodeDecodeError.  Use Unicode instead.
         data = data.encode("utf-8")
-        text.append("+" + urllib.parse.quote(data, "!~*'();/?:@&=+$,# "))
+        text.append("+" + parse.quote(data, "!~*'();/?:@&=+$,# "))
       elif op == self.DIFF_DELETE:
         text.append("-%d" % len(data))
       elif op == self.DIFF_EQUAL:
@@ -1188,7 +1191,7 @@ class diff_match_patch:
       # operation of this token (delete, insert, equality).
       param = token[1:]
       if token[0] == "+":
-        param = urllib.parse.unquote(param).decode("utf-8")
+        param = parse.unquote(param).decode("utf-8")
         diffs.append((self.DIFF_INSERT, param))
       elif token[0] == "-" or token[0] == "=":
         try:
@@ -1843,7 +1846,7 @@ class diff_match_patch:
           sign = text[0][0]
         else:
           sign = ''
-        line = urllib.parse.unquote(text[0][1:])
+        line = parse.unquote(text[0][1:])
         if sign == '+':
           # Insertion.
           patch.diffs.append((self.DIFF_INSERT, line))
@@ -1910,5 +1913,5 @@ class patch_obj:
         text.append(" ")
       # High ascii will raise UnicodeDecodeError.  Use Unicode instead.
       data = data.encode("utf-8")
-      text.append(urllib.parse.quote(data, "!~*'();/?:@&=+$,# ") + "\n")
+      text.append(parse.quote(data, "!~*'();/?:@&=+$,# ") + "\n")
     return "".join(text)

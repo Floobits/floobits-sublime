@@ -3,7 +3,10 @@ import sys
 import hashlib
 import json
 import socket
-import queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import time
 import select
 import collections
@@ -15,10 +18,16 @@ except ImportError:
 
 import sublime
 
-from . import shared as G
-from . import utils
-from . import listener
-from . import msg
+try:
+    from . import shared as G
+    from . import utils
+    from . import listener
+    from . import msg
+except ImportError:
+    import shared as G
+    import utils
+    import listener
+    import msg
 
 Listener = listener.Listener
 
@@ -223,8 +232,8 @@ class AgentConnection(object):
                 }
 
                 utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w', encoding='utf8') as project_fd:
-                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
+                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
+                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
 
                 floo_json = {
                     'url': utils.to_room_url({
@@ -245,8 +254,8 @@ class AgentConnection(object):
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
                     try:
-                        buf_fd = open(buf_path, 'r', encoding='utf8')
-                        buf_buf = buf_fd.read()
+                        buf_fd = open(buf_path, 'rb')
+                        buf_buf = buf_fd.read().decode('utf-8')
                         md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
                         if md5 == buf['md5']:
                             msg.debug('md5 sums match. not getting buffer')

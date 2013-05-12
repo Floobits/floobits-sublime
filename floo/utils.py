@@ -1,18 +1,25 @@
 import os
 import json
 import re
-from urllib.parse import urlparse
+
+try:
+  from urllib import parse
+except ImportError:
+  from urlparse import urlparse as parse
 
 import sublime
 
-from . import shared as G
+try:
+    from . import shared as G
+except ImportError:
+    import shared as G
 
 
 def parse_url(room_url):
     secure = G.SECURE
     owner = None
     room_name = None
-    parsed_url = urlparse(room_url)
+    parsed_url = parse(room_url)
     port = parsed_url.port
     if parsed_url.scheme == 'http':
         if not port:
@@ -97,12 +104,12 @@ def is_shared(p):
 def get_persistent_data():
     per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
     try:
-        per = open(per_path, 'r', encoding='utf-8')
+        per = open(per_path, 'rb')
     except (IOError, OSError):
         print('Failed to open %s. Recent room list will be empty.' % per_path)
         return {}
     try:
-        persistent_data = json.loads(per.read())
+        persistent_data = json.loads(per.read().decode('utf-8'))
     except Exception as e:
         print('Failed to parse %s. Recent room list will be empty.' % per_path)
         print(e)
@@ -112,8 +119,8 @@ def get_persistent_data():
 
 def update_persistent_data(data):
     per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
-    with open(per_path, 'w', encoding='utf-8') as per:
-        per.write(json.dumps(data))
+    with open(per_path, 'wb') as per:
+        per.write(json.dumps(data).encode('utf-8'))
 
 
 def rm(path):

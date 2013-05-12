@@ -3,18 +3,24 @@ import os
 import json
 import threading
 import traceback
-import urllib.error
 import webbrowser
+
+try:
+    from urllib.error import HTTPError
+except ImportError:
+    from urllib2 import HTTPError
 
 import sublime_plugin
 import sublime
 
-from .floo import api
-from .floo import AgentConnection
-from .floo.listener import Listener
-from .floo import msg
-from .floo import shared as G
-from .floo import utils
+try:
+    from .floo import api, AgentConnection, msg, utils
+    from .floo.listener import Listener
+    from .floo import shared as G
+except ValueError:
+    from floo import api, AgentConnection, msg, utils
+    from floo.listener import Listener
+    from floo import shared as G
 
 
 settings = sublime.load_settings('Floobits.sublime-settings')
@@ -45,13 +51,13 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(os.path.expanduser('~/.floorc'), 'r', encoding='utf-8')
+        fd = open(os.path.expanduser('~/.floorc'), 'rb')
     except IOError as e:
         if e.errno == 2:
             return s
         raise
 
-    default_settings = fd.read().split('\n')
+    default_settings = fd.read().decode('utf-8').split('\n')
     fd.close()
 
     for setting in default_settings:
@@ -136,7 +142,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
         info = {}
         try:
-            floo_info = open(floo_file, 'r', encoding='utf8').read()
+            floo_info = open(floo_file, 'rb').read().decode('utf-8')
             info = json.loads(floo_info)
         except (IOError, OSError):
             pass
@@ -194,7 +200,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             api.create_room(room_name)
             room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
             print('Created room %s' % room_url)
-        except urllib.error.HTTPError as e:
+        except HTTPError as e:
             if e.code != 409:
                 raise
             args = {

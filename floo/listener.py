@@ -1,17 +1,30 @@
 import os
-import queue
 import hashlib
 from datetime import datetime
 
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import sublime
 import sublime_plugin
-from . import dmp_monkey
-dmp_monkey.monkey_patch()
-from .lib import diff_match_patch as dmp
 
-from . import msg
-from . import shared as G
-from . import utils
+try:
+    from . import dmp_monkey
+    dmp_monkey.monkey_patch()
+    from .lib import diff_match_patch as dmp
+    from . import msg
+    from . import shared as G
+    from . import utils
+except ImportError:
+    import dmp_monkey
+    dmp_monkey.monkey_patch()
+    from lib import diff_match_patch as dmp
+    import msg
+    import shared as G
+    import utils
+
 
 MODIFIED_EVENTS = queue.Queue()
 SELECTED_EVENTS = queue.Queue()
@@ -57,8 +70,8 @@ def get_buf(view):
 def save_buf(buf):
     path = utils.get_full_path(buf['path'])
     utils.mkdir(os.path.split(path)[0])
-    with open(path, 'w', encoding='utf-8') as fd:
-        fd.write(buf['buf'])
+    with open(path, 'wb') as fd:
+        fd.write(buf['buf'].encode('utf-8'))
 
 
 def delete_buf(buf_id):
@@ -283,8 +296,8 @@ class Listener(sublime_plugin.EventListener):
                         sublime.set_timeout(really_create_buf(f_path), 0)
             return
         try:
-            buf_fd = open(path, 'r', encoding='utf-8')
-            buf = buf_fd.read()
+            buf_fd = open(path, 'rb')
+            buf = buf_fd.read().decode('utf-8')
             rel_path = utils.to_rel_path(path)
             msg.log('creating buffer ', rel_path)
             event = {

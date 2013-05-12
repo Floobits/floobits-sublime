@@ -3,7 +3,10 @@ import time
 
 import sublime
 
-from . import shared as G
+try:
+    from . import shared as G
+except ImportError:
+    import shared as G
 
 LOG_LEVELS = {
     'DEBUG': 1,
