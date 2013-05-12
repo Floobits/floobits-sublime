@@ -7,7 +7,7 @@ except ImportError:
     import shared as G
 
 G.PLUGIN_PATH = os.path.split(os.path.dirname(__file__))[0]
-if G.PLUGIN_PATH == '.':
+if G.PLUGIN_PATH in ('.', ''):
     G.PLUGIN_PATH = os.getcwd()
 
 try:
