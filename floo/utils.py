@@ -3,9 +3,9 @@ import json
 import re
 
 try:
-  from urllib import parse
+  from urllib.parse import urlparse
 except ImportError:
-  from urlparse import urlparse as parse
+  from urlparse import urlparse
 
 import sublime
 
@@ -19,7 +19,7 @@ def parse_url(room_url):
     secure = G.SECURE
     owner = None
     room_name = None
-    parsed_url = parse(room_url)
+    parsed_url = urlparse(room_url)
     port = parsed_url.port
     if parsed_url.scheme == 'http':
         if not port:
