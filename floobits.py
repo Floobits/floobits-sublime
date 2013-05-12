@@ -255,9 +255,16 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 G.ROOM_WINDOW = sublime.active_window()
             msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
             G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-            with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+
+            def truncate_chat_view(chat_view):
+                chat_view.set_read_only(False)
+                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                chat_view.set_read_only(True)
+                cb()
+
+            with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                 msgs_fd.write('')
-            msg.get_or_create_chat(cb)
+            msg.get_or_create_chat(truncate_chat_view)
 
         def run_agent(owner, room, host, port, secure):
             global agent
