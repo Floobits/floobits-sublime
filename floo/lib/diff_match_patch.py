@@ -35,7 +35,7 @@ try:
   from urllib import parse
   str_instances = str
 except ImportError:
-  import urlparse as parse
+  import urllib as parse
   str_instances = (str, basestring)
 
 
