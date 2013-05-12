@@ -5,6 +5,7 @@ import sublime
 
 try:
     from . import shared as G
+    assert G
 except ImportError:
     import shared as G
 

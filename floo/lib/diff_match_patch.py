@@ -33,6 +33,7 @@ import sys
 import time
 try:
   from urllib import parse
+  assert parse
   str_instances = str
 except ImportError:
   import urllib as parse

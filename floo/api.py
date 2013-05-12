@@ -1,6 +1,7 @@
 try:
     from urllib.parse import urlencode
     from urllib.request import urlopen
+    assert urlencode, urlopen
 except ImportError:
     from urllib import urlencode
     from urllib2 import urlopen
@@ -8,6 +9,7 @@ except ImportError:
 
 try:
     from . import shared as G
+    assert G
 except ImportError:
     import shared as G
 

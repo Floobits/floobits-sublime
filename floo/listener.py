@@ -4,6 +4,7 @@ from datetime import datetime
 
 try:
     import queue
+    assert queue
 except ImportError:
     import Queue as queue
 
@@ -14,9 +15,8 @@ try:
     from . import dmp_monkey
     dmp_monkey.monkey_patch()
     from .lib import diff_match_patch as dmp
-    from . import msg
-    from . import shared as G
-    from . import utils
+    from . import msg, shared as G, utils
+    assert dmp and G and msg and utils
 except ImportError:
     import dmp_monkey
     dmp_monkey.monkey_patch()

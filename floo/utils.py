@@ -4,6 +4,7 @@ import re
 
 try:
     from urllib.parse import urlparse
+    assert urlparse
 except ImportError:
     from urlparse import urlparse
 
@@ -11,6 +12,7 @@ import sublime
 
 try:
     from . import shared as G
+    assert G
 except ImportError:
     import shared as G
 

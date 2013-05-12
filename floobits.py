@@ -9,6 +9,7 @@ import webbrowser
 
 try:
     from urllib.error import HTTPError
+    assert HTTPError
 except ImportError:
     from urllib2 import HTTPError
 
@@ -16,9 +17,9 @@ import sublime_plugin
 import sublime
 
 try:
-    from .floo import api, AgentConnection, msg, utils
+    from .floo import api, AgentConnection, msg, shared as G, utils
     from .floo.listener import Listener
-    from .floo import shared as G
+    assert api and AgentConnection and G and Listener and msg and utils
 except ValueError:
     from floo import api, AgentConnection, msg, utils
     from floo.listener import Listener

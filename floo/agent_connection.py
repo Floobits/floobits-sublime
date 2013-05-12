@@ -5,6 +5,7 @@ import json
 import socket
 try:
     import queue
+    assert queue
 except ImportError:
     import Queue as queue
 import time
@@ -19,10 +20,8 @@ except ImportError:
 import sublime
 
 try:
-    from . import shared as G
-    from . import utils
-    from . import listener
-    from . import msg
+    from . import listener, msg, shared as G, utils
+    assert G and listener and msg and utils
 except ImportError:
     import shared as G
     import utils
