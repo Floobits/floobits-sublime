@@ -229,22 +229,18 @@ class Listener(sublime_plugin.EventListener):
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             MODIFIED_EVENTS.put(1)
-            try:
-                view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text})
-            except:
-                raise
-            else:
-                new_sels = []
-                for sel in selections:
-                    a = sel.a
-                    b = sel.b
-                    new_offset = len(patch_text) - length
-                    if sel.a > offset:
-                        a += new_offset
-                    if sel.b > offset:
-                        b += new_offset
-                    new_sels.append(sublime.Region(a, b))
-                selections = [x for x in new_sels]
+            view.run_command('floo_view_replace_region', {'r': (offset, offset + length), 'data': patch_text})
+            new_sels = []
+            for sel in selections:
+                a = sel.a
+                b = sel.b
+                new_offset = len(patch_text) - length
+                if sel.a > offset:
+                    a += new_offset
+                if sel.b > offset:
+                    b += new_offset
+                new_sels.append(sublime.Region(a, b))
+            selections = [x for x in new_sels]
 
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
