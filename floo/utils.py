@@ -1,25 +1,18 @@
 import os
 import json
 import re
-from urlparse import urlparse
+
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 import sublime
 
-import shared as G
-
-per_path = os.path.abspath('persistent.json')
-
-
-class edit:
-    def __init__(self, view):
-        self.view = view
-
-    def __enter__(self):
-        self.edit = self.view.begin_edit()
-        return self.edit
-
-    def __exit__(self, type, value, traceback):
-        self.view.end_edit(self.edit)
+try:
+    from . import shared as G
+except ImportError:
+    import shared as G
 
 
 def parse_url(room_url):
@@ -90,7 +83,7 @@ def unfuck_path(p):
 
 
 def to_rel_path(p):
-    return os.path.relpath(p, G.PROJECT_PATH)
+    return os.path.relpath(p, G.PROJECT_PATH).replace(os.sep, '/')
 
 
 def to_scheme(secure):
@@ -109,22 +102,25 @@ def is_shared(p):
 
 
 def get_persistent_data():
+    per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
         print('Failed to open %s. Recent room list will be empty.' % per_path)
         return {}
     try:
-        persistent_data = json.loads(per.read())
-    except:
+        persistent_data = json.loads(per.read().decode('utf-8'))
+    except Exception as e:
         print('Failed to parse %s. Recent room list will be empty.' % per_path)
+        print(e)
         return {}
     return persistent_data
 
 
 def update_persistent_data(data):
+    per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
     with open(per_path, 'wb') as per:
-        per.write(json.dumps(data))
+        per.write(json.dumps(data).encode('utf-8'))
 
 
 def rm(path):
@@ -134,7 +130,7 @@ def rm(path):
         os.removedirs(os.path.split(path)[0])
     except OSError as e:
         if e.errno != 66:
-            sublime.error_message('Can not delete directory {0}.\n{1}'.format(path, e))
+            sublime.error_message('Cannot delete directory {0}.\n{1}'.format(path, e))
             raise
 
 
@@ -143,5 +139,5 @@ def mkdir(path):
         os.makedirs(path)
     except OSError as e:
         if e.errno != 17:
-            sublime.error_message('Can not create directory {0}.\n{1}'.format(path, e))
+            sublime.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
             raise

@@ -1,13 +1,13 @@
-# [Floobits](https://floobits.com/) plugin for Sublime Text 2
+# [Floobits](https://floobits.com/) plugin for Sublime Text 2 and 3
 
-Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Sublime Text 2. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Vim](https://github.com/Floobits/vim-plugin).
+Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Sublime Text. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Vim](https://github.com/Floobits/vim-plugin).
 
-**Sublime Text 3 Beta users:** You want the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-2-plugin/tree/st3).
+While the name of this repository is `sublime-text-2-plugin`, the plugin is compatible with Sublime Text 2 and Sublime Text 3.
 
 ### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
 ## Windows
-This plugin does not work on Windows. However, the [Sublime Text 3 plugin](https://github.com/Floobits/sublime-text-2-plugin/tree/st3) does. Windows users are encouraged to install Sublime Text 3. The Python included with the Windows version of Sublime Text 2 does not have the [select](http://docs.python.org/2/library/select.html) module.
+The Python included with the Windows version of Sublime Text 2 does not have the [select](http://docs.python.org/2/library/select.html) module. This means the plugin won't work with Sublime Text 2 on Windows. Windows users must install Sublime Text 3 if they want to use this plugin.
 
 # Installation instructions
 
@@ -19,7 +19,7 @@ This plugin does not work on Windows. However, the [Sublime Text 3 plugin](https
 
 If you'd rather create a symlink instead of copy/moving, run something like:
 
-    ln -s ~/code/sublime-text-2-plugin ~/Library/Application\ Support/Sublime\ Text\ 2/Packages/Floobits
+    ln -s ~/code/sublime-text-2-plugin ~/Library/Application\ Support/Sublime\ Text\ 3/Packages/Floobits
 
 # Configuration
 

@@ -1,26 +1,37 @@
 # coding: utf-8
-import os
 import sys
+import os
 import json
+import subprocess
 import threading
 import traceback
-import subprocess
-import urllib2
 import webbrowser
+
+try:
+    from urllib.error import HTTPError
+except ImportError:
+    from urllib2 import HTTPError
 
 import sublime_plugin
 import sublime
 
-from floo import api
-from floo import AgentConnection
-from floo.listener import Listener
-from floo import msg
-from floo import shared as G
-from floo import utils
+try:
+    from .floo import api, AgentConnection, msg, utils
+    from .floo.listener import Listener
+    from .floo import shared as G
+except ValueError:
+    from floo import api, AgentConnection, msg, utils
+    from floo.listener import Listener
+    from floo import shared as G
 
+
+PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
+G.PLUGIN_PATH = os.path.split(__file__)[0]
+if G.PLUGIN_PATH == '.':
+    G.PLUGIN_PATH = os.getcwd()
 DATA = utils.get_persistent_data()
 agent = None
 ON_CONNECT = None
@@ -52,7 +63,7 @@ def load_floorc():
             return s
         raise
 
-    default_settings = fd.read().split('\n')
+    default_settings = fd.read().decode('utf-8').split('\n')
     fd.close()
 
     for setting in default_settings:
@@ -70,16 +81,24 @@ def load_floorc():
 def reload_settings():
     global settings
     print('Reloading settings...')
+    # TODO: settings doesn't seem to load most settings.
+    # Also, settings.get('key', 'default_value') returns None
     settings = sublime.load_settings('Floobits.sublime-settings')
-    G.ALERT_ON_MSG = settings.get('alert_on_msg', True)
-    G.DEBUG = settings.get('debug', False)
-    G.COLAB_DIR = settings.get('share_dir', '~/.floobits/share/')
+    G.ALERT_ON_MSG = settings.get('alert_on_msg')
+    if G.ALERT_ON_MSG is None:
+        G.ALERT_ON_MSG = True
+    G.DEBUG = settings.get('debug')
+    if G.DEBUG is None:
+        G.DEBUG = False
+    G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host', 'floobits.com')
-    G.DEFAULT_PORT = settings.get('port', 3448)
-    G.SECURE = settings.get('secure', True)
+    G.DEFAULT_HOST = settings.get('host') or 'floobits.com'
+    G.DEFAULT_PORT = settings.get('port') or 3448
+    G.SECURE = settings.get('secure')
+    if G.SECURE is None:
+        G.SECURE = True
     G.USERNAME = settings.get('username')
     G.SECRET = settings.get('secret')
     floorc_settings = load_floorc()
@@ -88,6 +107,7 @@ def reload_settings():
     if agent and agent.is_ready():
         msg.log('Reconnecting due to settings change')
         agent.reconnect()
+    print('Floobits debug is %s' % G.DEBUG)
 
 
 settings.add_on_change('', reload_settings)
@@ -96,10 +116,10 @@ reload_settings()
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
-        return self.is_enabled()
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return agent and agent.is_ready()
+        return bool(agent and agent.is_ready())
 
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
@@ -186,7 +206,7 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             api.create_room(room_name)
             room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
             print('Created room %s' % room_url)
-        except urllib2.HTTPError as e:
+        except HTTPError as e:
             if e.code != 409:
                 raise
             args = {
@@ -241,7 +261,7 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
     def run(self, room_url):
-        def open_room_window(cb):
+        def open_room_window2(cb):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
@@ -274,9 +294,33 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 msg.get_or_create_chat(truncate_chat_view)
             utils.set_room_window(create_chat_view)
 
+        def open_room_window3(cb):
+            G.ROOM_WINDOW = utils.get_room_window()
+            if not G.ROOM_WINDOW:
+                G.ROOM_WINDOW = sublime.active_window()
+            msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
+            G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
+
+            def truncate_chat_view(chat_view):
+                chat_view.set_read_only(False)
+                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                chat_view.set_read_only(True)
+                cb()
+
+            with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                msgs_fd.write('')
+            msg.get_or_create_chat(truncate_chat_view)
+
+        def open_room_window(cb):
+            if PY2:
+                open_room_window2(cb)
+            else:
+                open_room_window3(cb)
+
         def run_agent(owner, room, host, port, secure):
             global agent
             if agent:
+                msg.debug('Stopping agent.')
                 agent.stop()
                 agent = None
             try:
@@ -385,7 +429,7 @@ class FloobitsRejoinRoomCommand(FloobitsBaseCommand):
 class FloobitsPromptMsgCommand(FloobitsBaseCommand):
 
     def run(self, msg=''):
-        print('msg', msg)
+        print(('msg', msg))
         self.window.show_input_panel('msg:', msg, self.on_input, None, None)
 
     def on_input(self, msg):

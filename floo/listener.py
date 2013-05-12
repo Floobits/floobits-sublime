@@ -1,23 +1,34 @@
 import os
-import Queue
 import hashlib
 from datetime import datetime
 
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import sublime
 import sublime_plugin
-import dmp_monkey
-dmp_monkey.monkey_patch()
-from lib import diff_match_patch as dmp
 
-import msg
-import shared as G
-import utils
+try:
+    from . import dmp_monkey
+    dmp_monkey.monkey_patch()
+    from .lib import diff_match_patch as dmp
+    from . import msg
+    from . import shared as G
+    from . import utils
+except ImportError:
+    import dmp_monkey
+    dmp_monkey.monkey_patch()
+    from lib import diff_match_patch as dmp
+    import msg
+    import shared as G
+    import utils
 
-MODIFIED_EVENTS = Queue.Queue()
-SELECTED_EVENTS = Queue.Queue()
+
+MODIFIED_EVENTS = queue.Queue()
+SELECTED_EVENTS = queue.Queue()
 BUFS = {}
-
-settings = sublime.load_settings('Floobits.sublime-settings')
 
 
 def get_text(view):
@@ -50,7 +61,7 @@ def get_buf(view):
     if view is G.CHAT_VIEW:
         return None
     rel_path = utils.to_rel_path(view.file_name())
-    for buf_id, buf in BUFS.iteritems():
+    for buf_id, buf in BUFS.items():
         if rel_path == buf['path']:
             return buf
     return None
@@ -243,6 +254,7 @@ class Listener(sublime_plugin.EventListener):
                     b += new_offset
                 new_sels.append(sublime.Region(a, b))
             selections = [x for x in new_sels]
+
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
@@ -408,7 +420,7 @@ class Listener(sublime_plugin.EventListener):
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
         else:
-            print G.CHAT_VIEW_PATH, "not", view.file_name()
+            print(G.CHAT_VIEW_PATH, "not", view.file_name())
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -445,7 +457,7 @@ class Listener(sublime_plugin.EventListener):
     def on_modified(self, view):
         try:
             MODIFIED_EVENTS.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             self.add(view)
         else:
             MODIFIED_EVENTS.task_done()
@@ -453,7 +465,7 @@ class Listener(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         try:
             SELECTED_EVENTS.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             buf = get_buf(view)
             if buf:
                 msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
@@ -469,7 +481,7 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in Listener.agent.room_info['users'].iteritems():
+        for user_id, username in Listener.agent.room_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     @staticmethod
