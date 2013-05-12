@@ -134,12 +134,16 @@ class AgentConnection(object):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
         SOCKET_Q = queue.Queue()
+        if sys.version_info < (3, 0):
+            sublime_version = 2
+        else:
+            sublime_version = 3
         self.put({
             'username': self.username,
             'secret': self.secret,
             'room': self.room,
             'room_owner': self.owner,
-            'client': 'SublimeText-3',
+            'client': 'SublimeText-%s' % sublime_version,
             'platform': sys.platform,
             'version': G.__VERSION__
         })
