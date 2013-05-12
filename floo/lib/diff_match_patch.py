@@ -33,9 +33,10 @@ import sys
 import time
 try:
   from urllib import parse
+  str_instances = str
 except ImportError:
   import urlparse as parse
-  str = (str, basestring)
+  str_instances = (str, basestring)
 
 
 class diff_match_patch:
@@ -1443,7 +1444,7 @@ class diff_match_patch:
     text1 = None
     diffs = None
     # Note that texts may arrive as 'str' or 'unicode'.
-    if isinstance(a, str) and isinstance(b, str) and c is None:
+    if isinstance(a, str_instances) and isinstance(b, str_instances) and c is None:
       # Method 1: text1, text2
       # Compute diffs from text1 and text2.
       text1 = a
@@ -1456,11 +1457,11 @@ class diff_match_patch:
       # Compute text1 from diffs.
       diffs = a
       text1 = self.diff_text1(diffs)
-    elif isinstance(a, str) and isinstance(b, list) and c is None:
+    elif isinstance(a, str_instances) and isinstance(b, list) and c is None:
       # Method 3: text1, diffs
       text1 = a
       diffs = b
-    elif (isinstance(a, str) and isinstance(b, str) and
+    elif (isinstance(a, str_instances) and isinstance(b, str_instances) and
           isinstance(c, list)):
       # Method 4: text1, text2, diffs
       # text2 is not used.
