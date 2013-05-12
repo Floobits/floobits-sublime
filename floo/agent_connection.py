@@ -8,16 +8,18 @@ try:
     assert queue
 except ImportError:
     import Queue as queue
+import imp
 import time
 import select
 import collections
+
+import sublime
+
 try:
     import ssl
     assert ssl
 except ImportError:
     ssl = False
-
-import sublime
 
 try:
     from . import listener, msg, shared as G, utils
@@ -34,6 +36,32 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
 SOCKET_Q = queue.Queue()
+
+if ssl is False and sublime.platform() == 'linux':
+    _ssl = None
+    ssl_versions = ['0.9.8', '1.0.0', '10']
+    ssl_path = os.path.join(G.PLUGIN_PATH, 'lib', 'linux')
+    lib_path = os.path.join(G.PLUGIN_PATH, 'lib', 'linux-%s' % sublime.arch())
+    for version in ssl_versions:
+        so_path = os.path.join(lib_path, 'libssl-%s' % version)
+        try:
+            filename, path, desc = imp.find_module('_ssl', so_path)
+            if filename is None:
+                msg.debug('Module not found at %s' % so_path)
+                continue
+            _ssl = imp.load_module('_ssl', filename, path, desc)
+            break
+        except ImportError as e:
+            msg.debug('Failed loading module %s: %s' % (so_path, str(e)))
+    if _ssl:
+        filename, path, desc = imp.find_module('ssl', ssl_path)
+        if filename is None:
+            msg.debug("Couldn't find ssl module at %s" % ssl_path)
+        else:
+            try:
+                imp.load_module('ssl', filename, path, desc)
+            except ImportError as e:
+                msg.debug('Failed loading ssl module at: %s' % str(e))
 
 
 class AgentConnection(object):
