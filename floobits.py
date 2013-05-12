@@ -262,10 +262,16 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             poll_result = p.poll()
             print('poll:', poll_result)
 
+            def truncate_chat_view(chat_view):
+                chat_view.set_read_only(False)
+                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                chat_view.set_read_only(True)
+                cb()
+
             def create_chat_view():
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'w') as msgs_fd:
+                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                     msgs_fd.write('')
-                msg.get_or_create_chat(cb)
+                msg.get_or_create_chat(truncate_chat_view)
             utils.set_room_window(create_chat_view)
 
         def run_agent(owner, room, host, port, secure):
