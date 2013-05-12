@@ -320,7 +320,7 @@ class AgentConnection(object):
             return self.reconnect()
 
         if _in:
-            buf = bytes('', 'utf-8')
+            buf = ''.encode('utf-8')
             while True:
                 try:
                     d = self.sock.recv(4096)
@@ -346,7 +346,7 @@ class AgentConnection(object):
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
-                    self.sock.sendall(bytes(p, 'utf-8'))
+                    self.sock.sendall(p.encode('utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
