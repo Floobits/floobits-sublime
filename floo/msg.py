@@ -3,8 +3,10 @@ import time
 
 import sublime
 
-import shared as G
-import utils
+try:
+    from . import shared as G
+except ImportError:
+    import shared as G
 
 LOG_LEVELS = {
     'DEBUG': 1,
@@ -30,10 +32,6 @@ def get_or_create_chat(cb=None):
         if not G.CHAT_VIEW:
             p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
-
-        if G.CHAT_VIEW.is_loading():
-            return sublime.set_timeout(open_view, 50)
-
         sublime.set_timeout(return_view, 0)
 
     # Can't call open_file outside main thread
@@ -52,13 +50,7 @@ class MSG(object):
             return
 
         def _display(view):
-            with utils.edit(view) as ed:
-                size = view.size()
-                view.set_read_only(False)
-                view.insert(ed, size, str(self))
-                view.set_read_only(True)
-                # TODO: this scrolling is lame and centers text :/
-                view.show(size)
+            view.run_command('floo_view_set_msg', {'data': str(self)})
 
         get_or_create_chat(_display)
 

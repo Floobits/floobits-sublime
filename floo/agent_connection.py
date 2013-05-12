@@ -3,7 +3,10 @@ import sys
 import hashlib
 import json
 import socket
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import time
 import select
 import collections
@@ -15,20 +18,23 @@ except ImportError:
 
 import sublime
 
-import shared as G
-import utils
-import listener
-import msg
+try:
+    from . import shared as G
+    from . import utils
+    from . import listener
+    from . import msg
+except ImportError:
+    import shared as G
+    import utils
+    import listener
+    import msg
 
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
-SOCKET_Q = Queue.Queue()
-
-CERT = os.path.join(os.getcwd(), 'startssl-ca.pem')
-print("CERT is ", CERT)
+SOCKET_Q = queue.Queue()
 
 
 class AgentConnection(object):
@@ -101,14 +107,16 @@ class AgentConnection(object):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl:  # ST2 on linux doesn't have the ssl module. Not sure about windows
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=CERT, cert_reqs=ssl.CERT_REQUIRED)
+            if ssl:  # ST3 on linux doesn't have the ssl module. OS X & Windows are OK.
+                cert = os.path.join(G.PLUGIN_PATH, 'startssl-ca.pem')
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
+            self.sock.settimeout(30)  # Seconds before timing out connecting
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -116,7 +124,7 @@ class AgentConnection(object):
             msg.error('Error connecting:', e)
             self.reconnect()
             return
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         sublime.set_timeout(self.select, 0)
@@ -125,13 +133,17 @@ class AgentConnection(object):
     def auth(self):
         global SOCKET_Q
         # TODO: we shouldn't throw away all of this
-        SOCKET_Q = Queue.Queue()
+        SOCKET_Q = queue.Queue()
+        if sys.version_info < (3, 0):
+            sublime_version = 2
+        else:
+            sublime_version = 3
         self.put({
             'username': self.username,
             'secret': self.secret,
             'room': self.room,
             'room_owner': self.owner,
-            'client': 'SublimeText-2',
+            'client': 'SublimeText-%s' % sublime_version,
             'platform': sys.platform,
             'version': G.__VERSION__
         })
@@ -140,7 +152,7 @@ class AgentConnection(object):
         while True:
             try:
                 yield SOCKET_Q.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
     def chat(self, username, timestamp, message, self_msg=False):
@@ -164,7 +176,8 @@ class AgentConnection(object):
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
-        self.buf += req
+        self.buf += req.decode('utf-8')
+        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
@@ -172,8 +185,8 @@ class AgentConnection(object):
             try:
                 data = json.loads(before)
             except Exception as e:
-                print('Unable to parse json:', e)
-                print('Data:', before)
+                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
             if name == 'patch':
@@ -202,7 +215,10 @@ class AgentConnection(object):
                     view.retarget(new)
             elif name == 'delete_buf':
                 path = utils.get_full_path(data['path'])
-                utils.rm(path)
+                try:
+                    utils.rm(path)
+                except Exception:
+                    pass
                 listener.delete_buf(data['id'])
             elif name == 'room_info':
                 # Success! Reset counter
@@ -220,8 +236,8 @@ class AgentConnection(object):
                 }
 
                 utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'w') as project_fd:
-                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True))
+                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
+                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
 
                 floo_json = {
                     'url': utils.to_room_url({
@@ -235,14 +251,14 @@ class AgentConnection(object):
                 with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
                     floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
 
-                for buf_id, buf in data['bufs'].iteritems():
+                for buf_id, buf in data['bufs'].items():
                     buf_id = int(buf_id)  # json keys must be strings
                     buf_path = utils.get_full_path(buf['path'])
                     new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
                     try:
-                        buf_fd = open(buf_path, 'r')
+                        buf_fd = open(buf_path, 'rb')
                         buf_buf = buf_fd.read().decode('utf-8')
                         md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
                         if md5 == buf['md5']:
@@ -308,7 +324,7 @@ class AgentConnection(object):
             return self.reconnect()
 
         if _in:
-            buf = ''
+            buf = ''.encode('utf-8')
             while True:
                 try:
                     d = self.sock.recv(4096)
@@ -317,6 +333,7 @@ class AgentConnection(object):
                     buf += d
                 except (socket.error, TypeError):
                     break
+
             if buf:
                 self.empty_selects = 0
                 self.protocol(buf)
@@ -333,7 +350,7 @@ class AgentConnection(object):
                     continue
                 try:
                     msg.debug('writing patch: %s' % p)
-                    self.sock.sendall(p)
+                    self.sock.sendall(p.encode('utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
