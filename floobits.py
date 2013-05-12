@@ -293,7 +293,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                     msgs_fd.write('')
                 msg.get_or_create_chat(truncate_chat_view)
             utils.set_room_window(create_chat_view)
-            
+
         def open_room_window3(cb):
             G.ROOM_WINDOW = utils.get_room_window()
             if not G.ROOM_WINDOW:

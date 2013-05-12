@@ -1,9 +1,9 @@
 try:
-  from urllib.parse import urlencode
-  from urllib.request import urlopen
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
 except ImportError:
-  from urllib import urlencode
-  from urllib2 import urlopen
+    from urllib import urlencode
+    from urllib2 import urlopen
 
 
 try:
