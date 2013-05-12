@@ -528,7 +528,7 @@ class FlooViewSetMsg(sublime_plugin.TextCommand):
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def run(self, edit, r, data, *args, **kwargs):
-        region = sublime.Region(long(r[0]), long(r[1]))
+        region = sublime.Region(int(r[0]), int(r[1]))
         self.view.replace(edit, region, data)
 
     def is_visible(self):
