@@ -495,7 +495,11 @@ class FloobitsPingCommand(FloobitsBaseCommand):
 
 class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
     def _get_recent_rooms(self):
-        return [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+        try:
+            recent_rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+        except Exception:
+            recent_rooms = []
+        return recent_rooms
 
     def run(self, *args):
         rooms = self._get_recent_rooms()
