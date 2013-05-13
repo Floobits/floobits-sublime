@@ -552,6 +552,10 @@ class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
         if not self.is_enabled():
             return
 
+        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?'))
+        if not confirm:
+            return
+
         if paths is None and current_file:
             paths = [self.window.active_view().file_name()]
 
