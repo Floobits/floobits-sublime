@@ -411,6 +411,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 
         reload_settings()
         G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+        print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
             # TODO: really bad prompt here
             return self.window.show_input_panel('Give me a directory to destructively dump data into (or just press enter):', '', link_dir, None, None)
