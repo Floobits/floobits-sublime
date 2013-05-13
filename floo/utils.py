@@ -17,6 +17,10 @@ except ImportError:
     import shared as G
 
 
+def set_timeout(func, timeout, *args, **kwargs):
+    sublime.set_timeout(lambda: func(*args, **kwargs), timeout)
+
+
 def parse_url(room_url):
     secure = G.SECURE
     owner = None
@@ -70,7 +74,7 @@ def get_room_window():
 def set_room_window(cb):
     room_window = get_room_window()
     if room_window is None:
-        return sublime.set_timeout(lambda: set_room_window(cb), 50)
+        return sublime.set_timeout(set_room_window, 50, cb)
     G.ROOM_WINDOW = room_window
     cb()
 

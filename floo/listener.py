@@ -1,6 +1,7 @@
 import os
 import hashlib
 from datetime import datetime
+import subprocess
 
 try:
     import queue
@@ -174,7 +175,7 @@ class Listener(sublime_plugin.EventListener):
             else:
                 msg.debug('Not connected. Discarding selection change.')
 
-        sublime.set_timeout(Listener.push, 100)
+        utils.set_timeout(Listener.push, 100)
 
     @staticmethod
     def apply_patch(patch_data):
@@ -258,7 +259,7 @@ class Listener(sublime_plugin.EventListener):
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
-        sublime.set_timeout(lambda: view.erase_regions(region_key), 1000)
+        utils.set_timeout(view.erase_regions, 1000, region_key)
         for sel in selections:
             SELECTED_EVENTS.put(1)
             view.sel().add(sel)
@@ -275,16 +276,27 @@ class Listener(sublime_plugin.EventListener):
         Listener.agent.put(req)
 
     @staticmethod
-    def create_buf(path):
-        # >>> (lambda x: lambda: x)(2)()
-        # TODO: check if functools can do this in st2
-        #  really_create_buf = lambda x: (lambda: Listener.create_buf(x))
-        def really_create_buf(x):
-            return (lambda: Listener.create_buf(x))
+    def create_buf(path, always_add=False):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
+            command = 'git ls-files %s' % path
+            try:
+                p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
+                stdoutdata, stderrdata = p.communicate()
+                if p.returncode == 0:
+                    for git_path in stdoutdata.split('\n'):
+                        git_path = git_path.strip()
+                        if not git_path:
+                            continue
+                        add_path = os.path.join(path, git_path)
+                        msg.debug('adding %s' % add_path)
+                        utils.set_timeout(Listener.create_buf, 0, add_path)
+                    return
+            except Exception as e:
+                msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
+
             for dirpath, dirnames, filenames in os.walk(path):
                 # Don't care about hidden stuff
                 dirnames[:] = [d for d in dirnames if d[0] != '.']
@@ -293,7 +305,7 @@ class Listener(sublime_plugin.EventListener):
                     if f[0] == '.':
                         msg.log('Not creating buf for hidden file %s' % f_path)
                     else:
-                        sublime.set_timeout(really_create_buf(f_path), 0)
+                        utils.set_timeout(Listener.create_buf, 0, f_path)
             return
         try:
             buf_fd = open(path, 'rb')
@@ -351,11 +363,12 @@ class Listener(sublime_plugin.EventListener):
         # deep copy
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
+        MODIFIED_EVENTS.put(1)
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        sublime.set_timeout(lambda: view.set_viewport_position(viewport_position, False), 0)
+        utils.set_timeout(view.set_viewport_position, 0, viewport_position, False)
         view.sel().clear()
         view.show(visible_region, False)
         for sel in selections:
