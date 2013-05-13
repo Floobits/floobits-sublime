@@ -1,13 +1,12 @@
 import os
 import time
 
-import sublime
-
 try:
-    from . import shared as G
-    assert G
+    from . import shared as G, utils
+    assert G and utils
 except ImportError:
     import shared as G
+    import utils
 
 LOG_LEVELS = {
     'DEBUG': 1,
@@ -33,10 +32,10 @@ def get_or_create_chat(cb=None):
         if not G.CHAT_VIEW:
             p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
             G.CHAT_VIEW = G.ROOM_WINDOW.open_file(p)
-        sublime.set_timeout(return_view, 0)
+        utils.set_timeout(return_view, 0)
 
     # Can't call open_file outside main thread
-    sublime.set_timeout(open_view, 0)
+    utils.set_timeout(open_view, 0)
 
 
 class MSG(object):

@@ -98,7 +98,7 @@ class AgentConnection(object):
             self.reconnect_delay = 10000
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            sublime.set_timeout(self.connect, int(self.reconnect_delay))
+            utils.set_timeout(self.connect, int(self.reconnect_delay))
         elif self.retries == 0:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
@@ -127,7 +127,7 @@ class AgentConnection(object):
         self.sock.setblocking(False)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
-        sublime.set_timeout(self.select, 0)
+        utils.set_timeout(self.select, 0)
         self.auth()
 
     def auth(self):
@@ -356,4 +356,4 @@ class AgentConnection(object):
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
 
-        sublime.set_timeout(self.select, 100)
+        utils.set_timeout(self.select, 100)
