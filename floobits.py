@@ -1,26 +1,62 @@
 # coding: utf-8
 import sys
 import os
+import imp
 import json
 import subprocess
 import threading
 import traceback
 import webbrowser
 
-try:
-    from urllib.error import HTTPError
-    assert HTTPError
-except ImportError:
-    from urllib2 import HTTPError
-
 import sublime_plugin
 import sublime
 
 try:
+    import ssl
+    assert ssl
+except ImportError:
+    ssl = False
+
+if ssl is False and sublime.platform() == 'linux':
+    plugin_path = os.path.split(os.path.dirname(__file__))[0]
+    if plugin_path in ('.', ''):
+        plugin_path = os.getcwd()
+    _ssl = None
+    ssl_versions = ['0.9.8', '1.0.0', '10']
+    ssl_path = os.path.join(plugin_path, 'lib', 'linux')
+    lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
+    for version in ssl_versions:
+        so_path = os.path.join(lib_path, 'libssl-%s' % version)
+        try:
+            filename, path, desc = imp.find_module('_ssl', [so_path])
+            if filename is None:
+                print('Module not found at %s' % so_path)
+                continue
+            _ssl = imp.load_module('_ssl', filename, path, desc)
+            break
+        except ImportError as e:
+            print('Failed loading _ssl module %s: %s' % (so_path, str(e)))
+    if _ssl:
+        print('Hooray! %s is a winner!' % so_path)
+        filename, path, desc = imp.find_module('ssl', [ssl_path])
+        if filename is None:
+            print("Couldn't find ssl module at %s" % ssl_path)
+        else:
+            try:
+                ssl = imp.load_module('ssl', filename, path, desc)
+            except ImportError as e:
+                print('Failed loading ssl module at: %s' % str(e))
+    else:
+        print("Couldn't find an _ssl shared lib that's compatible with your version of linux. Sorry :(")
+
+
+try:
+    from urllib.error import HTTPError
     from .floo import api, AgentConnection, msg, shared as G, utils
     from .floo.listener import Listener
-    assert api and AgentConnection and G and Listener and msg and utils
-except ValueError:
+    assert HTTPError and api and AgentConnection and G and Listener and msg and utils
+except (ImportError, ValueError):
+    from urllib2 import HTTPError
     from floo import api, AgentConnection, msg, utils
     from floo.listener import Listener
     from floo import shared as G
