@@ -368,14 +368,12 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges, ping=False):
-        if G.FOLLOW_MODE:
-            ping = True
         buf = BUFS.get(buf_id)
         if not buf:
             return
         view = get_view(buf_id)
         if not view:
-            if ping:
+            if ping or G.FOLLOW_MODE:
                 view = create_view(buf)
             return
             # TODO: scroll to highlight if we just created the view
@@ -384,9 +382,14 @@ class Listener(sublime_plugin.EventListener):
             regions.append(sublime.Region(*r))
         view.erase_regions(region_key)
         view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        if ping:
+        if ping or G.FOLLOW_MODE:
             G.ROOM_WINDOW.focus_view(view)
-            view.show_at_center(regions[0])
+            if ping:
+                # Explicit summon by another user. Center the line.
+                view.show_at_center(regions[0])
+            else:
+                # Avoid scrolling/jumping lots in follow mode
+                view.show(regions[0])
 
     def id(self, view):
         return view.buffer_id()
