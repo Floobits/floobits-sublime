@@ -312,6 +312,8 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 command.append('--new-window')
             command.append('--add')
             command.append(G.PROJECT_PATH)
+
+            # Maybe no msg view yet :(
             print('command:', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
