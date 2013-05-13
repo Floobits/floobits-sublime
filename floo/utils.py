@@ -74,7 +74,7 @@ def get_room_window():
 def set_room_window(cb):
     room_window = get_room_window()
     if room_window is None:
-        return sublime.set_timeout(set_room_window, 50, cb)
+        return set_timeout(set_room_window, 50, cb)
     G.ROOM_WINDOW = room_window
     cb()
 
