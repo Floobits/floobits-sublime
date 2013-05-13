@@ -330,6 +330,7 @@ class Listener(sublime_plugin.EventListener):
             return
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
+                # TODO: rexamine this assumption
                 # Don't care about hidden stuff
                 dirnames[:] = [d for d in dirnames if d[0] != '.']
                 for f in filenames:
