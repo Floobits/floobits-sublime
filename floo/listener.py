@@ -364,7 +364,6 @@ class Listener(sublime_plugin.EventListener):
         # deep copy
         selections = [x for x in view.sel()]
         MODIFIED_EVENTS.put(1)
-        MODIFIED_EVENTS.put(1)
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
         except Exception as e:
