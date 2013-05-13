@@ -148,6 +148,12 @@ settings.add_on_change('', reload_settings)
 reload_settings()
 
 
+def disconnect_dialog():
+    if agent and G.CONNECTED:
+        return bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
+    return True
+
+
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
         return bool(self.is_enabled())
@@ -171,7 +177,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         print(G.COLAB_DIR, G.USERNAME, room_name, floo_room_dir)
 
         if os.path.isfile(dir_to_share):
-            return sublime.error_message('give me a directory please')
+            return sublime.error_message('Give me a directory please')
 
         try:
             utils.mkdir(dir_to_share)
@@ -187,7 +193,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         except (IOError, OSError):
             pass
         except Exception:
-            print("couldn't read the floo_info file: %s" % floo_file)
+            print("Couldn't read the floo_info file: %s" % floo_file)
 
         room_url = info.get('url')
         if room_url:
@@ -223,9 +229,6 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             'room_name': room_name,
             'ln_path': floo_room_dir,
         })
-
-    def is_enabled(self):
-        return not bool(agent and agent.is_ready())
 
 
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
@@ -268,14 +271,14 @@ class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
             sublime.error_message('Unable to create room: %s' % str(e))
             return
 
+        if not disconnect_dialog():
+            return
+
         webbrowser.open(room_url + '/settings', new=2, autoraise=True)
 
         self.window.run_command('floobits_join_room', {
             'room_url': room_url,
         })
-
-    def is_enabled(self):
-        return not bool(agent and agent.is_ready())
 
 
 class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
@@ -284,12 +287,10 @@ class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
 
     def on_input(self, room_url):
-        self.window.run_command('floobits_join_room', {
-            'room_url': room_url,
-        })
-
-    def is_enabled(self):
-        return not bool(agent and agent.is_ready())
+        if disconnect_dialog():
+            self.window.run_command('floobits_join_room', {
+                'room_url': room_url,
+            })
 
 
 class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
@@ -504,10 +505,11 @@ class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
         if item == -1:
             return
         room = DATA['recent_rooms'][item]
-        self.window.run_command('floobits_join_room', {'room_url': room['url']})
+        if disconnect_dialog():
+            self.window.run_command('floobits_join_room', {'room_url': room['url']})
 
     def is_enabled(self):
-        return not bool(agent and agent.is_ready() and len(self._get_recent_rooms()) > 0)
+        return bool(len(self._get_recent_rooms()) > 0)
 
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
