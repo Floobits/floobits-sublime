@@ -66,7 +66,7 @@ PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
-DATA = utils.get_persistent_data()
+DATA = {}
 agent = None
 ON_CONNECT = None
 
@@ -146,6 +146,7 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+DATA = utils.get_persistent_data()
 
 
 def disconnect_dialog():
