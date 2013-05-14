@@ -67,6 +67,10 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
+        try:
+            self.cert_fd.close()
+        except Exception:
+            pass
         msg.log('Disconnected.')
 
     def send_msg(self, msg):
@@ -110,11 +114,10 @@ class AgentConnection(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:
-                cert_fd = tempfile.NamedTemporaryFile()
-                cert_fd.write(cert.CA_CERT.encode('utf-8'))
-                cert_fd.flush()
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_fd.name, cert_reqs=ssl.CERT_REQUIRED)
-                cert_fd.close()
+                self.cert_fd = tempfile.NamedTemporaryFile()
+                self.cert_fd.write(cert.CA_CERT.encode('utf-8'))
+                self.cert_fd.flush()
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_fd.name, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
