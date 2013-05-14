@@ -108,7 +108,7 @@ def is_shared(p):
 
 
 def get_persistent_data():
-    per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
+    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
@@ -124,7 +124,7 @@ def get_persistent_data():
 
 
 def update_persistent_data(data):
-    per_path = os.path.join(G.PLUGIN_PATH, 'persistent.json')
+    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data).encode('utf-8'))
 

@@ -3,6 +3,7 @@ import sys
 import hashlib
 import json
 import socket
+import tempfile
 try:
     import queue
     assert queue
@@ -21,9 +22,10 @@ except ImportError:
     ssl = False
 
 try:
-    from . import listener, msg, shared as G, utils
-    assert G and listener and msg and utils
+    from . import cert, listener, msg, shared as G, utils
+    assert cert and G and listener and msg and utils
 except ImportError:
+    import cert
     import shared as G
     import utils
     import listener
@@ -107,9 +109,12 @@ class AgentConnection(object):
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
-            if ssl:  # ST3 on linux doesn't have the ssl module. OS X & Windows are OK.
-                cert = os.path.join(G.PLUGIN_PATH, 'startssl-ca.pem')
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert, cert_reqs=ssl.CERT_REQUIRED)
+            if ssl:
+                cert_fd = tempfile.NamedTemporaryFile()
+                cert_fd.write(cert.CA_CERT.encode('utf-8'))
+                cert_fd.flush()
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_fd.name, cert_reqs=ssl.CERT_REQUIRED)
+                cert_fd.close()
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
