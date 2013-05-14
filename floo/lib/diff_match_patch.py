@@ -35,6 +35,7 @@ try:
   from urllib import parse
   assert parse
   str_instances = str
+  unichr = chr
 except ImportError:
   import urllib as parse
   str_instances = (str, basestring)
@@ -433,11 +434,11 @@ class diff_match_patch:
         lineStart = lineEnd + 1
 
         if line in lineHash:
-          chars.append(chr(lineHash[line]))
+          chars.append(unichr(lineHash[line]))
         else:
           lineArray.append(line)
           lineHash[line] = len(lineArray) - 1
-          chars.append(chr(len(lineArray) - 1))
+          chars.append(unichr(len(lineArray) - 1))
       return "".join(chars)
 
     chars1 = diff_linesToCharsMunge(text1)
@@ -1653,7 +1654,7 @@ class diff_match_patch:
     paddingLength = self.Patch_Margin
     nullPadding = ""
     for x in range(1, paddingLength + 1):
-      nullPadding += chr(x)
+      nullPadding += unichr(x)
 
     # Bump all the patches forward.
     for patch in patches:
