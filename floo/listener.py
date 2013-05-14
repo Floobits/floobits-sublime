@@ -478,11 +478,11 @@ class Listener(sublime_plugin.EventListener):
         else:
             MODIFIED_EVENTS.task_done()
 
-    def on_selection_modified(self, view):
+    def on_selection_modified(self, view, buf=None):
         try:
             SELECTED_EVENTS.get_nowait()
         except queue.Empty:
-            buf = get_buf(view)
+            buf = buf or get_buf(view)
             if buf:
                 msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
                 self.selection_changed.append((view, buf, False))
@@ -515,3 +515,4 @@ class Listener(sublime_plugin.EventListener):
         if buf:
             msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
             self.views_changed.append((view, buf))
+            self.on_selection_modified(view, buf)
