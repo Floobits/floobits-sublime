@@ -256,6 +256,7 @@ class Listener(sublime_plugin.EventListener):
                 new_sels.append(sublime.Region(a, b))
             selections = [x for x in new_sels]
 
+        SELECTED_EVENTS.put(1)
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
