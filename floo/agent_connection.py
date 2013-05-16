@@ -24,7 +24,7 @@ except ImportError:
 try:
     from . import cert, listener, msg, shared as G, utils
     assert cert and G and listener and msg and utils
-except ImportError:
+except (ImportError, ValueError):
     import cert
     import shared as G
     import utils
