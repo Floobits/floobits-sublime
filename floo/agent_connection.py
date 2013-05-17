@@ -66,10 +66,6 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-        try:
-            self.cert_fd.close()
-        except Exception:
-            pass
         msg.log('Disconnected.')
 
     def send_msg(self, msg):
