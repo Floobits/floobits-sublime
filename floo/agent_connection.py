@@ -3,7 +3,6 @@ import sys
 import hashlib
 import json
 import socket
-import tempfile
 try:
     import queue
     assert queue
@@ -114,10 +113,10 @@ class AgentConnection(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:
-                self.cert_fd = tempfile.NamedTemporaryFile()
-                self.cert_fd.write(cert.CA_CERT.encode('utf-8'))
-                self.cert_fd.flush()
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_fd.name, cert_reqs=ssl.CERT_REQUIRED)
+                cert_path = os.path.join(G.COLAB_DIR, 'startssl-ca.pem')
+                with open(cert_path, 'wb') as cert_fd:
+                    cert_fd.write(cert.CA_CERT.encode('utf-8'))
+                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_path, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
                 if self.port == G.DEFAULT_PORT:
