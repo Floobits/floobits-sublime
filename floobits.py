@@ -150,8 +150,14 @@ DATA = utils.get_persistent_data()
 
 
 def disconnect_dialog():
+    global agent
     if agent and G.CONNECTED:
-        return bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
+        disconnect = bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
+        if disconnect:
+            msg.debug('Stopping agent.')
+            agent.stop()
+            agent = None
+        return disconnect
     return True
 
 
