@@ -307,7 +307,7 @@ class AgentConnection(object):
             elif name == 'msg':
                 self.on_msg(data)
             else:
-                msg.error('unknown name!', name, 'data:', data)
+                msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
 
     def select(self):
