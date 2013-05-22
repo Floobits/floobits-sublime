@@ -77,7 +77,10 @@ def save_buf(buf):
 
 def delete_buf(buf_id):
     # TODO: somehow tell the user about this. maybe delete on disk too?
-    del BUFS[buf_id]
+    try:
+        del BUFS[buf_id]
+    except KeyError:
+        msg.debug("KeyError deleting buf id %s" % buf_id)
 
 
 class FlooPatch(object):
