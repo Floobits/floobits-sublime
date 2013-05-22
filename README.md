@@ -2,8 +2,6 @@
 
 Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Sublime Text. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Vim](https://github.com/Floobits/vim-plugin).
 
-While the name of this repository is `sublime-text-2-plugin`, the plugin is compatible with Sublime Text 2 and Sublime Text 3.
-
 ### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
 ## Windows
@@ -12,14 +10,14 @@ The Python included with the Windows version of Sublime Text 2 does not have the
 # Installation instructions
 
 * If you don't have one already, go to [Floobits](https://floobits.com/) and create an account (or sign in with GitHub). (It's free.)
-* Clone this repository or download and extract [this tarball](https://github.com/Floobits/sublime-text-2-plugin/archive/master.zip).
+* Clone this repository or download and extract [this tarball](https://github.com/Floobits/floobits-sublime/archive/master.zip).
 * Rename the directory to "Floobits".
 * In Sublime Text, go to Preferences -> Browse Packages.
 * Drag, copy, or move the Floobits directory into your Packages directory.
 
 If you'd rather create a symlink instead of copy/moving, run something like:
 
-    ln -s ~/code/sublime-text-2-plugin ~/Library/Application\ Support/Sublime\ Text\ 3/Packages/Floobits
+    ln -s ~/code/floobits-sublime ~/Library/Application\ Support/Sublime\ Text\ 3/Packages/Floobits
 
 # Configuration
 
