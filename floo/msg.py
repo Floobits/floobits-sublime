@@ -50,7 +50,7 @@ class MSG(object):
             return
 
         def _display(view):
-            view.run_command('floo_view_set_msg', {'data': str(self)})
+            view.run_command('floo_view_set_msg', {'data': unicode(self)})
 
         get_or_create_chat(_display)
 
