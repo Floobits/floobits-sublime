@@ -55,17 +55,20 @@ class MSG(object):
         get_or_create_chat(_display)
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         if self.username:
             msg = '[{time}] <{user}> {msg}\n'
         else:
             msg = '[{time}] {msg}\n'
-        return msg.format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
+        return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
 def msg_format(message, *args, **kwargs):
-    message += ' '.join([str(x) for x in args])
+    message += ' '.join([unicode(x) for x in args])
     if kwargs:
-        message = message.format(**kwargs)
+        message = unicode(message).format(**kwargs)
     return message
 
 
