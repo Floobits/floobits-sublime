@@ -4,7 +4,10 @@ import time
 try:
     from . import shared as G, utils
     assert G and utils
+    unicode = str
+    python2 = False
 except ImportError:
+    python2 = True
     import shared as G
     import utils
 
@@ -55,7 +58,9 @@ class MSG(object):
         get_or_create_chat(_display)
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        if python2:
+            return self.__unicode__().encode('utf-8')
+        return self.__unicode__()
 
     def __unicode__(self):
         if self.username:
