@@ -127,6 +127,12 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def set_agent(agent):
+        global BUFS, MODIFIED_EVENTS, SELECTED_EVENTS
+        BUFS = {}
+        MODIFIED_EVENTS = queue.Queue()
+        SELECTED_EVENTS = queue.Queue()
+        Listener.views_changed = []
+        Listener.selection_changed = []
         Listener.agent = agent
 
     @staticmethod
