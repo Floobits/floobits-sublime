@@ -1,6 +1,6 @@
 # [Floobits](https://floobits.com/) plugin for Sublime Text 2 and 3
 
-Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Sublime Text. We're also working on plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Vim](https://github.com/Floobits/vim-plugin).
+Real-time collaborative editing. Think Etherpad, but with native editors. This is the plugin for Sublime Text. We also have plugins for [Emacs](https://github.com/Floobits/emacs-plugin) and [Vim](https://github.com/Floobits/vim-plugin).
 
 ### Development status: Reasonably stable. We dogfood it daily and rarely run into issues.
 
