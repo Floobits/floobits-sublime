@@ -635,6 +635,8 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def run(self, edit, r, data, *args, **kwargs):
         region = sublime.Region(int(r[0]), int(r[1]))
         self.view.replace(edit, region, data)
+        G.READ_STATUS[self.view.buffer_id()] = self.view.is_read_only()
+        self.view.set_read_only(True)
 
     def is_visible(self):
         return False

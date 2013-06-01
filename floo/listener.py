@@ -481,6 +481,9 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
+        status = G.READ_STATUS.get(view.buffer_id())
+        if status is not None:
+            view.set_read_only(status)
         try:
             MODIFIED_EVENTS.get_nowait()
         except queue.Empty:
@@ -498,6 +501,9 @@ class Listener(sublime_plugin.EventListener):
                 self.selection_changed.append((view, buf, False))
         else:
             SELECTED_EVENTS.task_done()
+
+    def on_query_context(self, view, key, operator, operand, match_all):
+        print(view, key, operator, operand, match_all)
 
     @staticmethod
     def clear_highlights(view):
