@@ -481,9 +481,11 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        status = G.READ_STATUS.get(view.buffer_id())
-        if status is not None:
-            view.set_read_only(status)
+        vid = view.buffer_id() 
+        status = G.LOCKED_VIEWS.get()
+        if status <= 0:
+            del G.LOCKED_VIEWS.get(vid)
+
         try:
             MODIFIED_EVENTS.get_nowait()
         except queue.Empty:
@@ -503,7 +505,15 @@ class Listener(sublime_plugin.EventListener):
             SELECTED_EVENTS.task_done()
 
     def on_query_context(self, view, key, operator, operand, match_all):
-        print(view, key, operator, operand, match_all)
+        """ If the plugin knows how to respond to the context, it should return either True of False. 
+        If the context is unknown, it should return None. """
+        if operator != "floobits_change_eater":
+            return
+        vid = view.buffer_id()
+        if vid is None:
+            return
+        if vid in G.LOCKED_VIEWS:
+            return True
 
     @staticmethod
     def clear_highlights(view):
