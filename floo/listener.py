@@ -482,9 +482,10 @@ class Listener(sublime_plugin.EventListener):
 
     def on_modified(self, view):
         vid = view.buffer_id() 
-        status = G.LOCKED_VIEWS.get()
-        if status <= 0:
-            del G.LOCKED_VIEWS.get(vid)
+        if vid in G.LOCKED_VIEWS:
+            G.LOCKED_VIEWS[vid] -= 1
+            if G.LOCKED_VIEWS[vid] <= 0:
+                del G.LOCKED_VIEWS.get(vid)
 
         try:
             MODIFIED_EVENTS.get_nowait()
