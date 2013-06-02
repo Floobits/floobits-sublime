@@ -652,4 +652,7 @@ class FloobitsChangeEater(sublime_plugin.TextCommand):
     def run(self, edit, *args):
         pass
 
+    def is_enabled(self):
+        return True
+        
 Listener.push()
