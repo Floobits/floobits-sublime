@@ -506,7 +506,8 @@ class Listener(sublime_plugin.EventListener):
             SELECTED_EVENTS.task_done()
 
     def on_query_context(self, view, key, operator, operand, match_all):
-        """ If the plugin knows how to respond to the context, it should return either True of False. 
+        """ Sublime Docs:
+        If the plugin knows how to respond to the context, it should return either True or False. 
         If the context is unknown, it should return None. """
         if operator != "floobits_change_eater":
             return
