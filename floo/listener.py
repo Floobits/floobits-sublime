@@ -391,6 +391,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges, ping=False):
+        return
         buf = BUFS.get(buf_id)
         if not buf:
             return
@@ -481,11 +482,12 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        vid = view.buffer_id() 
+        vid = view.buffer_id()
         if vid in G.LOCKED_VIEWS:
             G.LOCKED_VIEWS[vid] -= 1
             if G.LOCKED_VIEWS[vid] <= 0:
-                del G.LOCKED_VIEWS.get(vid)
+                del G.LOCKED_VIEWS[vid]
+                print('unlocked ', vid)
 
         try:
             MODIFIED_EVENTS.get_nowait()
@@ -507,14 +509,14 @@ class Listener(sublime_plugin.EventListener):
 
     def on_query_context(self, view, key, operator, operand, match_all):
         """ Sublime Docs:
-        If the plugin knows how to respond to the context, it should return either True or False. 
+        If the plugin knows how to respond to the context, it should return either True or False.
         If the context is unknown, it should return None. """
-        if operator != "floobits_change_eater":
+        if key != "floobits_change_eater":
+            print('not floobits_change_eater')
             return
         vid = view.buffer_id()
-        if vid is None:
-            return
         if vid in G.LOCKED_VIEWS:
+            print('view is locked: %s' % key)
             return True
 
     @staticmethod
