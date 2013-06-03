@@ -240,7 +240,6 @@ class Listener(sublime_plugin.EventListener):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
-            del buf['timeout_id']
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
