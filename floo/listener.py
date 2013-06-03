@@ -27,9 +27,10 @@ except ImportError:
     import utils
 
 
-MODIFIED_EVENTS = queue.Queue()
 SELECTED_EVENTS = queue.Queue()
 BUFS = {}
+
+DMP = dmp.diff_match_patch()
 
 
 def get_text(view):
@@ -96,7 +97,7 @@ class FlooPatch(object):
         return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
 
     def patches(self):
-        return dmp.diff_match_patch().patch_make(self.previous, self.current)
+        return DMP.patch_make(self.previous, self.current)
 
     def to_json(self):
         patches = self.patches()
@@ -127,9 +128,8 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def set_agent(agent):
-        global BUFS, MODIFIED_EVENTS, SELECTED_EVENTS
+        global BUFS, SELECTED_EVENTS
         BUFS = {}
-        MODIFIED_EVENTS = queue.Queue()
         SELECTED_EVENTS = queue.Queue()
         Listener.views_changed = []
         Listener.selection_changed = []
@@ -191,17 +191,24 @@ class Listener(sublime_plugin.EventListener):
         buf_id = patch_data['id']
         buf = BUFS[buf_id]
         view = get_view(buf_id)
-        DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
             return
         msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
-        if view:
-            old_text = get_text(view)
-        else:
-            old_text = buf.get('buf', '')
+        old_text = buf.get('buf', '')
+        view_text = get_text(view)
+        if old_text != view_text:
+            patch = FlooPatch(view, buf)
+            # Update the current copy of the buffer
+            buf['buf'] = patch.current
+            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+            if Listener.agent:
+                Listener.agent.put(patch.to_json())
+            else:
+                msg.debug('Not connected. Discarding view change.')
+            old_text = view_text
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
@@ -228,13 +235,17 @@ class Listener(sublime_plugin.EventListener):
             msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
             return Listener.get_buf(buf_id)
 
+        timeout_id = buf.get('timeout_id')
+        if timeout_id:
+            utils.cancel_timeout(timeout_id)
+
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
             msg.warn(
                 '%s new hash %s != expected %s. re-fetching buffer...' %
                 (buf['path'], cur_hash, patch_data['md5_after'])
             )
-            return Listener.get_buf(buf_id)
+            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 1000, buf_id)
 
         buf['buf'] = t[0]
         buf['md5'] = cur_hash
@@ -251,7 +262,6 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            MODIFIED_EVENTS.put(1)
             view.run_command('floo_view_replace_region', {'r': [offset, offset + length], 'data': patch_text})
             new_sels = []
             for sel in selections:
@@ -373,7 +383,6 @@ class Listener(sublime_plugin.EventListener):
         viewport_position = view.viewport_position()
         # deep copy
         selections = [x for x in view.sel()]
-        MODIFIED_EVENTS.put(1)
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
         except Exception as e:
@@ -391,7 +400,6 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges, ping=False):
-        return
         buf = BUFS.get(buf_id)
         if not buf:
             return
@@ -482,19 +490,7 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        # vid = view.buffer_id()
-        # if vid in G.LOCKED_VIEWS:
-        #     G.LOCKED_VIEWS[vid] -= 1
-        #     if G.LOCKED_VIEWS[vid] <= 0:
-        #         del G.LOCKED_VIEWS[vid]
-        #         print('unlocked ', vid)
-
-        try:
-            MODIFIED_EVENTS.get_nowait()
-        except queue.Empty:
-            self.add(view)
-        else:
-            MODIFIED_EVENTS.task_done()
+        self.add(view)
 
     def on_selection_modified(self, view, buf=None):
         try:
@@ -506,21 +502,6 @@ class Listener(sublime_plugin.EventListener):
                 self.selection_changed.append((view, buf, False))
         else:
             SELECTED_EVENTS.task_done()
-
-    def on_query_context(self, view, key, operator, operand, match_all):
-        """ Sublime Docs:
-        If the plugin knows how to respond to the context, it should return either True or False.
-        If the context is unknown, it should return None. """
-        print G.LOCKED_VIEWS, key
-        return True
-        if key != "floobits_change_eater":
-            print('not floobits_change_eater')
-            return 
-        vid = view.buffer_id()
-        if vid in G.LOCKED_VIEWS:
-            print('view is locked: %s' % key)
-            return True
-        return True
 
     @staticmethod
     def clear_highlights(view):
