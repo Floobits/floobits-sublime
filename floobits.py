@@ -635,8 +635,6 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def run(self, edit, r, data, *args, **kwargs):
         region = sublime.Region(int(r[0]), int(r[1]))
         self.view.replace(edit, region, data)
-        G.LOCKED_VIEWS[self.view.buffer_id()] += 1
-        print("locked: %s" % G.LOCKED_VIEWS)
 
     def is_visible(self):
         return False
@@ -648,11 +646,4 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         return
 
 
-class FloobitsChangeEater(sublime_plugin.TextCommand):
-    def run(self, edit, *args):
-        pass
-
-    def is_enabled(self):
-        return True
-        
 Listener.push()
