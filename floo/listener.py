@@ -505,17 +505,11 @@ class Listener(sublime_plugin.EventListener):
             self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        vid = view.id()
-        prop = False
-        if not SELECTED_EVENTS.get(vid):
-            prop = True
+        try:
+            SELECTED_EVENTS.get(view.id()).pop()
+        except (AttributeError, IndexError):
+            pass
         else:
-            try:
-                SELECTED_EVENTS[vid].pop()
-            except IndexError:
-                prop = True
-
-        if not prop:
             return
 
         buf = buf or get_buf(view)
