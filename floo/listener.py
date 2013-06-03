@@ -159,7 +159,7 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
-            
+
             # consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
@@ -385,6 +385,7 @@ class Listener(sublime_plugin.EventListener):
         viewport_position = view.viewport_position()
         # deep copy
         selections = [x for x in view.sel()]
+        msg.log('Floobits synced data for consistency: %s' % buf['path'])
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
             view.set_status('Floobits', 'Floobits synced data for consistency.')
@@ -457,8 +458,6 @@ class Listener(sublime_plugin.EventListener):
             del self.between_save_events[view.buffer_id()]
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
-        else:
-            print(G.CHAT_VIEW_PATH, "not", view.file_name())
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -532,7 +531,7 @@ class Listener(sublime_plugin.EventListener):
         buf = get_buf(view)
         if buf:
             msg.debug('pinging selection in view %s, buf id %s' % (buf['path'], buf['id']))
-            self.selection_changed.append((view, buf, True))
+            Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
         buf = get_buf(view)
