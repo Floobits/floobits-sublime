@@ -125,6 +125,7 @@ class Listener(sublime_plugin.EventListener):
         global BUFS, SELECTED_EVENTS
         BUFS = {}
         SELECTED_EVENTS = defaultdict(list)
+        G.MODIFIED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.agent = agent
@@ -239,6 +240,7 @@ class Listener(sublime_plugin.EventListener):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+            del buf['timeout_id']
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
@@ -492,6 +494,12 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
+        try:
+            G.MODIFIED_EVENTS.get(view.buffer_id()).pop()
+        except (AttributeError, IndexError):
+            pass
+        else:
+            return
         buf = get_buf(view)
         if buf:
             msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))

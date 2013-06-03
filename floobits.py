@@ -638,7 +638,9 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         start = int(r[0])
         stop = int(r[1])
         region = sublime.Region(start, stop)
-        return self.view.replace(edit, region, data)
+        G.MODIFIED_EVENTS[self.view.buffer_id()].append(1)
+        self.view.replace(edit, region, data)
+        return
         # TODO: get this working since it won't jump the user's cursor
         if stop - start > 10000:
             return self.view.replace(edit, region, data)
