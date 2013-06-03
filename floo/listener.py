@@ -1,13 +1,8 @@
 import os
 import hashlib
+from collections import defaultdict
 from datetime import datetime
 import subprocess
-
-try:
-    import queue
-    assert queue
-except ImportError:
-    import Queue as queue
 
 import sublime
 import sublime_plugin
@@ -27,9 +22,9 @@ except ImportError:
     import utils
 
 
-MODIFIED_EVENTS = queue.Queue()
-SELECTED_EVENTS = queue.Queue()
 BUFS = {}
+DMP = dmp.diff_match_patch()
+SELECTED_EVENTS = defaultdict(list)
 
 
 def get_text(view):
@@ -96,7 +91,7 @@ class FlooPatch(object):
         return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
 
     def patches(self):
-        return dmp.diff_match_patch().patch_make(self.previous, self.current)
+        return DMP.patch_make(self.previous, self.current)
 
     def to_json(self):
         patches = self.patches()
@@ -127,10 +122,9 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def set_agent(agent):
-        global BUFS, MODIFIED_EVENTS, SELECTED_EVENTS
+        global BUFS, SELECTED_EVENTS
         BUFS = {}
-        MODIFIED_EVENTS = queue.Queue()
-        SELECTED_EVENTS = queue.Queue()
+        SELECTED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.agent = agent
@@ -162,11 +156,14 @@ class Listener(sublime_plugin.EventListener):
             else:
                 msg.debug('Not connected. Discarding view change.')
 
+        reported = set()
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
+
             # consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
+
             vb_id = view.buffer_id()
             if vb_id in reported:
                 continue
@@ -190,18 +187,29 @@ class Listener(sublime_plugin.EventListener):
     def apply_patch(patch_data):
         buf_id = patch_data['id']
         buf = BUFS[buf_id]
+        if 'buf' not in buf:
+            msg.debug('buf %s not populated yet. not patching' % buf['path'])
+            return
         view = get_view(buf_id)
-        DMP = dmp.diff_match_patch()
         if len(patch_data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
             return
         msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
+        old_text = buf.get('buf', '')
         if view:
-            old_text = get_text(view)
-        else:
-            old_text = buf.get('buf', '')
+            view_text = get_text(view)
+        if view and old_text != view_text:
+            patch = FlooPatch(view, buf)
+            # Update the current copy of the buffer
+            buf['buf'] = patch.current
+            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+            if Listener.agent:
+                Listener.agent.put(patch.to_json())
+            else:
+                msg.debug('Not connected. Discarding view change.')
+            old_text = view_text
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
@@ -228,13 +236,17 @@ class Listener(sublime_plugin.EventListener):
             msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
             return Listener.get_buf(buf_id)
 
+        timeout_id = buf.get('timeout_id')
+        if timeout_id:
+            utils.cancel_timeout(timeout_id)
+
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
             msg.warn(
                 '%s new hash %s != expected %s. re-fetching buffer...' %
                 (buf['path'], cur_hash, patch_data['md5_after'])
             )
-            return Listener.get_buf(buf_id)
+            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 1000, buf_id)
 
         buf['buf'] = t[0]
         buf['md5'] = cur_hash
@@ -251,7 +263,7 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            MODIFIED_EVENTS.put(1)
+            # TODO: pass in edit
             view.run_command('floo_view_replace_region', {'r': [offset, offset + length], 'data': patch_text})
             new_sels = []
             for sel in selections:
@@ -264,14 +276,14 @@ class Listener(sublime_plugin.EventListener):
                     b += new_offset
                 new_sels.append(sublime.Region(a, b))
             selections = [x for x in new_sels]
-
-        SELECTED_EVENTS.put(1)
+        vid = view.id()
+        # SELECTED_EVENTS[vid].append(1)
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(view.erase_regions, 1000, region_key)
         for sel in selections:
-            SELECTED_EVENTS.put(1)
+            SELECTED_EVENTS[vid].append(1)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -373,9 +385,10 @@ class Listener(sublime_plugin.EventListener):
         viewport_position = view.viewport_position()
         # deep copy
         selections = [x for x in view.sel()]
-        MODIFIED_EVENTS.put(1)
+        msg.log('Floobits synced data for consistency: %s' % buf['path'])
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
+            view.set_status('Floobits', 'Floobits synced data for consistency.')
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
         utils.set_timeout(view.set_viewport_position, 0, viewport_position, False)
@@ -445,8 +458,6 @@ class Listener(sublime_plugin.EventListener):
             del self.between_save_events[view.buffer_id()]
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return cleanup()
-        else:
-            print(G.CHAT_VIEW_PATH, "not", view.file_name())
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
@@ -481,23 +492,28 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        try:
-            MODIFIED_EVENTS.get_nowait()
-        except queue.Empty:
-            self.add(view)
-        else:
-            MODIFIED_EVENTS.task_done()
+        buf = get_buf(view)
+        if buf:
+            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+            self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        try:
-            SELECTED_EVENTS.get_nowait()
-        except queue.Empty:
-            buf = buf or get_buf(view)
-            if buf:
-                msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
-                self.selection_changed.append((view, buf, False))
+        vid = view.id()
+        prop = False
+        if not SELECTED_EVENTS.get(vid):
+            prop = True
         else:
-            SELECTED_EVENTS.task_done()
+            try:
+                SELECTED_EVENTS[vid].pop()
+            except IndexError:
+                prop = True
+
+        if not prop:
+            return
+
+        buf = buf or get_buf(view)
+        if buf:
+            self.selection_changed.append((view, buf, False))
 
     @staticmethod
     def clear_highlights(view):
@@ -518,11 +534,8 @@ class Listener(sublime_plugin.EventListener):
             Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
-        self.add(view)
-
-    def add(self, view):
         buf = get_buf(view)
         if buf:
-            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+            msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
             self.views_changed.append((view, buf))
-            self.on_selection_modified(view, buf)
+            self.selection_changed.append((view, buf, False))

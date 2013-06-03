@@ -180,7 +180,7 @@ class AgentConnection(object):
 
     def protocol(self, req):
         self.buf += req.decode('utf-8')
-        msg.debug('buf: %s' % self.buf)
+        # msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
@@ -359,4 +359,4 @@ class AgentConnection(object):
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
 
-        utils.set_timeout(self.select, 100)
+        utils.set_timeout(self.select, 50)
