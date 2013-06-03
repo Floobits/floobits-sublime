@@ -18,26 +18,30 @@ except ImportError:
 
 top_timeout_id = 0
 cancelled_timeouts = set()
+timeouts = set()
 
 
 def set_timeout(func, timeout, *args, **kwargs):
     global top_timeout_id
     timeout_id = top_timeout_id
     top_timeout_id += 1
-    if top_timeout_id > 10000:
+    if top_timeout_id > 100000:
         top_timeout_id = 0
 
     def timeout_func():
+        timeouts.remove(timeout_id)
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
         func(*args, **kwargs)
     sublime.set_timeout(timeout_func, timeout)
+    timeouts.add(timeout_id)
     return timeout_id
 
 
 def cancel_timeout(timeout_id):
-    cancelled_timeouts.add(timeout_id)
+    if timeout_id in timeouts:
+        cancelled_timeouts.add(timeout_id)
 
 
 def parse_url(room_url):
