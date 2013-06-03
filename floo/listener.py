@@ -27,10 +27,9 @@ except ImportError:
     import utils
 
 
-SELECTED_EVENTS = queue.Queue()
 BUFS = {}
-
 DMP = dmp.diff_match_patch()
+SELECTED_EVENTS = queue.Queue()
 
 
 def get_text(view):
@@ -490,7 +489,10 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        self.add(view)
+        buf = get_buf(view)
+        if buf:
+            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+            self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
         try:
@@ -522,11 +524,8 @@ class Listener(sublime_plugin.EventListener):
             Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
-        self.add(view)
-
-    def add(self, view):
         buf = get_buf(view)
         if buf:
-            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+            msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
             self.views_changed.append((view, buf))
             self.on_selection_modified(view, buf)
