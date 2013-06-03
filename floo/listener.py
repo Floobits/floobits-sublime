@@ -233,13 +233,13 @@ class Listener(sublime_plugin.EventListener):
                 msg.debug('Starting data:', buf['buf'])
                 msg.debug('Patch:', patch_data['patch'])
 
-        if not clean_patch:
-            msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
-            return Listener.get_buf(buf_id)
-
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+
+        if not clean_patch:
+            msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
+            return Listener.get_buf(buf_id)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
