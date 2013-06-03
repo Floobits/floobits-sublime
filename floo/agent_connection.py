@@ -197,6 +197,11 @@ class AgentConnection(object):
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 buf_id = data['id']
+                buf = listener.BUFS[buf_id]
+                timeout_id = buf.get('timeout_id')
+                if timeout_id:
+                    utils.cancel_timeout(timeout_id)
+
                 listener.BUFS[buf_id] = data
                 view = listener.get_view(buf_id)
                 if view:
