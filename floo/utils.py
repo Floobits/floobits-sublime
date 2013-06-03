@@ -24,6 +24,8 @@ def set_timeout(func, timeout, *args, **kwargs):
     global top_timeout_id
     timeout_id = top_timeout_id
     top_timeout_id += 1
+    if top_timeout_id > 10000:
+        top_timeout_id = 0
 
     def timeout_func():
         if timeout_id in cancelled_timeouts:
