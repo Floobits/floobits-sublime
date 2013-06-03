@@ -238,16 +238,11 @@ class Listener(sublime_plugin.EventListener):
             utils.cancel_timeout(timeout_id)
 
         if not clean_patch:
-            msg.error('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
-            return Listener.get_buf(buf_id)
+            return Listener.get_buf(buf_id, view)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
-            msg.warn(
-                '%s new hash %s != expected %s. re-fetching buffer...' %
-                (buf['path'], cur_hash, patch_data['md5_after'])
-            )
-            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 1000, buf_id)
+            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 1000, buf_id, view)
 
         buf['buf'] = t[0]
         buf['md5'] = cur_hash
@@ -291,11 +286,17 @@ class Listener(sublime_plugin.EventListener):
         view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
 
     @staticmethod
-    def get_buf(buf_id):
+    def get_buf(buf_id, view=None):
         req = {
             'name': 'get_buf',
             'id': buf_id
         }
+        buf = BUFS[buf_id]
+        msg.warn('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
+        if buf.get('buf'):
+            del buf['buf']
+        if view:
+            view.set_read_only(True)
         Listener.agent.put(req)
 
     @staticmethod
@@ -493,16 +494,24 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
+        buf = get_buf(view)
+        if not buf:
+            return
+
+        view_md5 = hashlib.md5(get_text(view)).hexdigest()
+        if view_md5 == buf.get('view_md5'):
+            return
+        buf['view_md5'] = view_md5
+
         try:
             G.MODIFIED_EVENTS.get(view.buffer_id()).pop()
         except (AttributeError, IndexError):
             pass
         else:
             return
-        buf = get_buf(view)
-        if buf:
-            msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
-            self.views_changed.append((view, buf))
+
+        msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+        self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
         try:
