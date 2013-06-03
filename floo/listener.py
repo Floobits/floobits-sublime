@@ -498,7 +498,7 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
 
-        view_md5 = hashlib.md5(get_text(view)).hexdigest()
+        view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
         if view_md5 == buf.get('view_md5'):
             return
         buf['view_md5'] = view_md5
