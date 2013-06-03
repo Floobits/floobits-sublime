@@ -3,12 +3,6 @@ import hashlib
 from datetime import datetime
 import subprocess
 
-try:
-    import queue
-    assert queue
-except ImportError:
-    import Queue as queue
-
 import sublime
 import sublime_plugin
 
@@ -29,7 +23,7 @@ except ImportError:
 
 BUFS = {}
 DMP = dmp.diff_match_patch()
-SELECTED_EVENTS = queue.Queue()
+SELECTED_EVENTS = []
 
 
 def get_text(view):
@@ -129,7 +123,7 @@ class Listener(sublime_plugin.EventListener):
     def set_agent(agent):
         global BUFS, SELECTED_EVENTS
         BUFS = {}
-        SELECTED_EVENTS = queue.Queue()
+        SELECTED_EVENTS = []
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.agent = agent
@@ -274,13 +268,13 @@ class Listener(sublime_plugin.EventListener):
                 new_sels.append(sublime.Region(a, b))
             selections = [x for x in new_sels]
 
-        SELECTED_EVENTS.put(1)
+        SELECTED_EVENTS.append(1)
         view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(view.erase_regions, 1000, region_key)
         for sel in selections:
-            SELECTED_EVENTS.put(1)
+            SELECTED_EVENTS.append(1)
             view.sel().add(sel)
 
         now = datetime.now()
@@ -496,14 +490,12 @@ class Listener(sublime_plugin.EventListener):
 
     def on_selection_modified(self, view, buf=None):
         try:
-            SELECTED_EVENTS.get_nowait()
-        except queue.Empty:
+            SELECTED_EVENTS.pop()
+        except IndexError:
             buf = buf or get_buf(view)
             if buf:
                 msg.debug('selection in view %s, buf id %s' % (buf['path'], buf['id']))
                 self.selection_changed.append((view, buf, False))
-        else:
-            SELECTED_EVENTS.task_done()
 
     @staticmethod
     def clear_highlights(view):
