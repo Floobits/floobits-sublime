@@ -135,6 +135,9 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
+            if not Listener.agent:
+                msg.debug('Not connected. Discarding view change.')
+                continue
             if view.is_loading():
                 msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
                 continue
@@ -152,15 +155,15 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            if Listener.agent:
-                Listener.agent.put(patch.to_json())
-            else:
-                msg.debug('Not connected. Discarding view change.')
+            Listener.agent.put(patch.to_json())
 
         reported = set()
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
 
+            if not Listener.agent:
+                msg.debug('Not connected. Discarding selection change.')
+                continue
             # consume highlight events to avoid leak
             if 'highlight' not in G.PERMS:
                 continue
@@ -177,12 +180,7 @@ class Listener(sublime_plugin.EventListener):
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
             }
-            if Listener.agent:
-                Listener.agent.put(highlight_json)
-            else:
-                msg.debug('Not connected. Discarding selection change.')
-
-        utils.set_timeout(Listener.push, 100)
+            Listener.agent.put(highlight_json)
 
     @staticmethod
     def apply_patch(patch_data):

@@ -149,6 +149,13 @@ reload_settings()
 DATA = utils.get_persistent_data()
 
 
+def global_tick():
+    Listener.push()
+    if Listener.agent:
+        Listener.agent.select()
+    utils.set_timeout(global_tick, 50)
+
+
 def disconnect_dialog():
     global agent
     if agent and G.CONNECTED:
@@ -687,4 +694,5 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
     def description(self):
         return
 
-Listener.push()
+
+global_tick()

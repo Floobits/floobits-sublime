@@ -363,5 +363,3 @@ class AgentConnection(object):
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
-
-        utils.set_timeout(self.select, 50)
