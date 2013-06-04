@@ -639,29 +639,26 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         stop = int(r[1])
         region = sublime.Region(start, stop)
         G.MODIFIED_EVENTS[self.view.buffer_id()].append(1)
-        self.view.replace(edit, region, data)
-        return
-        # TODO: get this working since it won't jump the user's cursor
+        start = max(start, 0)
+        stop = min(stop, self.view.size())
         if stop - start > 10000:
             return self.view.replace(edit, region, data)
         existing = self.view.substr(region)
         i = 0
-        length = min(len(existing), len(data))
+        data_len = len(data)
+        existing_len = len(existing)
+        length = min(data_len, existing_len)
         while (i < length):
             if existing[i] != data[i]:
                 break
             i += 1
-        print('the first %s characters match' % i)
         j = 0
-        while (j < (length - i)):
-            if existing[-1 * j] != data[-1 * j]:
+        while j < (length - i):
+            if existing[existing_len - j - 1] != data[data_len - j - 1]:
                 break
             j += 1
-        print('the last %s charjcters match' % j)
         region = sublime.Region(start + i, stop - j)
-        # replace_str = data[i:len(data) - j]
-        replace_str = data[i:]
-        print('replacing-\n%s\n- with -\n%s\n-' % (self.view.substr(region), replace_str))
+        replace_str = data[i:data_len - j]
         return self.view.replace(edit, region, replace_str)
 
     def is_visible(self):
