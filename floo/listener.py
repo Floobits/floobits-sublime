@@ -253,6 +253,7 @@ class Listener(sublime_plugin.EventListener):
 
         selections = [x for x in view.sel()]  # deep copy
         regions = []
+        commands = []
         for patch in t[2]:
             offset = patch[0]
             length = patch[1]
@@ -260,7 +261,7 @@ class Listener(sublime_plugin.EventListener):
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             # TODO: pass in edit
-            view.run_command('floo_view_replace_region', {'r': [offset, offset + length], 'data': patch_text})
+            commands.append({'r': [offset, offset + length], 'data': patch_text})
             new_sels = []
             for sel in selections:
                 a = sel.a
@@ -272,6 +273,7 @@ class Listener(sublime_plugin.EventListener):
                     b += new_offset
                 new_sels.append(sublime.Region(a, b))
             selections = [x for x in new_sels]
+        view.run_command('floo_view_replace_regions', {'commands': commands})
         vid = view.id()
         # SELECTED_EVENTS[vid].append(1)
         view.sel().clear()
@@ -282,8 +284,7 @@ class Listener(sublime_plugin.EventListener):
             SELECTED_EVENTS[vid].append(1)
             view.sel().add(sel)
 
-        now = datetime.now()
-        view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], now.strftime('%H:%M')))
+        view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], datetime.now().strftime('%H:%M')))
 
     @staticmethod
     def get_buf(buf_id, view=None):
@@ -447,6 +448,7 @@ class Listener(sublime_plugin.EventListener):
             G.CHAT_VIEW = None
 
     def on_load(self, view):
+        # TODO: handle pings/follow highlights
         msg.debug('load', self.name(view))
 
     def on_pre_save(self, view):
