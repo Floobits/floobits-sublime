@@ -26,6 +26,7 @@ BUFS = {}
 DMP = dmp.diff_match_patch()
 SELECTED_EVENTS = defaultdict(list)
 ON_LOAD = {}
+disable_follow_mode_timeout = None
 
 
 def get_text(view):
@@ -77,6 +78,22 @@ def delete_buf(buf_id):
         del BUFS[buf_id]
     except KeyError:
         msg.debug("KeyError deleting buf id %s" % buf_id)
+
+
+def reenable_follow_mode():
+    global disable_follow_mode_timeout
+    G.FOLLOW_MODE = True
+    disable_follow_mode_timeout = None
+
+
+def disable_follow_mode(timeout):
+    global disable_follow_mode_timeout
+    if G.FOLLOW_MODE is True:
+        G.FOLLOW_MODE = False
+        disable_follow_mode_timeout = utils.set_timeout(reenable_follow_mode, timeout)
+    elif disable_follow_mode_timeout:
+        utils.cancel_timeout(disable_follow_mode_timeout)
+        disable_follow_mode_timeout = utils.set_timeout(reenable_follow_mode, timeout)
 
 
 class FlooPatch(object):
@@ -517,6 +534,7 @@ class Listener(sublime_plugin.EventListener):
             return
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+        disable_follow_mode(2000)
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
@@ -529,6 +547,7 @@ class Listener(sublime_plugin.EventListener):
 
         buf = buf or get_buf(view)
         if buf:
+            disable_follow_mode(2000)
             self.selection_changed.append((view, buf, False))
 
     @staticmethod
