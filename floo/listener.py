@@ -25,6 +25,7 @@ except ImportError:
 BUFS = {}
 DMP = dmp.diff_match_patch()
 SELECTED_EVENTS = defaultdict(list)
+ON_LOAD = {}
 
 
 def get_text(view):
@@ -412,8 +413,8 @@ class Listener(sublime_plugin.EventListener):
         if not view:
             if ping or G.FOLLOW_MODE:
                 view = create_view(buf)
+                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, ping)
             return
-            # TODO: scroll to highlight if we just created the view
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
@@ -446,8 +447,13 @@ class Listener(sublime_plugin.EventListener):
             G.CHAT_VIEW = None
 
     def on_load(self, view):
-        # TODO: handle pings/follow highlights
         msg.debug('load', self.name(view))
+        buf = get_buf(view)
+        if buf:
+            f = ON_LOAD.get(buf['id'])
+            if f:
+                del ON_LOAD[buf['id']]
+                f()
 
     def on_pre_save(self, view):
         p = view.name()
