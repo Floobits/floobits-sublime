@@ -19,6 +19,7 @@ def patch_apply(self, patches, text):
     patches = self.patch_deepCopy(patches)
 
     nullPadding = self.patch_addPadding(patches)
+    np_len = len(nullPadding)
     text = nullPadding + text + nullPadding
     self.patch_splitMax(patches)
 
@@ -93,7 +94,7 @@ def patch_apply(self, patches, text):
                             index1 += len(data)
                     print("cleaned up sematic lossless")
                     position = [start_loc, delete_len, inserted_text]
-        np_len = len(nullPadding)
+        text_len = len(text)
         if position[0] < np_len:
             position[1] -= np_len - position[0]
             position[2] = position[2][np_len - position[0]:]
@@ -101,15 +102,15 @@ def patch_apply(self, patches, text):
         else:
             position[0] -= np_len
 
-        too_close = (position[0] + len(position[2])) - (len(text) - 2 * np_len)
+        too_close = (position[0] + len(position[2])) - (text_len - 2 * np_len)
         if too_close > 0:
             position[2] = position[2][:-too_close]
 
         positions.append(position)
         print("pos", position)
     # Strip the padding off.
-    text = text[len(nullPadding):-len(nullPadding)]
-    print("returning patches. null padding is", len(nullPadding))
+    text = text[np_len:-1 * np_len]
+    print("returning patches. null padding is", np_len)
     return (text, results, positions)
 
 
