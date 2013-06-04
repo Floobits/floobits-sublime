@@ -635,12 +635,10 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def run(self, edit, r, data, *args, **kwargs):
         if not getattr(self, 'view', None):
             return
-        start = int(r[0])
-        stop = int(r[1])
+        start = max(int(r[0]), 0)
+        stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)
         G.MODIFIED_EVENTS[self.view.buffer_id()].append(1)
-        start = max(start, 0)
-        stop = min(stop, self.view.size())
         if stop - start > 10000:
             return self.view.replace(edit, region, data)
         existing = self.view.substr(region)
