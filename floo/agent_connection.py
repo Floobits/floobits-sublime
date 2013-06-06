@@ -179,13 +179,14 @@ class AgentConnection(object):
             window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
-        self.buf += req.decode('utf-8')
+        self.buf += req
         # msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n')
             if not sep:
                 break
             try:
+                before = before.decode('utf-8')
                 data = json.loads(before)
             except Exception as e:
                 msg.error('Unable to parse json: %s' % str(e))
