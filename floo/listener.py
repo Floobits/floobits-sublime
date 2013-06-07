@@ -139,13 +139,17 @@ class Listener(sublime_plugin.EventListener):
         self.between_save_events = {}
 
     @staticmethod
-    def set_agent(agent):
+    def reset():
         global BUFS, SELECTED_EVENTS
         BUFS = {}
         SELECTED_EVENTS = defaultdict(list)
         G.MODIFIED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
+
+    @staticmethod
+    def set_agent(agent):
+        Listener.reset()
         Listener.agent = agent
 
     @staticmethod
@@ -153,7 +157,7 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-            if not Listener.agent:
+            if not G.CONNECTED:
                 msg.debug('Not connected. Discarding view change.')
                 continue
             if view.is_loading():
@@ -179,7 +183,7 @@ class Listener(sublime_plugin.EventListener):
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
 
-            if not Listener.agent:
+            if not G.CONNECTED:
                 msg.debug('Not connected. Discarding selection change.')
                 continue
             # consume highlight events to avoid leak
@@ -517,6 +521,8 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
+        if not G.CONNECTED:
+            return
         buf = get_buf(view)
         if not buf:
             return
@@ -538,6 +544,8 @@ class Listener(sublime_plugin.EventListener):
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
+        if not G.CONNECTED:
+            return
         try:
             SELECTED_EVENTS.get(view.id()).pop()
         except (AttributeError, IndexError):
