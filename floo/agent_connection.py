@@ -42,7 +42,7 @@ class AgentConnection(object):
     ''' Simple chat server using select '''
     def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
-        self.buf = ''
+        self.buf = bytes()
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -91,7 +91,7 @@ class AgentConnection(object):
             pass
         G.CONNECTED = False
         self.room_info = {}
-        self.buf = ''
+        self.buf = bytes()
         self.sock = None
         self.authed = False
         self.reconnect_delay *= 1.5
