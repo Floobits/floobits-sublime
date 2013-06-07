@@ -132,7 +132,6 @@ class FlooPatch(object):
 class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
-    agent = None
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
@@ -146,11 +145,6 @@ class Listener(sublime_plugin.EventListener):
         G.MODIFIED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
-
-    @staticmethod
-    def set_agent(agent):
-        Listener.reset()
-        Listener.agent = agent
 
     @staticmethod
     def push():
@@ -177,7 +171,7 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            Listener.agent.put(patch.to_json())
+            G.AGENT.put(patch.to_json())
 
         reported = set()
         while Listener.selection_changed:
@@ -202,7 +196,7 @@ class Listener(sublime_plugin.EventListener):
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
             }
-            Listener.agent.put(highlight_json)
+            G.AGENT.put(highlight_json)
 
     @staticmethod
     def apply_patch(patch_data):
@@ -226,8 +220,8 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            if Listener.agent:
-                Listener.agent.put(patch.to_json())
+            if G.AGENT:
+                G.AGENT.put(patch.to_json())
             else:
                 msg.debug('Not connected. Discarding view change.')
             old_text = view_text
@@ -318,7 +312,7 @@ class Listener(sublime_plugin.EventListener):
             del buf['buf']
         if view:
             view.set_read_only(True)
-        Listener.agent.put(req)
+        G.AGENT.put(req)
 
     @staticmethod
     def create_buf(path, always_add=False):
@@ -362,7 +356,7 @@ class Listener(sublime_plugin.EventListener):
                 'buf': buf,
                 'path': rel_path,
             }
-            Listener.agent.put(event)
+            G.AGENT.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
@@ -399,7 +393,7 @@ class Listener(sublime_plugin.EventListener):
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
         }
-        Listener.agent.put(event)
+        G.AGENT.put(event)
 
     @staticmethod
     def update_view(buf, view=None):
@@ -515,8 +509,8 @@ class Listener(sublime_plugin.EventListener):
                     'id': buf['id'],
                 }
 
-        if event and Listener.agent:
-            Listener.agent.put(event)
+        if event and G.AGENT:
+            G.AGENT.put(event)
 
         cleanup()
 
@@ -560,13 +554,13 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def clear_highlights(view):
-        if not Listener.agent:
+        if not G.AGENT:
             return
         buf = get_buf(view)
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in Listener.agent.room_info['users'].items():
+        for user_id, username in G.AGENT.room_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     @staticmethod

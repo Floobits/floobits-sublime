@@ -33,3 +33,5 @@ CHAT_VIEW_PATH = None
 FOLLOW_MODE = False
 
 MODIFIED_EVENTS = defaultdict(list)
+
+AGENT = None
