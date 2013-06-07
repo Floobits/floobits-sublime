@@ -142,7 +142,6 @@ class Listener(sublime_plugin.EventListener):
         global BUFS, SELECTED_EVENTS
         BUFS = {}
         SELECTED_EVENTS = defaultdict(list)
-        G.MODIFIED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
 
@@ -515,7 +514,7 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        if not G.CONNECTED:
+        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
             return
         buf = get_buf(view)
         if not buf:
@@ -525,13 +524,6 @@ class Listener(sublime_plugin.EventListener):
         if view_md5 == buf.get('view_md5'):
             return
         buf['view_md5'] = view_md5
-
-        try:
-            G.MODIFIED_EVENTS.get(view.buffer_id()).pop()
-        except (AttributeError, IndexError):
-            pass
-        else:
-            return
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
         disable_follow_mode(2000)
