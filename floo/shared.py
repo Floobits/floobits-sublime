@@ -1,6 +1,3 @@
-from collections import defaultdict
-
-
 __VERSION__ = '0.02'
 
 DEBUG = False
@@ -32,4 +29,6 @@ CHAT_VIEW_PATH = None
 
 FOLLOW_MODE = False
 
-MODIFIED_EVENTS = defaultdict(list)
+IGNORE_MODIFIED_EVENTS = False
+
+AGENT = None

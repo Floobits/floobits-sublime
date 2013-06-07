@@ -1,6 +1,5 @@
 import os
 import hashlib
-from collections import defaultdict
 from datetime import datetime
 import subprocess
 
@@ -24,7 +23,6 @@ except ImportError:
 
 BUFS = {}
 DMP = dmp.diff_match_patch()
-SELECTED_EVENTS = defaultdict(list)
 ON_LOAD = {}
 disable_follow_mode_timeout = None
 
@@ -132,28 +130,24 @@ class FlooPatch(object):
 class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
-    agent = None
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
         self.between_save_events = {}
 
     @staticmethod
-    def set_agent(agent):
-        global BUFS, SELECTED_EVENTS
+    def reset():
+        global BUFS
         BUFS = {}
-        SELECTED_EVENTS = defaultdict(list)
-        G.MODIFIED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
-        Listener.agent = agent
 
     @staticmethod
     def push():
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-            if not Listener.agent:
+            if not G.CONNECTED:
                 msg.debug('Not connected. Discarding view change.')
                 continue
             if view.is_loading():
@@ -173,13 +167,13 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            Listener.agent.put(patch.to_json())
+            G.AGENT.put(patch.to_json())
 
         reported = set()
         while Listener.selection_changed:
             view, buf, ping = Listener.selection_changed.pop()
 
-            if not Listener.agent:
+            if not G.CONNECTED:
                 msg.debug('Not connected. Discarding selection change.')
                 continue
             # consume highlight events to avoid leak
@@ -198,7 +192,7 @@ class Listener(sublime_plugin.EventListener):
                 'ranges': [[x.a, x.b] for x in sel],
                 'ping': ping,
             }
-            Listener.agent.put(highlight_json)
+            G.AGENT.put(highlight_json)
 
     @staticmethod
     def apply_patch(patch_data):
@@ -222,8 +216,8 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            if Listener.agent:
-                Listener.agent.put(patch.to_json())
+            if G.AGENT:
+                G.AGENT.put(patch.to_json())
             else:
                 msg.debug('Not connected. Discarding view change.')
             old_text = view_text
@@ -267,7 +261,6 @@ class Listener(sublime_plugin.EventListener):
             save_buf(buf)
             return
 
-        selections = [x for x in view.sel()]  # deep copy
         regions = []
         commands = []
         for patch in t[2]:
@@ -276,29 +269,12 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            # TODO: pass in edit
             commands.append({'r': [offset, offset + length], 'data': patch_text})
-            new_sels = []
-            for sel in selections:
-                a = sel.a
-                b = sel.b
-                new_offset = len(patch_text) - length
-                if sel.a > offset:
-                    a += new_offset
-                if sel.b > offset:
-                    b += new_offset
-                new_sels.append(sublime.Region(a, b))
-            selections = [x for x in new_sels]
+
         view.run_command('floo_view_replace_regions', {'commands': commands})
-        vid = view.id()
-        # SELECTED_EVENTS[vid].append(1)
-        view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(view.erase_regions, 1000, region_key)
-        for sel in selections:
-            SELECTED_EVENTS[vid].append(1)
-            view.sel().add(sel)
 
         view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], datetime.now().strftime('%H:%M')))
 
@@ -314,7 +290,7 @@ class Listener(sublime_plugin.EventListener):
             del buf['buf']
         if view:
             view.set_read_only(True)
-        Listener.agent.put(req)
+        G.AGENT.put(req)
 
     @staticmethod
     def create_buf(path, always_add=False):
@@ -358,7 +334,7 @@ class Listener(sublime_plugin.EventListener):
                 'buf': buf,
                 'path': rel_path,
             }
-            Listener.agent.put(event)
+            G.AGENT.put(event)
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
@@ -395,7 +371,7 @@ class Listener(sublime_plugin.EventListener):
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
         }
-        Listener.agent.put(event)
+        G.AGENT.put(event)
 
     @staticmethod
     def update_view(buf, view=None):
@@ -511,12 +487,14 @@ class Listener(sublime_plugin.EventListener):
                     'id': buf['id'],
                 }
 
-        if event and Listener.agent:
-            Listener.agent.put(event)
+        if event and G.AGENT:
+            G.AGENT.put(event)
 
         cleanup()
 
     def on_modified(self, view):
+        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
+            return
         buf = get_buf(view)
         if not buf:
             return
@@ -526,23 +504,12 @@ class Listener(sublime_plugin.EventListener):
             return
         buf['view_md5'] = view_md5
 
-        try:
-            G.MODIFIED_EVENTS.get(view.buffer_id()).pop()
-        except (AttributeError, IndexError):
-            pass
-        else:
-            return
-
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
         disable_follow_mode(2000)
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        try:
-            SELECTED_EVENTS.get(view.id()).pop()
-        except (AttributeError, IndexError):
-            pass
-        else:
+        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
             return
 
         buf = buf or get_buf(view)
@@ -552,13 +519,13 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def clear_highlights(view):
-        if not Listener.agent:
+        if not G.AGENT:
             return
         buf = get_buf(view)
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in Listener.agent.room_info['users'].items():
+        for user_id, username in G.AGENT.room_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     @staticmethod

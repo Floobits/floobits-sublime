@@ -67,7 +67,6 @@ PY2 = sys.version_info < (3, 0)
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = {}
-agent = None
 ON_CONNECT = None
 
 
@@ -138,9 +137,9 @@ def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
-    if agent and agent.is_ready():
+    if G.AGENT and G.AGENT.is_ready():
         msg.log('Reconnecting due to settings change')
-        agent.reconnect()
+        G.AGENT.reconnect()
     print('Floobits debug is %s' % G.DEBUG)
 
 
@@ -151,19 +150,18 @@ DATA = utils.get_persistent_data()
 
 def global_tick():
     Listener.push()
-    if Listener.agent:
-        Listener.agent.select()
+    if G.AGENT:
+        G.AGENT.select()
     utils.set_timeout(global_tick, 50)
 
 
 def disconnect_dialog():
-    global agent
-    if agent and G.CONNECTED:
+    if G.AGENT and G.CONNECTED:
         disconnect = bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
         if disconnect:
             msg.debug('Stopping agent.')
-            agent.stop()
-            agent = None
+            G.AGENT.stop()
+            G.AGENT = None
         return disconnect
     return True
 
@@ -173,7 +171,7 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready())
+        return bool(G.AGENT and G.AGENT.is_ready())
 
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
@@ -369,16 +367,15 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 open_room_window3(cb)
 
         def run_agent(owner, room, host, port, secure):
-            global agent
-            if agent:
+            if G.AGENT:
                 msg.debug('Stopping agent.')
-                agent.stop()
-                agent = None
+                G.AGENT.stop()
+                G.AGENT = None
             try:
-                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
+                G.AGENT = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
                 # owner and room name are slugfields so this should be safe
-                Listener.set_agent(agent)
-                agent.connect()
+                Listener.reset()
+                G.AGENT.connect()
             except Exception as e:
                 print(e)
                 tb = traceback.format_exc()
@@ -438,10 +435,9 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
 
     def run(self):
-        global agent
-        if agent:
-            agent.stop()
-            agent = None
+        if G.AGENT:
+            G.AGENT.stop()
+            G.AGENT = None
             sublime.error_message('You have left the room.')
         else:
             sublime.error_message('You are not joined to any room.')
@@ -450,17 +446,16 @@ class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
 class FloobitsRejoinRoomCommand(FloobitsBaseCommand):
 
     def run(self):
-        global agent
-        if agent:
+        if G.AGENT:
             room_url = utils.to_room_url({
-                'host': agent.host,
-                'owner': agent.owner,
-                'port': agent.port,
-                'room': agent.room,
-                'secure': agent.secure,
+                'host': G.AGENT.host,
+                'owner': G.AGENT.owner,
+                'port': G.AGENT.port,
+                'room': G.AGENT.room,
+                'secure': G.AGENT.secure,
             })
-            agent.stop()
-            agent = None
+            G.AGENT.stop()
+            G.AGENT = None
         else:
             try:
                 room_url = DATA['recent_rooms'][0]['url']
@@ -492,8 +487,8 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
     def run(self, msg):
         if not msg:
             return
-        if agent:
-            agent.send_msg(msg)
+        if G.AGENT:
+            G.AGENT.send_msg(msg)
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
@@ -537,7 +532,7 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
     def run(self, *args):
         def print_msg(chat_view):
             msg.log('Opened message view')
-            if not agent:
+            if not G.AGENT:
                 msg.log('Not joined to a room.')
 
         msg.get_or_create_chat(print_msg)
@@ -589,7 +584,7 @@ class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready() and not G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and not G.FOLLOW_MODE)
 
 
 class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
@@ -600,7 +595,7 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready() and G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and G.FOLLOW_MODE)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
@@ -637,20 +632,53 @@ class FlooViewSetMsg(sublime_plugin.TextCommand):
         return
 
 
+ignore_modified_timeout = None
+
+
+def unignore_modified_events():
+    G.IGNORE_MODIFIED_EVENTS = False
+
+
+def transform_selections(selections, start, new_offset):
+    new_sels = []
+    for sel in selections:
+        a = sel.a
+        b = sel.b
+        if sel.a > start:
+            a += new_offset
+        if sel.b > start:
+            b += new_offset
+        new_sels.append(sublime.Region(a, b))
+    return new_sels
+
+
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegion(sublime_plugin.TextCommand):
-    def run(self, *args, **kwargs):
-        return self._run(*args, **kwargs)
+    def run(self, edit, *args, **kwargs):
+        selections = [x for x in self.view.sel()]  # deep copy
+        selections = self._run(edit, selections, *args, **kwargs)
+        self.view.sel().clear()
+        for sel in selections:
+            self.view.sel().add(sel)
 
-    def _run(self, edit, r, data):
+    def _run(self, edit, selections, r, data):
+        global ignore_modified_timeout
+
         if not getattr(self, 'view', None):
-            return
+            return selections
+
+        G.IGNORE_MODIFIED_EVENTS = True
+        utils.cancel_timeout(ignore_modified_timeout)
+        ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
+
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)
-        G.MODIFIED_EVENTS[self.view.buffer_id()].append(1)
+
         if stop - start > 10000:
-            return self.view.replace(edit, region, data)
+            self.view.replace(edit, region, data)
+            return transform_selections(selections, start, stop - start)
+
         existing = self.view.substr(region)
         i = 0
         data_len = len(data)
@@ -668,6 +696,8 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
         self.view.replace(edit, region, replace_str)
+        new_offset = len(replace_str) - ((stop - j) - (start + i))
+        return transform_selections(selections, start + i, new_offset)
 
     def is_visible(self):
         return False
@@ -682,8 +712,13 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegions(FlooViewReplaceRegion):
     def run(self, edit, commands):
+        selections = [x for x in self.view.sel()]  # deep copy
         for command in commands:
-            self._run(edit, **command)
+            selections = self._run(edit, selections, **command)
+
+        self.view.sel().clear()
+        for sel in selections:
+            self.view.sel().add(sel)
 
     def is_visible(self):
         return False
