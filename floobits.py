@@ -632,18 +632,28 @@ class FlooViewSetMsg(sublime_plugin.TextCommand):
         return
 
 
+ignore_modified_timeout = None
+
+
+def unignore_modified_events():
+    G.IGNORE_MODIFIED_EVENTS = False
+
+
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def run(self, *args, **kwargs):
         return self._run(*args, **kwargs)
 
     def _run(self, edit, r, data):
+        global ignore_modified_timeout
         if not getattr(self, 'view', None):
             return
+        G.IGNORE_MODIFIED_EVENTS = True
+        utils.cancel_timeout(ignore_modified_timeout)
+        ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)
-        G.MODIFIED_EVENTS[self.view.buffer_id()].append(1)
         if stop - start > 10000:
             return self.view.replace(edit, region, data)
         existing = self.view.substr(region)
