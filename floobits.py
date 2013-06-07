@@ -244,6 +244,11 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return True
 
     def run(self, room_name='', ln_path=None, prompt='Room name:'):
         reload_settings()
