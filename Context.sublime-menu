@@ -3,11 +3,19 @@
     "caption": "Floobits",
     "children": [
       {
-        "caption": "Floobits::Summon",
-        "command": "floobits_ping"
+        "caption": "Floobits::Stalk Workspace",
+        "command": "floobits_enable_stalker_mode"
       },
       {
-        "caption": "Floobits::Clear highlights",
+        "caption": "Floobits::Stop Stalking Workspace",
+        "command": "floobits_disable_stalker_mode"
+      },
+      {
+        "caption": "Floobits::Summon",
+        "command": "floobits_summon"
+      },
+      {
+        "caption": "Floobits::Clear Highlights",
         "command": "floobits_clear_highlights"
       },
       {
@@ -15,27 +23,16 @@
         "command": "floobits_prompt_msg"
       },
       {
-        "caption": "Floobits::Join room",
-        "command": "floobits_prompt_join_room"
-      },
-      { "command": "floobits_join_recent_room",
-        "caption": "Floobits::Join Recent Room"
+        "caption": "Floobits::Join Workspace",
+        "command": "floobits_prompt_join_workspace"
       },
       {
-        "caption": "Floobits::Leave Room",
-        "command": "floobits_leave_room"
+        "caption": "Floobits::Join Recent Workspace",
+        "command": "floobits_join_recent_workspace"
       },
       {
-        "caption": "Floobits::Reconnect",
-        "command": "floobits_rejoin_room"
-      },
-      {
-        "caption": "Floobits::Follow changes",
-        "command": "floobits_enable_follow_mode"
-      },
-      {
-        "caption": "Floobits::Don't follow changes",
-        "command": "floobits_disable_follow_mode"
+        "caption": "Floobits::Leave Workspace",
+        "command": "floobits_leave_workspace"
       }
     ]
   }

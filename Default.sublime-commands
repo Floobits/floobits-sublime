@@ -1,58 +1,62 @@
 [
   {
+    "caption": "Floobits Settings – User",
     "command": "open_file",
     "args": {
       "file": "${packages}/User/Floobits.sublime-settings"
-    },
-    "caption": "Floobits Settings – User"
-  },
-  { "command": "floobits_join_recent_room",
-    "caption": "Floobits::Join Recent Room"
+    }
   },
   {
-    "command": "floobits_prompt_join_room",
-    "caption": "Floobits::Join Room"
-  },
-  { "command": "floobits_prompt_msg",
-    "caption": "Floobits::Send Message"
-  },
-  { "command": "floobits_open_message_view",
-    "caption": "Floobits::Open Messages View"
-  },
-  { "command": "floobits_share_dir",
-    "caption": "Floobits::Share Directory"
+    "caption": "Floobits::Create Workspace",
+    "command": "floobits_share_dir"
   },
   {
-    "command": "floobits_enable_follow_mode",
-    "caption": "Floobits::Follow Changes"
+    "caption": "Floobits::Join Recent Workspace",
+    "command": "floobits_join_recent_workspace"
   },
   {
-    "command": "floobits_disable_follow_mode",
-    "caption": "Floobits::Don't Follow Changes"
+    "caption": "Floobits::Join Workspace",
+    "command": "floobits_prompt_join_workspace"
   },
   {
-    "command": "floobits_ping",
-     "caption": "Floobits::Summon Everyone"
+    "caption": "Floobits::Send Message",
+    "command": "floobits_prompt_msg"
   },
   {
-    "command": "floobits_ping",
-    "caption": "Floobits::Ping (aliases Summon)"
+    "caption": "Floobits::Open Messages View",
+    "command": "floobits_open_message_view"
   },
   {
-    "caption": "Floobits::Leave Room",
-    "command": "floobits_leave_room"
+    "caption": "Floobits::Stalk Workspace",
+    "command": "floobits_enable_stalker_mode"
   },
   {
-    "command": "floobits_add_to_room",
-    "caption": "Floobits::Add To Room",
+    "caption": "Floobits::Stop Stalking Workspace",
+    "command": "floobits_disable_stalker_mode"
+  },
+  {
+    "caption": "Floobits::Summon Everyone",
+    "command": "floobits_summon"
+  },
+  {
+    "caption": "Floobits::Ping (aliases Summon)",
+    "command": "floobits_summon"
+  },
+  {
+    "caption": "Floobits::Leave Workspace",
+    "command": "floobits_leave_workspace"
+  },
+  {
+    "caption": "Floobits::Add To Workspace",
+    "command": "floobits_add_to_workspace",
     "args": {
         "paths": null,
         "current_file": true
     }
   },
   {
-    "command": "floobits_delete_from_room",
-    "caption": "Floobits::Delete From Room",
+    "caption": "Floobits::Delete From Workspace",
+    "command": "floobits_delete_from_workspace",
     "args": {
         "paths": null,
         "current_file": true

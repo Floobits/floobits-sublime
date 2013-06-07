@@ -44,11 +44,11 @@ def cancel_timeout(timeout_id):
         cancelled_timeouts.add(timeout_id)
 
 
-def parse_url(room_url):
+def parse_url(workspace_url):
     secure = G.SECURE
     owner = None
-    room_name = None
-    parsed_url = urlparse(room_url)
+    workspace_name = None
+    parsed_url = urlparse(workspace_url)
     port = parsed_url.port
     if parsed_url.scheme == 'http':
         if not port:
@@ -56,19 +56,19 @@ def parse_url(room_url):
         secure = False
     result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
     if result:
-        (owner, room_name) = result.groups()
+        (owner, workspace_name) = result.groups()
     else:
-        raise ValueError('%s is not a valid Floobits URL' % room_url)
+        raise ValueError('%s is not a valid Floobits URL' % workspace_url)
     return {
         'host': parsed_url.hostname,
         'owner': owner,
         'port': port,
-        'room': room_name,
+        'workspace': workspace_name,
         'secure': secure,
     }
 
 
-def to_room_url(r):
+def to_workspace_url(r):
     port = int(r['port'])
     if r['secure']:
         proto = 'https'
@@ -80,25 +80,25 @@ def to_room_url(r):
             port = ''
     if port != '':
         port = ':%s' % port
-    room_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['room'])
-    return room_url
+    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['workspace'])
+    return workspace_url
 
 
-def get_room_window():
-    room_window = None
+def get_workspace_window():
+    workspace_window = None
     for w in sublime.windows():
         for f in w.folders():
             if f == G.PROJECT_PATH:
-                room_window = w
+                workspace_window = w
                 break
-    return room_window
+    return workspace_window
 
 
-def set_room_window(cb):
-    room_window = get_room_window()
-    if room_window is None:
-        return set_timeout(set_room_window, 50, cb)
-    G.ROOM_WINDOW = room_window
+def set_workspace_window(cb):
+    workspace_window = get_workspace_window()
+    if workspace_window is None:
+        return set_timeout(set_workspace_window, 50, cb)
+    G.WORKSPACE_WINDOW = workspace_window
     cb()
 
 
@@ -135,12 +135,12 @@ def get_persistent_data():
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
-        print('Failed to open %s. Recent room list will be empty.' % per_path)
+        print('Failed to open %s. Recent workspace list will be empty.' % per_path)
         return {}
     try:
         persistent_data = json.loads(per.read().decode('utf-8'))
     except Exception as e:
-        print('Failed to parse %s. Recent room list will be empty.' % per_path)
+        print('Failed to parse %s. Recent workspace list will be empty.' % per_path)
         print(e)
         return {}
     return persistent_data

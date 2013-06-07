@@ -1,8 +1,8 @@
 [
 	{
 		"keys": ["shift+ctrl+j"],
-		"command": "floobits_prompt_join_room",
-		"args": {"room": "https://floobits.com/r/"}
+		"command": "floobits_prompt_join_workspace",
+		"args": {"workspace": "https://floobits.com/r/"}
 	},
 	{
 		"keys": ["ctrl+alt+m"],
@@ -10,6 +10,6 @@
 	},
 	{
 		"keys": ["shift+ctrl+alt+j"],
-		"command": "floobits_join_recent_room"
+		"command": "floobits_join_recent_workspace"
 	}
 ]
