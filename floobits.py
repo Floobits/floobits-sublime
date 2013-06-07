@@ -639,23 +639,45 @@ def unignore_modified_events():
     G.IGNORE_MODIFIED_EVENTS = False
 
 
+def transform_selections(selections, start, new_offset):
+    new_sels = []
+    for sel in selections:
+        a = sel.a
+        b = sel.b
+        if sel.a > start:
+            a += new_offset
+        if sel.b > start:
+            b += new_offset
+        new_sels.append(sublime.Region(a, b))
+    return new_sels
+
+
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegion(sublime_plugin.TextCommand):
-    def run(self, *args, **kwargs):
-        return self._run(*args, **kwargs)
+    def run(self, edit, *args, **kwargs):
+        selections = [x for x in self.view.sel()]  # deep copy
+        selections = self._run(edit, selections, *args, **kwargs)
+        self.view.sel().clear()
+        for sel in selections:
+            self.view.sel().add(sel)
 
-    def _run(self, edit, r, data):
+    def _run(self, edit, selections, r, data):
         global ignore_modified_timeout
         if not getattr(self, 'view', None):
-            return
+            return selections
+
         G.IGNORE_MODIFIED_EVENTS = True
         utils.cancel_timeout(ignore_modified_timeout)
         ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
+
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)
+
         if stop - start > 10000:
-            return self.view.replace(edit, region, data)
+            self.view.replace(edit, region, data)
+            return transform_selections(selections, start, stop - start)
+
         existing = self.view.substr(region)
         i = 0
         data_len = len(data)
@@ -673,6 +695,9 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
         self.view.replace(edit, region, replace_str)
+        new_offset = (stop - j) - (start + i) - len(replace_str)
+        print(start, (stop - j) - (start + i), new_offset, i, j)
+        return transform_selections(selections, start + i, new_offset)
 
     def is_visible(self):
         return False
@@ -687,8 +712,13 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegions(FlooViewReplaceRegion):
     def run(self, edit, commands):
+        selections = [x for x in self.view.sel()]  # deep copy
         for command in commands:
-            self._run(edit, **command)
+            selections = self._run(edit, selections, **command)
+
+        self.view.sel().clear()
+        for sel in selections:
+            self.view.sel().add(sel)
 
     def is_visible(self):
         return False
