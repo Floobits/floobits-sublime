@@ -44,6 +44,7 @@ class AgentConnection(object):
         self.sock = None
         self.buf = bytes()
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
+        self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
         self.authed = False
@@ -60,6 +61,8 @@ class AgentConnection(object):
 
     def stop(self):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
         try:
             self.retries = -1
             self.sock.shutdown(2)
@@ -85,6 +88,8 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
+        if self.reconnect_timeout:
+            return
         try:
             self.sock.close()
         except Exception:
@@ -99,12 +104,13 @@ class AgentConnection(object):
             self.reconnect_delay = 10000
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            utils.set_timeout(self.connect, int(self.reconnect_delay))
+            self.reconnect_timeout = utils.set_timeout(self.connect, int(self.reconnect_delay))
         elif self.retries == 0:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
     def connect(self):
+        self.stop()
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -119,7 +125,7 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
-            self.sock.settimeout(30)  # Seconds before timing out connecting
+            self.sock.settimeout(10)  # Seconds before timing out connecting
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -130,8 +136,8 @@ class AgentConnection(object):
         self.sock.setblocking(False)
         msg.log('Connected!')
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
-        utils.set_timeout(self.select, 0)
         self.auth()
+        self.select()
 
     def auth(self):
         global SOCKET_Q
