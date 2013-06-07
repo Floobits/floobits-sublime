@@ -47,7 +47,6 @@ class AgentConnection(object):
         self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
-        self.authed = False
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
@@ -63,6 +62,7 @@ class AgentConnection(object):
         msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
+        G.CONNECTED = False
         try:
             self.retries = -1
             self.sock.shutdown(2)
@@ -76,7 +76,7 @@ class AgentConnection(object):
         self.chat(self.username, time.time(), msg, True)
 
     def is_ready(self):
-        return self.authed
+        return G.CONNECTED
 
     @staticmethod
     def put(item):
@@ -98,7 +98,6 @@ class AgentConnection(object):
         self.room_info = {}
         self.buf = bytes()
         self.sock = None
-        self.authed = False
         self.reconnect_delay *= 1.5
         if self.reconnect_delay > 10000:
             self.reconnect_delay = 10000
@@ -286,7 +285,7 @@ class AgentConnection(object):
                         msg.debug('Error calculating md5:', e)
                         Listener.get_buf(buf_id)
 
-                self.authed = True
+                Listener.reset()
                 G.CONNECTED = True
                 msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
                 if self.on_connect:
