@@ -1,6 +1,5 @@
 import os
 import hashlib
-from collections import defaultdict
 from datetime import datetime
 import subprocess
 
@@ -24,7 +23,6 @@ except ImportError:
 
 BUFS = {}
 DMP = dmp.diff_match_patch()
-SELECTED_EVENTS = defaultdict(list)
 ON_LOAD = {}
 disable_follow_mode_timeout = None
 
@@ -139,9 +137,8 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def reset():
-        global BUFS, SELECTED_EVENTS
+        global BUFS
         BUFS = {}
-        SELECTED_EVENTS = defaultdict(list)
         Listener.views_changed = []
         Listener.selection_changed = []
 
@@ -264,7 +261,6 @@ class Listener(sublime_plugin.EventListener):
             save_buf(buf)
             return
 
-        selections = [x for x in view.sel()]  # deep copy
         regions = []
         commands = []
         for patch in t[2]:
@@ -273,29 +269,12 @@ class Listener(sublime_plugin.EventListener):
             patch_text = patch[2]
             region = sublime.Region(offset, offset + length)
             regions.append(region)
-            # TODO: pass in edit
             commands.append({'r': [offset, offset + length], 'data': patch_text})
-            new_sels = []
-            for sel in selections:
-                a = sel.a
-                b = sel.b
-                new_offset = len(patch_text) - length
-                if sel.a > offset:
-                    a += new_offset
-                if sel.b > offset:
-                    b += new_offset
-                new_sels.append(sublime.Region(a, b))
-            selections = [x for x in new_sels]
+
         view.run_command('floo_view_replace_regions', {'commands': commands})
-        vid = view.id()
-        # SELECTED_EVENTS[vid].append(1)
-        view.sel().clear()
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(view.erase_regions, 1000, region_key)
-        for sel in selections:
-            SELECTED_EVENTS[vid].append(1)
-            view.sel().add(sel)
 
         view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], datetime.now().strftime('%H:%M')))
 
@@ -530,13 +509,7 @@ class Listener(sublime_plugin.EventListener):
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        if not G.CONNECTED:
-            return
-        try:
-            SELECTED_EVENTS.get(view.id()).pop()
-        except (AttributeError, IndexError):
-            pass
-        else:
+        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
             return
 
         buf = buf or get_buf(view)
