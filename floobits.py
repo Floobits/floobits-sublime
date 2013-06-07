@@ -67,7 +67,6 @@ PY2 = sys.version_info < (3, 0)
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = {}
-agent = None
 ON_CONNECT = None
 
 
@@ -138,9 +137,9 @@ def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
-    if agent and agent.is_ready():
+    if G.AGENT and G.AGENT.is_ready():
         msg.log('Reconnecting due to settings change')
-        agent.reconnect()
+        G.AGENT.reconnect()
     print('Floobits debug is %s' % G.DEBUG)
 
 
@@ -151,19 +150,18 @@ DATA = utils.get_persistent_data()
 
 def global_tick():
     Listener.push()
-    if Listener.agent:
-        Listener.agent.select()
+    if G.AGENT:
+        G.AGENT.select()
     utils.set_timeout(global_tick, 50)
 
 
 def disconnect_dialog():
-    global agent
-    if agent and G.CONNECTED:
+    if G.AGENT and G.CONNECTED:
         disconnect = bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
         if disconnect:
             msg.debug('Stopping agent.')
-            agent.stop()
-            agent = None
+            G.AGENT.stop()
+            G.AGENT = None
         return disconnect
     return True
 
@@ -173,7 +171,7 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready())
+        return bool(G.AGENT and G.AGENT.is_ready())
 
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
@@ -369,16 +367,15 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 open_room_window3(cb)
 
         def run_agent(owner, room, host, port, secure):
-            global agent
-            if agent:
+            if G.AGENT:
                 msg.debug('Stopping agent.')
-                agent.stop()
-                agent = None
+                G.AGENT.stop()
+                G.AGENT = None
             try:
-                agent = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
+                G.AGENT = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
                 # owner and room name are slugfields so this should be safe
-                Listener.set_agent(agent)
-                agent.connect()
+                Listener.reset()
+                G.AGENT.connect()
             except Exception as e:
                 print(e)
                 tb = traceback.format_exc()
@@ -438,10 +435,9 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
 class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
 
     def run(self):
-        global agent
-        if agent:
-            agent.stop()
-            agent = None
+        if G.AGENT:
+            G.AGENT.stop()
+            G.AGENT = None
             sublime.error_message('You have left the room.')
         else:
             sublime.error_message('You are not joined to any room.')
@@ -450,17 +446,16 @@ class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
 class FloobitsRejoinRoomCommand(FloobitsBaseCommand):
 
     def run(self):
-        global agent
-        if agent:
+        if G.AGENT:
             room_url = utils.to_room_url({
-                'host': agent.host,
-                'owner': agent.owner,
-                'port': agent.port,
-                'room': agent.room,
-                'secure': agent.secure,
+                'host': G.AGENT.host,
+                'owner': G.AGENT.owner,
+                'port': G.AGENT.port,
+                'room': G.AGENT.room,
+                'secure': G.AGENT.secure,
             })
-            agent.stop()
-            agent = None
+            G.AGENT.stop()
+            G.AGENT = None
         else:
             try:
                 room_url = DATA['recent_rooms'][0]['url']
@@ -492,8 +487,8 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
     def run(self, msg):
         if not msg:
             return
-        if agent:
-            agent.send_msg(msg)
+        if G.AGENT:
+            G.AGENT.send_msg(msg)
 
     def description(self):
         return 'Send a message to the floobits room you are in (join a room first)'
@@ -537,7 +532,7 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
     def run(self, *args):
         def print_msg(chat_view):
             msg.log('Opened message view')
-            if not agent:
+            if not G.AGENT:
                 msg.log('Not joined to a room.')
 
         msg.get_or_create_chat(print_msg)
@@ -589,7 +584,7 @@ class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready() and not G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and not G.FOLLOW_MODE)
 
 
 class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
@@ -600,7 +595,7 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(agent and agent.is_ready() and G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and G.FOLLOW_MODE)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
