@@ -235,6 +235,8 @@ class AgentConnection(object):
                     pass
                 listener.delete_buf(data['id'])
             elif name == 'room_info':
+                Listener.reset()
+                G.CONNECTED = True
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
                 self.room_info = data
@@ -285,8 +287,6 @@ class AgentConnection(object):
                         msg.debug('Error calculating md5:', e)
                         Listener.get_buf(buf_id)
 
-                Listener.reset()
-                G.CONNECTED = True
                 msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
                 if self.on_connect:
                     self.on_connect(self)
