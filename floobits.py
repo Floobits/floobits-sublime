@@ -641,7 +641,6 @@ def unignore_modified_events():
 
 def transform_selections(selections, start, new_offset):
     new_sels = []
-    print 's', selections
     for sel in selections:
         a = sel.a
         b = sel.b
@@ -650,7 +649,6 @@ def transform_selections(selections, start, new_offset):
         if sel.b > start:
             b += new_offset
         new_sels.append(sublime.Region(a, b))
-    print 's', selections
     return new_sels
 
 
