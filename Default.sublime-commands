@@ -7,47 +7,47 @@
     }
   },
   {
-    "caption": "Floobits :: Create Workspace",
+    "caption": "Floobits - Create Workspace",
     "command": "floobits_share_dir"
   },
   {
-    "caption": "Floobits :: Join Recent Workspace",
+    "caption": "Floobits - Join Recent Workspace",
     "command": "floobits_join_recent_workspace"
   },
   {
-    "caption": "Floobits :: Join Workspace",
+    "caption": "Floobits - Join Workspace",
     "command": "floobits_prompt_join_workspace"
   },
   {
-    "caption": "Floobits :: Send Message",
+    "caption": "Floobits - Send Message",
     "command": "floobits_prompt_msg"
   },
   {
-    "caption": "Floobits :: Open Messages View",
+    "caption": "Floobits - Open Messages View",
     "command": "floobits_open_message_view"
   },
   {
-    "caption": "Floobits :: Stalk Workspace",
+    "caption": "Floobits - Stalk Workspace",
     "command": "floobits_enable_stalker_mode"
   },
   {
-    "caption": "Floobits :: Stop Stalking Workspace",
+    "caption": "Floobits - Stop Stalking Workspace",
     "command": "floobits_disable_stalker_mode"
   },
   {
-    "caption": "Floobits :: Summon Everyone",
+    "caption": "Floobits - Summon Everyone",
     "command": "floobits_summon"
   },
   {
-    "caption": "Floobits :: Ping (aliases Summon)",
+    "caption": "Floobits - Ping (aliases Summon)",
     "command": "floobits_summon"
   },
   {
-    "caption": "Floobits :: Leave Workspace",
+    "caption": "Floobits - Leave Workspace",
     "command": "floobits_leave_workspace"
   },
   {
-    "caption": "Floobits :: Add To Workspace",
+    "caption": "Floobits - Add To Workspace",
     "command": "floobits_add_to_workspace",
     "args": {
         "paths": null,
@@ -55,7 +55,7 @@
     }
   },
   {
-    "caption": "Floobits :: Delete From Workspace",
+    "caption": "Floobits - Delete From Workspace",
     "command": "floobits_delete_from_workspace",
     "args": {
         "paths": null,
@@ -63,7 +63,7 @@
     }
   },
   {
-    "caption": "Floobits :: Help",
+    "caption": "Floobits - Help",
     "command": "floobits_help"
   }
 ]
