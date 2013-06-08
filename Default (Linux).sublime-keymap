@@ -1,8 +1,7 @@
 [
 	{
 		"keys": ["shift+ctrl+j"],
-		"command": "floobits_prompt_join_workspace",
-		"args": {"workspace": "https://floobits.com/r/"}
+		"command": "floobits_prompt_join_workspace"
 	},
 	{
 		"keys": ["ctrl+alt+m"],
