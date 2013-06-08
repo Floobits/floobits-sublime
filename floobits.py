@@ -155,17 +155,18 @@ INITIAL_FLOORC = """# Hi,
 #
 # You should log in to your floobits account, copy-paste the customized floorc file into this file, and save it.
 # After, you can go to Tools -> Floobits -> Create Workspace to share a directory.
-# 
+#
 # For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
 #
 #  -- Floobits
 #
-# 
-# <-----CHANGE ME------>
+#
+# <-----UNCOMMENT AND CHANGE THESE LINES BELOW------>
 # username your_username
 # secret your_api_secret
-# <-----CHANGE ME------>
+# <-----UNCOMMENT AND CHANGE THESE LINES ABOVE------>
 """
+
 
 def get_active_window(cb):
     win = sublime.active_window()
@@ -182,7 +183,7 @@ def initial_run():
             floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
 
     def open_floorc(active_window):
-        floorc_view = active_window.open_file(FLOORC_PATH)
+        active_window.open_file(FLOORC_PATH)
         utils.set_timeout(webbrowser.open, timeout, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
 
     get_active_window(open_floorc)
@@ -642,12 +643,13 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
-    
+
     def is_visible(self):
         return True
 
     def is_enabled(self):
         return True
+
 
 class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
