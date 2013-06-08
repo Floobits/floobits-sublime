@@ -228,10 +228,14 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
         return True
 
-    def run(self, dir_to_share=''):
+    def run(self, dir_to_share='', paths=None, current_file=False):
         reload_settings()
         if not (G.USERNAME and G.SECRET):
             return initial_run()
+        if paths:
+            if len(paths) != 1:
+                return sublime.error_message('Only one folder at a time, please. :(')
+            return self.on_input(paths[0])
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
