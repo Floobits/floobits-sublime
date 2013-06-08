@@ -323,7 +323,7 @@ class AgentConnection(object):
 
     def select(self):
         if not self.sock:
-            msg.error('select(): No socket.')
+            msg.debug('select(): No socket.')
             return self.reconnect()
 
         try:
@@ -353,7 +353,7 @@ class AgentConnection(object):
                 self.protocol(buf)
             else:
                 self.empty_selects += 1
-                if self.empty_selects > 10:
+                if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
 
