@@ -68,21 +68,22 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = {}
 ON_CONNECT = None
+FLOORC_PATH = os.path.expanduser('~/.floorc')
 
 
-def update_recent_rooms(room):
-    recent_rooms = DATA.get('recent_rooms', [])
-    recent_rooms.insert(0, room)
-    recent_rooms = recent_rooms[:25]
+def update_recent_workspaces(workspace):
+    recent_workspaces = DATA.get('recent_workspaces', [])
+    recent_workspaces.insert(0, workspace)
+    recent_workspaces = recent_workspaces[:25]
     seen = set()
     new = []
-    for r in recent_rooms:
+    for r in recent_workspaces:
         stringified = json.dumps(r)
         if stringified not in seen:
             new.append(r)
             seen.add(stringified)
 
-    DATA['recent_rooms'] = new
+    DATA['recent_workspaces'] = new
     utils.update_persistent_data(DATA)
 
 
@@ -145,19 +146,75 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+
+INITIAL_FLOORC = """# Hello!
+#
+# We noticed you just installed Floobits, but you haven't configured it yet. Floobits reads
+# configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
+#
+# If everything has gone according to plan, your browser will open
+# https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
+# this file.
+#
+# This plugin requires a Floobits account. If you don't have one, please sign up and visit
+# https://floobits.com/dash/initial_floorc/
+#
+# You should log in to your floobits account, copy-paste the customized floorc into this file,
+# and save it. After that, you can right-click on any directory in your sidebar and go to
+# Floobits -> "Create Workspace from folder" to share it with others.
+#
+# For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
+#
+# Thanks for reading. You're almost done setting up the plugin.
+# -- The Floobits Team
+#
+#
+######  UNCOMMENT AND CHANGE THE LINES BELOW  ######
+
+# username your_username
+# secret your_api_secret
+
+######  UNCOMMENT AND CHANGE THE LINES ABOVE  ######
+"""
+
+
+def get_active_window(cb):
+    win = sublime.active_window()
+    if not win:
+        return utils.set_timeout(get_active_window, 50, cb)
+    cb(win)
+
+
+def initial_run():
+    timeout = 0
+    if not os.path.exists(FLOORC_PATH):
+        timeout = 7000
+        with open(FLOORC_PATH, 'wb') as floorc_fd:
+            floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
+
+    def open_floorc(active_window):
+        active_window.open_file(FLOORC_PATH)
+        utils.set_timeout(webbrowser.open, timeout, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
+
+    get_active_window(open_floorc)
+
+
+if not (G.USERNAME and G.SECRET):
+    initial_run()
+
 DATA = utils.get_persistent_data()
 
 
 def global_tick():
     Listener.push()
-    if G.AGENT:
+    if G.AGENT and G.AGENT.sock:
         G.AGENT.select()
-    utils.set_timeout(global_tick, 50)
+    utils.set_timeout(global_tick, G.TICK_TIME)
 
 
 def disconnect_dialog():
     if G.AGENT and G.CONNECTED:
-        disconnect = bool(sublime.ok_cancel_dialog('You can only be in one room at a time. Leave the current room?'))
+        disconnect = bool(sublime.ok_cancel_dialog('You can only be in one workspace at a time. Leave the current workspace?'))
         if disconnect:
             msg.debug('Stopping agent.')
             G.AGENT.stop()
@@ -175,18 +232,29 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return True
 
-    def run(self, dir_to_share=''):
+    def is_enabled(self):
+        return True
+
+    def run(self, dir_to_share='', paths=None, current_file=False):
         reload_settings()
-        self.window.show_input_panel('Directory:', dir_to_share, self.on_input, None, None)
+        if not (G.USERNAME and G.SECRET):
+            return initial_run()
+        if paths:
+            if len(paths) != 1:
+                return sublime.error_message('Only one folder at a time, please. :(')
+            return self.on_input(paths[0])
+        self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
         global ON_CONNECT
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = utils.unfuck_path(dir_to_share)
-        room_name = os.path.basename(dir_to_share)
-        floo_room_dir = os.path.join(G.COLAB_DIR, G.USERNAME, room_name)
-        print(G.COLAB_DIR, G.USERNAME, room_name, floo_room_dir)
+        workspace_name = os.path.basename(dir_to_share)
+        floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
+        print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
 
         if os.path.isfile(dir_to_share):
             return sublime.error_message('Give me a directory please')
@@ -207,113 +275,113 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         except Exception:
             print("Couldn't read the floo_info file: %s" % floo_file)
 
-        room_url = info.get('url')
-        if room_url:
+        workspace_url = info.get('url')
+        if workspace_url:
             try:
-                result = utils.parse_url(room_url)
+                result = utils.parse_url(workspace_url)
             except Exception as e:
                 sublime.error_message(str(e))
             else:
-                room_name = result['room']
-                floo_room_dir = os.path.join(G.COLAB_DIR, result['owner'], result['room'])
-                if os.path.realpath(floo_room_dir) == os.path.realpath(dir_to_share):
+                workspace_name = result['workspace']
+                floo_workspace_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
+                if os.path.realpath(floo_workspace_dir) == os.path.realpath(dir_to_share):
                     if result['owner'] == G.USERNAME:
                         try:
-                            api.create_room(room_name)
-                            print('Created room %s' % room_url)
+                            api.create_workspace(workspace_name)
+                            print('Created workspace %s' % workspace_url)
                         except Exception as e:
-                            print('Tried to create room' + str(e))
+                            print('Tried to create workspace' + str(e))
                     # they wanted to share teh dir, so always share it
-                    return self.window.run_command('floobits_join_room', {'room_url': room_url})
+                    return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
         # go make sym link
         try:
-            utils.mkdir(os.path.dirname(floo_room_dir))
-            os.symlink(dir_to_share, floo_room_dir)
+            utils.mkdir(os.path.dirname(floo_workspace_dir))
+            os.symlink(dir_to_share, floo_workspace_dir)
         except OSError as e:
             if e.errno != 17:
                 raise
         except Exception as e:
-            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_room_dir, str(e)))
+            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
 
-        # make & join room
+        # make & join workspace
         ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
-        self.window.run_command('floobits_create_room', {
-            'room_name': room_name,
-            'ln_path': floo_room_dir,
+        self.window.run_command('floobits_create_workspace', {
+            'workspace_name': workspace_name,
+            'ln_path': floo_workspace_dir,
         })
 
 
-class FloobitsCreateRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
         return False
 
     def is_enabled(self):
         return True
 
-    def run(self, room_name='', ln_path=None, prompt='Room name:'):
+    def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
         reload_settings()
         self.ln_path = ln_path
-        self.window.show_input_panel(prompt, room_name, self.on_input, None, None)
+        self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
-    def on_input(self, room_name):
+    def on_input(self, workspace_name):
         try:
-            api.create_room(room_name)
-            room_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, room_name)
-            print('Created room %s' % room_url)
+            api.create_workspace(workspace_name)
+            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
+            print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             if e.code != 409:
                 raise
             args = {
-                'room_name': room_name,
-                'prompt': 'Room %s already exists. Choose another name:' % room_name
+                'workspace_name': workspace_name,
+                'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
             }
 
             if self.ln_path:
                 while True:
-                    room_name = room_name + '1'
-                    new_path = os.path.join(os.path.dirname(self.ln_path), room_name)
+                    workspace_name = workspace_name + '1'
+                    new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
                     try:
                         os.rename(self.ln_path, new_path)
                     except OSError:
                         continue
                     args = {
                         'ln_path': new_path,
-                        'room_name': room_name,
-                        'prompt': 'Room %s already exists. Choose another name:' % room_name
+                        'workspace_name': workspace_name,
+                        'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
                     }
                     break
 
-            return self.window.run_command('floobits_create_room', args)
+            return self.window.run_command('floobits_create_workspace', args)
         except Exception as e:
-            sublime.error_message('Unable to create room: %s' % str(e))
+            sublime.error_message('Unable to create workspace: %s' % str(e))
             return
 
         if not disconnect_dialog():
             return
 
-        webbrowser.open(room_url + '/settings', new=2, autoraise=True)
+        webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
 
-        self.window.run_command('floobits_join_room', {
-            'room_url': room_url,
+        self.window.run_command('floobits_join_workspace', {
+            'workspace_url': workspace_url,
         })
 
 
-class FloobitsPromptJoinRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, room=''):
-        self.window.show_input_panel('Room URL:', room, self.on_input, None, None)
+    def run(self, workspace='https://floobits.com/r/'):
+        self.window.show_input_panel('Workspace URL:', workspace, self.on_input, None, None)
 
-    def on_input(self, room_url):
+    def on_input(self, workspace_url):
         if disconnect_dialog():
-            self.window.run_command('floobits_join_room', {
-                'room_url': room_url,
+            self.window.run_command('floobits_join_workspace', {
+                'workspace_url': workspace_url,
             })
 
 
-class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
+class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, room_url):
-        def open_room_window2(cb):
+    def run(self, workspace_url):
+        def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
@@ -325,7 +393,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
             command = [subl]
-            if utils.get_room_window() is None:
+            if utils.get_workspace_window() is None:
                 command.append('--new-window')
             command.append('--add')
             command.append(G.PROJECT_PATH)
@@ -346,14 +414,14 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                     msgs_fd.write('')
                 msg.get_or_create_chat(truncate_chat_view)
-            utils.set_room_window(create_chat_view)
+            utils.set_workspace_window(create_chat_view)
 
-        def open_room_window3(cb):
-            G.ROOM_WINDOW = utils.get_room_window()
-            if not G.ROOM_WINDOW:
-                G.ROOM_WINDOW = sublime.active_window()
+        def open_workspace_window3(cb):
+            G.WORKSPACE_WINDOW = utils.get_workspace_window()
+            if not G.WORKSPACE_WINDOW:
+                G.WORKSPACE_WINDOW = sublime.active_window()
             msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
-            G.ROOM_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
+            G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
             def truncate_chat_view(chat_view):
                 chat_view.set_read_only(False)
@@ -365,20 +433,20 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 msgs_fd.write('')
             msg.get_or_create_chat(truncate_chat_view)
 
-        def open_room_window(cb):
+        def open_workspace_window(cb):
             if PY2:
-                open_room_window2(cb)
+                open_workspace_window2(cb)
             else:
-                open_room_window3(cb)
+                open_workspace_window3(cb)
 
-        def run_agent(owner, room, host, port, secure):
+        def run_agent(owner, workspace, host, port, secure):
             if G.AGENT:
                 msg.debug('Stopping agent.')
                 G.AGENT.stop()
                 G.AGENT = None
             try:
-                G.AGENT = AgentConnection(owner, room, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
-                # owner and room name are slugfields so this should be safe
+                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
+                # owner and workspace name are slugfields so this should be safe
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:
@@ -386,13 +454,8 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                 tb = traceback.format_exc()
                 print(tb)
             else:
-                joined_room = {'url': room_url}
-                update_recent_rooms(joined_room)
-
-        try:
-            result = utils.parse_url(room_url)
-        except Exception as e:
-            return sublime.error_message(str(e))
+                joined_workspace = {'url': workspace_url}
+                update_recent_workspaces(joined_workspace)
 
         def run_thread(*args):
             thread = threading.Thread(target=run_agent, kwargs=result)
@@ -404,7 +467,7 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
                     utils.mkdir(G.PROJECT_PATH)
                 except Exception as e:
                     return sublime.error_message("Couldn't create directory %s: %s" % (G.PROJECT_PATH, str(e)))
-                return open_room_window(run_thread)
+                return open_workspace_window(run_thread)
 
             try:
                 utils.mkdir(os.path.dirname(G.PROJECT_PATH))
@@ -425,50 +488,57 @@ class FloobitsJoinRoomCommand(sublime_plugin.WindowCommand):
             except Exception as e:
                 return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (d, G.PROJECT_PATH, str(e)))
 
-            open_room_window(run_thread)
+            open_workspace_window(run_thread)
 
+        try:
+            result = utils.parse_url(workspace_url)
+        except Exception as e:
+            return sublime.error_message(str(e))
         reload_settings()
-        G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['room']))
+        if not (G.USERNAME and G.SECRET):
+            return initial_run()
+        G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
         print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
             # TODO: really bad prompt here
             return self.window.show_input_panel('Give me a directory to destructively dump data into (or just press enter):', '', link_dir, None, None)
 
-        open_room_window(run_thread)
+        open_workspace_window(run_thread)
 
 
-class FloobitsLeaveRoomCommand(FloobitsBaseCommand):
+class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
 
     def run(self):
         if G.AGENT:
             G.AGENT.stop()
             G.AGENT = None
-            sublime.error_message('You have left the room.')
+            # TODO: Mention the name of the thing we left
+            sublime.error_message('You have left the workspace.')
         else:
-            sublime.error_message('You are not joined to any room.')
+            sublime.error_message('You are not joined to any workspace.')
 
 
-class FloobitsRejoinRoomCommand(FloobitsBaseCommand):
+class FloobitsRejoinWorkspaceCommand(FloobitsBaseCommand):
 
     def run(self):
         if G.AGENT:
-            room_url = utils.to_room_url({
+            workspace_url = utils.to_workspace_url({
                 'host': G.AGENT.host,
                 'owner': G.AGENT.owner,
                 'port': G.AGENT.port,
-                'room': G.AGENT.room,
+                'workspace': G.AGENT.workspace,
                 'secure': G.AGENT.secure,
             })
             G.AGENT.stop()
             G.AGENT = None
         else:
             try:
-                room_url = DATA['recent_rooms'][0]['url']
+                workspace_url = DATA['recent_workspaces'][0]['url']
             except Exception:
-                sublime.error_message('No recent room to rejoin.')
+                sublime.error_message('No recent workspace to rejoin.')
                 return
-        self.window.run_command('floobits_join_room', {
-            'room_url': room_url,
+        self.window.run_command('floobits_join_workspace', {
+            'workspace_url': workspace_url,
         })
 
     def is_visible(self):
@@ -496,7 +566,7 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
             G.AGENT.send_msg(msg)
 
     def description(self):
-        return 'Send a message to the floobits room you are in (join a room first)'
+        return 'Send a message to the floobits workspace you are in (join a workspace first)'
 
 
 class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
@@ -504,33 +574,37 @@ class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
         Listener.clear_highlights(self.window.active_view())
 
 
-class FloobitsPingCommand(FloobitsBaseCommand):
+class FloobitsSummonCommand(FloobitsBaseCommand):
     # TODO: ghost this option if user doesn't have permissions
     def run(self):
-        Listener.ping(self.window.active_view())
+        Listener.summon(self.window.active_view())
 
 
-class FloobitsJoinRecentRoomCommand(sublime_plugin.WindowCommand):
-    def _get_recent_rooms(self):
+class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
+    def _get_recent_workspaces(self):
+        recent_workspaces = []
+        if 'recent_workspaces' not in DATA:
+            DATA['recent_workspaces'] = DATA.get('recent_rooms', {})
+
         try:
-            recent_rooms = [x.get('url') for x in DATA['recent_rooms'] if x.get('url') is not None]
+            recent_workspaces = [x.get('url') for x in DATA['recent_workspaces'] if x.get('url') is not None]
         except Exception:
-            recent_rooms = []
-        return recent_rooms
+            pass
+        return recent_workspaces
 
     def run(self, *args):
-        rooms = self._get_recent_rooms()
-        self.window.show_quick_panel(rooms, self.on_done)
+        workspaces = self._get_recent_workspaces()
+        self.window.show_quick_panel(workspaces, self.on_done)
 
     def on_done(self, item):
         if item == -1:
             return
-        room = DATA['recent_rooms'][item]
+        workspace = DATA['recent_workspaces'][item]
         if disconnect_dialog():
-            self.window.run_command('floobits_join_room', {'room_url': room['url']})
+            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace['url']})
 
     def is_enabled(self):
-        return bool(len(self._get_recent_rooms()) > 0)
+        return bool(len(self._get_recent_workspaces()) > 0)
 
 
 class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
@@ -538,7 +612,7 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
         def print_msg(chat_view):
             msg.log('Opened message view')
             if not G.AGENT:
-                msg.log('Not joined to a room.')
+                msg.log('Not joined to a workspace.')
 
         msg.get_or_create_chat(print_msg)
 
@@ -546,7 +620,7 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
         return 'Open the floobits messages view.'
 
 
-class FloobitsAddToRoomCommand(FloobitsBaseCommand):
+class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
     def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
@@ -558,10 +632,10 @@ class FloobitsAddToRoomCommand(FloobitsBaseCommand):
             Listener.create_buf(path)
 
     def description(self):
-        return 'Add file or directory to currently-joined Floobits room.'
+        return 'Add file or directory to currently-joined Floobits workspace.'
 
 
-class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
+class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
     def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
@@ -577,30 +651,41 @@ class FloobitsDeleteFromRoomCommand(FloobitsBaseCommand):
             Listener.delete_buf(path)
 
     def description(self):
-        return 'Add file or directory to currently-joined Floobits room.'
+        return 'Add file or directory to currently-joined Floobits workspace.'
 
 
-class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
+class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
-        G.FOLLOW_MODE = True
+        webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
+
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return True
+
+
+class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
+    def run(self):
+        G.STALKER_MODE = True
         # TODO: go to most recent highlight
 
     def is_visible(self):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and not G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and not G.STALKER_MODE)
 
 
-class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
+class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
-        G.FOLLOW_MODE = False
+        G.STALKER_MODE = False
 
     def is_visible(self):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.FOLLOW_MODE)
+        return bool(G.AGENT and G.AGENT.is_ready() and G.STALKER_MODE)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

@@ -24,7 +24,7 @@ except ImportError:
 BUFS = {}
 DMP = dmp.diff_match_patch()
 ON_LOAD = {}
-disable_follow_mode_timeout = None
+disable_stalker_mode_timeout = None
 
 
 def get_text(view):
@@ -33,7 +33,7 @@ def get_text(view):
 
 def get_view(buf_id):
     buf = BUFS[buf_id]
-    for view in G.ROOM_WINDOW.views():
+    for view in G.WORKSPACE_WINDOW.views():
         if not view.file_name():
             continue
         if buf['path'] == utils.to_rel_path(view.file_name()):
@@ -43,7 +43,7 @@ def get_view(buf_id):
 
 def create_view(buf):
     path = utils.get_full_path(buf['path'])
-    view = G.ROOM_WINDOW.open_file(path)
+    view = G.WORKSPACE_WINDOW.open_file(path)
     if view:
         msg.debug('Created view', view.name() or view.file_name())
     return view
@@ -78,20 +78,20 @@ def delete_buf(buf_id):
         msg.debug("KeyError deleting buf id %s" % buf_id)
 
 
-def reenable_follow_mode():
-    global disable_follow_mode_timeout
-    G.FOLLOW_MODE = True
-    disable_follow_mode_timeout = None
+def reenable_stalker_mode():
+    global disable_stalker_mode_timeout
+    G.STALKER_MODE = True
+    disable_stalker_mode_timeout = None
 
 
-def disable_follow_mode(timeout):
-    global disable_follow_mode_timeout
-    if G.FOLLOW_MODE is True:
-        G.FOLLOW_MODE = False
-        disable_follow_mode_timeout = utils.set_timeout(reenable_follow_mode, timeout)
-    elif disable_follow_mode_timeout:
-        utils.cancel_timeout(disable_follow_mode_timeout)
-        disable_follow_mode_timeout = utils.set_timeout(reenable_follow_mode, timeout)
+def disable_stalker_mode(timeout):
+    global disable_stalker_mode_timeout
+    if G.STALKER_MODE is True:
+        G.STALKER_MODE = False
+        disable_stalker_mode_timeout = utils.set_timeout(reenable_stalker_mode, timeout)
+    elif disable_stalker_mode_timeout:
+        utils.cancel_timeout(disable_stalker_mode_timeout)
+        disable_stalker_mode_timeout = utils.set_timeout(reenable_stalker_mode, timeout)
 
 
 class FlooPatch(object):
@@ -171,7 +171,7 @@ class Listener(sublime_plugin.EventListener):
 
         reported = set()
         while Listener.selection_changed:
-            view, buf, ping = Listener.selection_changed.pop()
+            view, buf, summon = Listener.selection_changed.pop()
 
             if not G.CONNECTED:
                 msg.debug('Not connected. Discarding selection change.')
@@ -190,7 +190,8 @@ class Listener(sublime_plugin.EventListener):
                 'id': buf['id'],
                 'name': 'highlight',
                 'ranges': [[x.a, x.b] for x in sel],
-                'ping': ping,
+                'ping': summon,
+                'summon': summon,
             }
             G.AGENT.put(highlight_json)
 
@@ -364,7 +365,7 @@ class Listener(sublime_plugin.EventListener):
                 buf_to_delete = buf
                 break
         if buf_to_delete is None:
-            msg.error('%s is not in this room' % path)
+            msg.error('%s is not in this workspace' % path)
             return
         msg.log('deleting buffer ', rel_path)
         event = {
@@ -398,28 +399,28 @@ class Listener(sublime_plugin.EventListener):
             view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges, ping=False):
+    def highlight(buf_id, region_key, username, ranges, summon=False):
         buf = BUFS.get(buf_id)
         if not buf:
             return
         view = get_view(buf_id)
         if not view:
-            if ping or G.FOLLOW_MODE:
+            if summon or G.STALKER_MODE:
                 view = create_view(buf)
-                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, ping)
+                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon)
             return
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
         view.erase_regions(region_key)
         view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        if ping or G.FOLLOW_MODE:
-            G.ROOM_WINDOW.focus_view(view)
-            if ping:
+        if summon or G.STALKER_MODE:
+            G.WORKSPACE_WINDOW.focus_view(view)
+            if summon:
                 # Explicit summon by another user. Center the line.
                 view.show_at_center(regions[0])
             else:
-                # Avoid scrolling/jumping lots in follow mode
+                # Avoid scrolling/jumping lots in stalker mode
                 view.show(regions[0])
 
     def id(self, view):
@@ -505,7 +506,7 @@ class Listener(sublime_plugin.EventListener):
         buf['view_md5'] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
-        disable_follow_mode(2000)
+        disable_stalker_mode(2000)
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
@@ -514,7 +515,7 @@ class Listener(sublime_plugin.EventListener):
 
         buf = buf or get_buf(view)
         if buf:
-            disable_follow_mode(2000)
+            disable_stalker_mode(2000)
             self.selection_changed.append((view, buf, False))
 
     @staticmethod
@@ -525,19 +526,19 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in G.AGENT.room_info['users'].items():
+        for user_id, username in G.AGENT.workspace_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     @staticmethod
-    def ping(view):
+    def summon(view):
         buf = get_buf(view)
         if buf:
-            msg.debug('pinging selection in view %s, buf id %s' % (buf['path'], buf['id']))
+            msg.debug('summoning selection in view %s, buf id %s' % (buf['path'], buf['id']))
             Listener.selection_changed.append((view, buf, True))
 
     def on_activated(self, view):
         buf = get_buf(view)
         if buf:
             msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
-            self.views_changed.append((view, buf))
+            self.on_modified(view)
             self.selection_changed.append((view, buf, False))

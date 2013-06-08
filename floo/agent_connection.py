@@ -40,7 +40,7 @@ SOCKET_Q = queue.Queue()
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
-    def __init__(self, owner, room, host=None, port=None, secure=True, on_connect=None):
+    def __init__(self, owner, workspace, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
         self.buf = bytes()
         self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
@@ -51,15 +51,15 @@ class AgentConnection(object):
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
         self.owner = owner
-        self.room = room
+        self.workspace = workspace
         self.retries = G.MAX_RETRIES
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
-        self.room_info = {}
+        self.workspace_info = {}
 
     def stop(self):
-        msg.log('Disconnecting from room %s/%s' % (self.owner, self.room))
+        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         G.CONNECTED = False
@@ -95,7 +95,7 @@ class AgentConnection(object):
         except Exception:
             pass
         G.CONNECTED = False
-        self.room_info = {}
+        self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
         self.reconnect_delay *= 1.5
@@ -149,7 +149,7 @@ class AgentConnection(object):
         self.put({
             'username': self.username,
             'secret': self.secret,
-            'room': self.room,
+            'room': self.workspace,
             'room_owner': self.owner,
             'client': 'SublimeText-%s' % sublime_version,
             'platform': sys.platform,
@@ -172,7 +172,7 @@ class AgentConnection(object):
     def on_msg(self, data):
         message = data.get('data')
         self.chat(data['username'], data['time'], message)
-        window = G.ROOM_WINDOW
+        window = G.WORKSPACE_WINDOW
 
         def cb(selected):
             if selected == -1:
@@ -239,7 +239,7 @@ class AgentConnection(object):
                 G.CONNECTED = True
                 # Success! Reset counter
                 self.retries = G.MAX_RETRIES
-                self.room_info = data
+                self.workspace_info = data
                 G.PERMS = data['perms']
 
                 if 'patch' not in data['perms']:
@@ -256,11 +256,11 @@ class AgentConnection(object):
                     project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
 
                 floo_json = {
-                    'url': utils.to_room_url({
+                    'url': utils.to_workspace_url({
                         'host': self.host,
                         'owner': self.owner,
                         'port': self.port,
-                        'room': self.room,
+                        'workspace': self.workspace,
                         'secure': self.secure,
                     })
                 }
@@ -287,17 +287,17 @@ class AgentConnection(object):
                         msg.debug('Error calculating md5:', e)
                         Listener.get_buf(buf_id)
 
-                msg.log('Successfully joined room %s/%s' % (self.owner, self.room))
+                msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
                 if self.on_connect:
                     self.on_connect(self)
                     self.on_connect = None
             elif name == 'join':
-                msg.log('%s joined the room' % data['username'])
-                self.room_info['users'][data['user_id']] = data['username']
+                msg.log('%s joined the workspace' % data['username'])
+                self.workspace_info['users'][data['user_id']] = data['username']
             elif name == 'part':
-                msg.log('%s left the room' % data['username'])
+                msg.log('%s left the workspace' % data['username'])
                 try:
-                    del self.room_info['users'][data['user_id']]
+                    del self.workspace_info['users'][data['user_id']]
                 except Exception as e:
                     print('Unable to delete user %s from user list' % (data))
                 region_key = 'floobits-highlight-%s' % (data['user_id'])
@@ -323,7 +323,7 @@ class AgentConnection(object):
 
     def select(self):
         if not self.sock:
-            msg.error('select(): No socket.')
+            msg.debug('select(): No socket.')
             return self.reconnect()
 
         try:
@@ -353,7 +353,7 @@ class AgentConnection(object):
                 self.protocol(buf)
             else:
                 self.empty_selects += 1
-                if self.empty_selects > 10:
+                if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
 
