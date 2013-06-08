@@ -147,24 +147,34 @@ def reload_settings():
 settings.add_on_change('', reload_settings)
 reload_settings()
 
-INITIAL_FLOORC = """# Hi,
+INITIAL_FLOORC = """# Hello!
 #
-# We noticed you just installed floobits.
-# If everything has gone according to plan, your browser will open to https://floobits.com/dash/initial_floorc/.
-# If you don't have a Floobits account, please sign up.
+# We noticed you just installed Floobits, but you haven't configured it yet. Floobits reads
+# configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
 #
-# You should log in to your floobits account, copy-paste the customized floorc file into this file, and save it.
-# After, you can go to Tools -> Floobits -> Create Workspace to share a directory.
+# If everything has gone according to plan, your browser will open
+# https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
+# this file.
+#
+# This plugin requires a Floobits account. If you don't have one, please sign up and visit
+# https://floobits.com/dash/initial_floorc/
+#
+# You should log in to your floobits account, copy-paste the customized floorc into this file,
+# and save it. After that, you can right-click on any directory in your sidebar and go to
+# Floobits -> "Create Workspace from folder" to share it with others.
 #
 # For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
 #
-#  -- Floobits
+# Thanks for reading. You're almost done setting up the plugin.
+# -- The Floobits Team
 #
 #
-# <-----UNCOMMENT AND CHANGE THESE LINES BELOW------>
+######  UNCOMMENT AND CHANGE THE LINES BELOW  ######
+
 # username your_username
 # secret your_api_secret
-# <-----UNCOMMENT AND CHANGE THESE LINES ABOVE------>
+
+######  UNCOMMENT AND CHANGE THE LINES ABOVE  ######
 """
 
 
