@@ -68,6 +68,7 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 
 DATA = {}
 ON_CONNECT = None
+FLOORC_PATH = os.path.expanduser('~/.floorc')
 
 
 def update_recent_workspaces(workspace):
@@ -157,7 +158,7 @@ INITIAL_FLOORC = """# Hi,
 # 
 # For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
 #
-#  --floobits
+#  -- Floobits
 #
 # 
 # <-----CHANGE ME------>
@@ -173,29 +174,31 @@ def get_active_window(cb):
     cb(win)
 
 
+def initial_run():
+    timeout = 0
+    if not os.path.exists(FLOORC_PATH):
+        timeout = 7000
+        with open(FLOORC_PATH, 'wb') as floorc_fd:
+            floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
+
+    def open_floorc(active_window):
+        floorc_view = active_window.open_file(FLOORC_PATH)
+        utils.set_timeout(webbrowser.open, timeout, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
+
+    get_active_window(open_floorc)
+
+
 if not (G.USERNAME and G.SECRET):
-    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
-    if not os.path.exists(per_path):
-        floorc_path = os.path.expanduser('~/.floorc')
-        if not os.path.exists(floorc_path):
-            with open(floorc_path, 'wb') as floorc_fd:
-                floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
-
-        def open_floorc(active_window):
-            floorc_view = active_window.open_file(floorc_path)
-            utils.set_timeout(webbrowser.open, 7000, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
-
-        get_active_window(open_floorc)
-
+    initial_run()
 
 DATA = utils.get_persistent_data()
 
 
 def global_tick():
     Listener.push()
-    if G.AGENT:
+    if G.AGENT and G.AGENT.sock:
         G.AGENT.select()
-    utils.set_timeout(global_tick, 50)
+    utils.set_timeout(global_tick, G.TICK_TIME)
 
 
 def disconnect_dialog():
@@ -226,6 +229,8 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
     def run(self, dir_to_share=''):
         reload_settings()
+        if not (G.USERNAME and G.SECRET):
+            return initial_run()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
@@ -437,11 +442,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 joined_workspace = {'url': workspace_url}
                 update_recent_workspaces(joined_workspace)
 
-        try:
-            result = utils.parse_url(workspace_url)
-        except Exception as e:
-            return sublime.error_message(str(e))
-
         def run_thread(*args):
             thread = threading.Thread(target=run_agent, kwargs=result)
             thread.start()
@@ -475,7 +475,13 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
             open_workspace_window(run_thread)
 
+        try:
+            result = utils.parse_url(workspace_url)
+        except Exception as e:
+            return sublime.error_message(str(e))
         reload_settings()
+        if not (G.USERNAME and G.SECRET):
+            return initial_run()
         G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
         print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
