@@ -3,36 +3,50 @@
     "caption": "Floobits",
     "children": [
       {
-        "caption": "Floobits::Stalk Workspace",
+        "caption": "Stalk Workspace",
         "command": "floobits_enable_stalker_mode"
       },
       {
-        "caption": "Floobits::Stop Stalking Workspace",
+        "caption": "Stop Stalking Workspace",
         "command": "floobits_disable_stalker_mode"
       },
       {
-        "caption": "Floobits::Summon",
+        "caption": "Summon",
         "command": "floobits_summon"
       },
       {
-        "caption": "Floobits::Clear Highlights",
+        "caption": "Clear Highlights",
         "command": "floobits_clear_highlights"
       },
       {
-        "caption": "Floobits::Send Message",
+        "caption": "Send Message",
         "command": "floobits_prompt_msg"
       },
       {
-        "caption": "Floobits::Join Workspace",
+        "id": "floobits_share_dir",
+        "caption": "Create Workspace",
+        "command": "floobits_share_dir"
+      },
+      {
+        "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
       },
       {
-        "caption": "Floobits::Join Recent Workspace",
+        "caption": "Join Recent Workspace",
         "command": "floobits_join_recent_workspace"
       },
       {
-        "caption": "Floobits::Leave Workspace",
+        "caption": "Leave Workspace",
         "command": "floobits_leave_workspace"
+      },
+      {
+        "caption": " ",
+        "command": "floobits_not_a"
+      },
+      {
+        "caption": "Help",
+        "command": "floobits_help"
+
       }
     ]
   }

@@ -61,5 +61,9 @@
         "paths": null,
         "current_file": true
     }
+  },
+  {
+    "caption": "Floobits::Help",
+    "command": "floobits_help"
   }
 ]

@@ -145,6 +145,49 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+
+INITIAL_FLOORC = """# Hi,
+#
+# We noticed you just installed floobits.
+# If everything has gone according to plan, your browser will open to https://floobits.com/dash/initial_floorc/.
+# If you don't have a Floobits account, please sign up.
+#
+# You should log in to your floobits account, copy-paste the customized floorc file into this file, and save it.
+# After, you can go to Tools -> Floobits -> Create Workspace to share a directory.
+# 
+# For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
+#
+#  --floobits
+#
+# 
+# <-----CHANGE ME------>
+# username your_username
+# secret your_api_secret
+# <-----CHANGE ME------>
+"""
+
+def get_active_window(cb):
+    win = sublime.active_window()
+    if not win:
+        return utils.set_timeout(get_active_window, 50, cb)
+    cb(win)
+
+
+if not (G.USERNAME and G.SECRET):
+    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
+    if not os.path.exists(per_path):
+        floorc_path = os.path.expanduser('~/.floorc')
+        if not os.path.exists(floorc_path):
+            with open(floorc_path, 'wb') as floorc_fd:
+                floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
+
+        def open_floorc(active_window):
+            floorc_view = active_window.open_file(floorc_path)
+            utils.set_timeout(webbrowser.open, 7000, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
+
+        get_active_window(open_floorc)
+
+
 DATA = utils.get_persistent_data()
 
 
@@ -175,6 +218,11 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return True
 
     def run(self, dir_to_share=''):
         reload_settings()
@@ -583,7 +631,17 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
+        
 
+class FloobitsHelpCommand(FloobitsBaseCommand):
+    def run(self):
+        webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
+    
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return True
 
 class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
