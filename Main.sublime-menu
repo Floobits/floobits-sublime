@@ -6,39 +6,43 @@
     "id": "floobitsmenu",
     "caption": "Floobits",
     "children": [{
-      "id": "floobits_create_room",
-      "caption": "Create Room",
-      "command": "floobits_create_room"
-    },
-    {
-      "id": "floobits_room_menu",
-      "caption": "Join Room",
-      "command": "floobits_prompt_join_room"
-    },
-    {
-      "id": "floobits_join_room",
-      "caption": "Join Recent Room",
-      "command": "floobits_join_recent_room"
-    },
-    {
-      "id": "floobits_leave_room",
-      "caption": "Leave Room",
-      "command": "floobits_leave_room"
-    },
-    {
-      "id": "floobits_msg",
-      "caption": "Send Message",
-      "command": "floobits_prompt_msg"
-    },
-    { "command": "floobits_open_message_view",
-      "caption": "Open Messages View",
-      "id": "floobits_open_message_view"
-    },
-    { "command": "floobits_share_dir",
-      "caption": "Share a directory",
-      "id": "floobits_share_dir"
-    }
-  ]
+        "id": "floobits_share_dir",
+        "caption": "Create Workspace",
+        "command": "floobits_share_dir"
+      },
+      {
+        "id": "floobits_workspace_menu",
+        "caption": "Join Workspace",
+        "command": "floobits_prompt_join_workspace"
+      },
+      {
+        "id": "floobits_join_recent_workspace",
+        "caption": "Join Recent Workspace",
+        "command": "floobits_join_recent_workspace"
+      },
+      {
+        "id": "floobits_leave_workspace",
+        "caption": "Leave Workspace",
+        "command": "floobits_leave_workspace"
+      },
+      {
+        "id": "floobits_msg",
+        "caption": "Send Message",
+        "command": "floobits_prompt_msg"
+      },
+      { "command": "floobits_open_message_view",
+        "caption": "Open Messages View",
+        "id": "floobits_open_message_view"
+      },
+      {
+        "caption": " ",
+        "command": "floobits_not_a"
+      },
+      {
+        "caption": "Help",
+        "command": "floobits_help"
+      }
+    ]
   }]
 },
 {
