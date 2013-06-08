@@ -46,7 +46,6 @@
       {
         "caption": "Help",
         "command": "floobits_help"
-
       }
     ]
   }

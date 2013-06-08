@@ -631,7 +631,7 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
-        
+
 
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
