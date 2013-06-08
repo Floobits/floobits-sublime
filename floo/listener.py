@@ -540,5 +540,5 @@ class Listener(sublime_plugin.EventListener):
         buf = get_buf(view)
         if buf:
             msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
-            self.views_changed.append((view, buf))
+            self.on_modified(view)
             self.selection_changed.append((view, buf, False))
