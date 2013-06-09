@@ -82,6 +82,7 @@ class AgentConnection(object):
     def put(item):
         if not item:
             return
+        msg.debug('writing %s: %s' % (item.get('name', 'NO NAME'), item))
         SOCKET_Q.put(json.dumps(item) + '\n')
         qsize = SOCKET_Q.qsize()
         if qsize > 0:
@@ -273,19 +274,29 @@ class AgentConnection(object):
                     new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
-                    try:
-                        buf_fd = open(buf_path, 'rb')
-                        buf_buf = buf_fd.read().decode('utf-8')
-                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
-                        if md5 == buf['md5']:
-                            msg.debug('md5 sums match. not getting buffer')
-                            buf['buf'] = buf_buf
+                    view = listener.get_view(buf_id)
+                    if view and not view.is_loading():
+                        view_text = listener.get_text(view)
+                        view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                        if view_md5 == buf['md5']:
+                            msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
+                            buf['buf'] = view_text
+                            G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                         else:
-                            msg.debug('md5 for %s should be %s but is %s. getting buffer' % (buf['path'], buf['md5'], md5))
-                            raise Exception('different md5')
-                    except Exception as e:
-                        msg.debug('Error calculating md5:', e)
-                        Listener.get_buf(buf_id)
+                            Listener.get_buf(buf_id)
+                    else:
+                        try:
+                            buf_fd = open(buf_path, 'rb')
+                            buf_buf = buf_fd.read().decode('utf-8')
+                            md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                            if md5 == buf['md5']:
+                                msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                                buf['buf'] = buf_buf
+                            else:
+                                Listener.get_buf(buf_id)
+                        except Exception as e:
+                            msg.debug('Error calculating md5:', e)
+                            Listener.get_buf(buf_id)
 
                 msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
                 if self.on_connect:
@@ -363,7 +374,6 @@ class AgentConnection(object):
                     SOCKET_Q.task_done()
                     continue
                 try:
-                    msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p.encode('utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
