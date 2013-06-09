@@ -4,9 +4,6 @@ DEBUG = False
 
 PLUGIN_PATH = None
 
-MAX_RETRIES = 20
-INITIAL_RECONNECT_DELAY = 500  # milliseconds
-
 CONNECTED = False
 
 COLAB_DIR = ''

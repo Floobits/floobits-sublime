@@ -40,10 +40,14 @@ SOCKET_Q = queue.Queue()
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
+    MAX_RETRIES = 20
+    INITIAL_RECONNECT_DELAY = 500
+
     def __init__(self, owner, workspace, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
         self.buf = bytes()
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
+        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self.retries = self.MAX_RETRIES
         self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -52,11 +56,12 @@ class AgentConnection(object):
         self.secure = secure
         self.owner = owner
         self.workspace = workspace
-        self.retries = G.MAX_RETRIES
+
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
+        self.event_counters = collections.defaultdict(int)
 
     def stop(self):
         msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
@@ -89,19 +94,21 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
+        print('reconnect')
         if self.reconnect_timeout:
+            print('timeout')
             return
         try:
             self.sock.close()
         except Exception:
             pass
+
         G.CONNECTED = False
         self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
-        self.reconnect_delay *= 1.5
-        if self.reconnect_delay > 10000:
-            self.reconnect_delay = 10000
+        self.reconnect_delay = min(10000, 1.5 * self.reconnect_delay)
+
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
             self.reconnect_timeout = utils.set_timeout(self.connect, int(self.reconnect_delay))
@@ -110,8 +117,10 @@ class AgentConnection(object):
         self.retries -= 1
 
     def connect(self):
+        print('connecting')
         self.stop()
         self.empty_selects = 0
+        self.reconnect_timeout = None
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:
@@ -135,7 +144,6 @@ class AgentConnection(object):
             return
         self.sock.setblocking(False)
         msg.log('Connected!')
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.auth()
         self.select()
 
@@ -199,6 +207,10 @@ class AgentConnection(object):
                 msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
+            if name != 'highlight':
+                self.event_counters[name] += 1
+                for event_name, count in self.event_counters.items():
+                    print('%s: %s' % (event_name, count))
             if name == 'patch':
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
@@ -239,7 +251,9 @@ class AgentConnection(object):
                 Listener.reset()
                 G.CONNECTED = True
                 # Success! Reset counter
-                self.retries = G.MAX_RETRIES
+                self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
+                self.retries = self.MAX_RETRIES
+
                 self.workspace_info = data
                 G.PERMS = data['perms']
 
@@ -356,6 +370,8 @@ class AgentConnection(object):
                     if not d:
                         break
                     buf += d
+                except (AttributeError):
+                    return self.reconnect()
                 except (socket.error, TypeError):
                     break
 
