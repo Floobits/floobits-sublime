@@ -40,10 +40,14 @@ SOCKET_Q = queue.Queue()
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
+    MAX_RETRIES = 20
+    INITIAL_RECONNECT_DELAY = 500
+
     def __init__(self, owner, workspace, host=None, port=None, secure=True, on_connect=None):
         self.sock = None
         self.buf = bytes()
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
+        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self.retries = self.MAX_RETRIES
         self.reconnect_timeout = None
         self.username = G.USERNAME
         self.secret = G.SECRET
@@ -52,23 +56,26 @@ class AgentConnection(object):
         self.secure = secure
         self.owner = owner
         self.workspace = workspace
-        self.retries = G.MAX_RETRIES
+
         self.on_connect = on_connect
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
 
-    def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+    def cleanup(self):
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         G.CONNECTED = False
         try:
-            self.retries = -1
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
             pass
+
+    def stop(self):
+        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        self.retries = -1
+        self.cleanup()
         msg.log('Disconnected.')
 
     def send_msg(self, msg):
@@ -82,6 +89,7 @@ class AgentConnection(object):
     def put(item):
         if not item:
             return
+        msg.debug('writing %s: %s' % (item.get('name', 'NO NAME'), item))
         SOCKET_Q.put(json.dumps(item) + '\n')
         qsize = SOCKET_Q.qsize()
         if qsize > 0:
@@ -98,18 +106,17 @@ class AgentConnection(object):
         self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
-        self.reconnect_delay *= 1.5
-        if self.reconnect_delay > 10000:
-            self.reconnect_delay = 10000
+        self.reconnect_delay = min(10000, int(1.5 * self.reconnect_delay))
+
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            self.reconnect_timeout = utils.set_timeout(self.connect, int(self.reconnect_delay))
+            self.reconnect_timeout = utils.set_timeout(self.connect, self.reconnect_delay)
         elif self.retries == 0:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
     def connect(self):
-        self.stop()
+        self.cleanup()
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
@@ -134,7 +141,6 @@ class AgentConnection(object):
             return
         self.sock.setblocking(False)
         msg.log('Connected!')
-        self.reconnect_delay = G.INITIAL_RECONNECT_DELAY
         self.auth()
         self.select()
 
@@ -238,7 +244,9 @@ class AgentConnection(object):
                 Listener.reset()
                 G.CONNECTED = True
                 # Success! Reset counter
-                self.retries = G.MAX_RETRIES
+                self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
+                self.retries = self.MAX_RETRIES
+
                 self.workspace_info = data
                 G.PERMS = data['perms']
 
@@ -273,19 +281,29 @@ class AgentConnection(object):
                     new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
-                    try:
-                        buf_fd = open(buf_path, 'rb')
-                        buf_buf = buf_fd.read().decode('utf-8')
-                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
-                        if md5 == buf['md5']:
-                            msg.debug('md5 sums match. not getting buffer')
-                            buf['buf'] = buf_buf
+                    view = listener.get_view(buf_id)
+                    if view and not view.is_loading():
+                        view_text = listener.get_text(view)
+                        view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                        if view_md5 == buf['md5']:
+                            msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
+                            buf['buf'] = view_text
+                            G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                         else:
-                            msg.debug('md5 for %s should be %s but is %s. getting buffer' % (buf['path'], buf['md5'], md5))
-                            raise Exception('different md5')
-                    except Exception as e:
-                        msg.debug('Error calculating md5:', e)
-                        Listener.get_buf(buf_id)
+                            Listener.get_buf(buf_id)
+                    else:
+                        try:
+                            buf_fd = open(buf_path, 'rb')
+                            buf_buf = buf_fd.read().decode('utf-8')
+                            md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                            if md5 == buf['md5']:
+                                msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                                buf['buf'] = buf_buf
+                            else:
+                                Listener.get_buf(buf_id)
+                        except Exception as e:
+                            msg.debug('Error calculating md5:', e)
+                            Listener.get_buf(buf_id)
 
                 msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
                 if self.on_connect:
@@ -345,6 +363,8 @@ class AgentConnection(object):
                     if not d:
                         break
                     buf += d
+                except (AttributeError):
+                    return self.reconnect()
                 except (socket.error, TypeError):
                     break
 
@@ -363,7 +383,6 @@ class AgentConnection(object):
                     SOCKET_Q.task_done()
                     continue
                 try:
-                    msg.debug('writing patch: %s' % p)
                     self.sock.sendall(p.encode('utf-8'))
                     SOCKET_Q.task_done()
                 except Exception as e:
