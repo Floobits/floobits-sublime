@@ -377,21 +377,13 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def update_view(buf, view=None):
         view = view or get_view(buf['id'])
-        visible_region = view.visible_region()
-        viewport_position = view.viewport_position()
-        # deep copy
-        selections = [x for x in view.sel()]
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
             view.set_status('Floobits', 'Floobits synced data for consistency.')
+            utils.set_timeout(lambda: view.set_status('Floobits', ''), 5000)
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        utils.set_timeout(view.set_viewport_position, 0, viewport_position, False)
-        view.sel().clear()
-        view.show(visible_region, False)
-        for sel in selections:
-            view.sel().add(sel)
         if 'patch' in G.PERMS:
             view.set_read_only(False)
         else:
@@ -494,23 +486,25 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
+        if not G.CONNECTED or view.is_loading():
             return
+
         buf = get_buf(view)
         if not buf:
             return
 
         view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-        if view_md5 == buf.get('view_md5'):
+        if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
             return
-        buf['view_md5'] = view_md5
+
+        G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
         disable_stalker_mode(2000)
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS:
+        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS or view.is_loading():
             return
 
         buf = buf or get_buf(view)
