@@ -25,6 +25,7 @@ BUFS = {}
 DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
+temp_disable_stalk = False
 
 
 def get_text(view):
@@ -79,15 +80,15 @@ def delete_buf(buf_id):
 
 
 def reenable_stalker_mode():
-    global disable_stalker_mode_timeout
-    G.STALKER_MODE = True
+    global disable_stalker_mode_timeout, temp_disable_stalk
+    temp_disable_stalk = False
     disable_stalker_mode_timeout = None
 
 
 def disable_stalker_mode(timeout):
-    global disable_stalker_mode_timeout
+    global disable_stalker_mode_timeout, temp_disable_stalk
     if G.STALKER_MODE is True:
-        G.STALKER_MODE = False
+        temp_disable_stalk = True
         disable_stalker_mode_timeout = utils.set_timeout(reenable_stalker_mode, timeout)
     elif disable_stalker_mode_timeout:
         utils.cancel_timeout(disable_stalker_mode_timeout)
@@ -249,11 +250,12 @@ class Listener(sublime_plugin.EventListener):
             utils.cancel_timeout(timeout_id)
 
         if not clean_patch:
+            msg.log("Couldn't patch %s cleanly." % buf['path'])
             return Listener.get_buf(buf_id, view)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != patch_data['md5_after']:
-            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 1000, buf_id, view)
+            buf['timeout_id'] = utils.set_timeout(Listener.get_buf, 2000, buf_id, view)
 
         buf['buf'] = t[0]
         buf['md5'] = cur_hash
@@ -275,7 +277,7 @@ class Listener(sublime_plugin.EventListener):
         view.run_command('floo_view_replace_regions', {'commands': commands})
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
-        utils.set_timeout(view.erase_regions, 1000, region_key)
+        utils.set_timeout(view.erase_regions, 2000, region_key)
 
         view.set_status('Floobits', 'Changed by %s at %s' % (patch_data['username'], datetime.now().strftime('%H:%M')))
 
@@ -286,7 +288,7 @@ class Listener(sublime_plugin.EventListener):
             'id': buf_id
         }
         buf = BUFS[buf_id]
-        msg.warn('failed to patch %s cleanly. re-fetching buffer' % buf['path'])
+        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
         if buf.get('buf'):
             del buf['buf']
         if view:
@@ -397,7 +399,7 @@ class Listener(sublime_plugin.EventListener):
             return
         view = get_view(buf_id)
         if not view:
-            if summon or G.STALKER_MODE:
+            if summon or (G.STALKER_MODE and not temp_disable_stalk):
                 view = create_view(buf)
                 ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon)
             return
@@ -406,7 +408,7 @@ class Listener(sublime_plugin.EventListener):
             regions.append(sublime.Region(*r))
         view.erase_regions(region_key)
         view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        if summon or G.STALKER_MODE:
+        if summon or (G.STALKER_MODE and not temp_disable_stalk):
             G.WORKSPACE_WINDOW.focus_view(view)
             if summon:
                 # Explicit summon by another user. Center the line.
@@ -506,7 +508,6 @@ class Listener(sublime_plugin.EventListener):
     def on_selection_modified(self, view, buf=None):
         if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS or view.is_loading():
             return
-
         buf = buf or get_buf(view)
         if buf:
             disable_stalker_mode(2000)
