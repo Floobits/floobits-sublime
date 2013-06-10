@@ -61,7 +61,6 @@ class AgentConnection(object):
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
-        self.event_counters = collections.defaultdict(int)
 
     def stop(self):
         msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
@@ -94,9 +93,7 @@ class AgentConnection(object):
             msg.debug('%s items in q' % qsize)
 
     def reconnect(self):
-        print('reconnect')
         if self.reconnect_timeout:
-            print('timeout')
             return
         try:
             self.sock.close()
@@ -117,7 +114,6 @@ class AgentConnection(object):
         self.retries -= 1
 
     def connect(self):
-        print('connecting')
         self.stop()
         self.empty_selects = 0
         self.reconnect_timeout = None
@@ -207,10 +203,6 @@ class AgentConnection(object):
                 msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
-            if name != 'highlight':
-                self.event_counters[name] += 1
-                for event_name, count in self.event_counters.items():
-                    print('%s: %s' % (event_name, count))
             if name == 'patch':
                 # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
