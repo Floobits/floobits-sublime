@@ -1,6 +1,7 @@
 # coding: utf-8
 import sys
 import os
+import hashlib
 import imp
 import json
 import subprocess
@@ -52,12 +53,12 @@ if ssl is False and sublime.platform() == 'linux':
 
 try:
     from urllib.error import HTTPError
-    from .floo import api, AgentConnection, msg, shared as G, utils
+    from .floo import api, AgentConnection, listener, msg, shared as G, utils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and G and Listener and msg and utils
+    assert HTTPError and api and AgentConnection and G and Listener and listener and msg and utils
 except (ImportError, ValueError):
     from urllib2 import HTTPError
-    from floo import api, AgentConnection, msg, utils
+    from floo import api, AgentConnection, listener, msg, utils
     from floo.listener import Listener
     from floo import shared as G
 
@@ -760,13 +761,13 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         G.IGNORE_MODIFIED_EVENTS = True
         utils.cancel_timeout(ignore_modified_timeout)
         ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
-
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)
 
         if stop - start > 10000:
             self.view.replace(edit, region, data)
+            G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
             return transform_selections(selections, start, stop - start)
 
         existing = self.view.substr(region)
@@ -786,6 +787,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
         self.view.replace(edit, region, replace_str)
+        G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
         new_offset = len(replace_str) - ((stop - j) - (start + i))
         return transform_selections(selections, start + i, new_offset)
 
