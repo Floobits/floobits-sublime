@@ -62,17 +62,20 @@ class AgentConnection(object):
         self.empty_selects = 0
         self.workspace_info = {}
 
-    def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+    def cleanup(self):
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         G.CONNECTED = False
         try:
-            self.retries = -1
             self.sock.shutdown(2)
             self.sock.close()
         except Exception:
             pass
+
+    def stop(self):
+        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        self.retries = -1
+        self.cleanup()
         msg.log('Disconnected.')
 
     def send_msg(self, msg):
@@ -99,24 +102,22 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-
         G.CONNECTED = False
         self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
-        self.reconnect_delay = min(10000, 1.5 * self.reconnect_delay)
+        self.reconnect_delay = min(10000, int(1.5 * self.reconnect_delay))
 
         if self.retries > 0:
             msg.log('Floobits: Reconnecting in %sms' % self.reconnect_delay)
-            self.reconnect_timeout = utils.set_timeout(self.connect, int(self.reconnect_delay))
+            self.reconnect_timeout = utils.set_timeout(self.connect, self.reconnect_delay)
         elif self.retries == 0:
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
     def connect(self):
-        self.stop()
+        self.cleanup()
         self.empty_selects = 0
-        self.reconnect_timeout = None
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:
