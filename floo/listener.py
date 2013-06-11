@@ -64,6 +64,20 @@ def get_buf(view):
     return None
 
 
+def is_view_loaded(view):
+    """returns a buf if the view is loaded in sublime and 
+    the buf is populated by us"""
+    
+    if not G.CONNECTED or view.is_loading():
+        return
+
+    buf = get_buf(view)
+    if not buf or buf.get('buf') is None:
+        return
+
+    return buf
+
+
 def save_buf(buf):
     path = utils.get_full_path(buf['path'])
     utils.mkdir(os.path.split(path)[0])
@@ -238,9 +252,13 @@ class Listener(sublime_plugin.EventListener):
 
         if G.DEBUG:
             if len(t[0]) == 0:
-                msg.debug('OMG EMPTY!')
-                msg.debug('Starting data:', buf['buf'])
-                msg.debug('Patch:', patch_data['patch'])
+                try:
+                    msg.debug('OMG EMPTY!')
+                    msg.debug('Starting data:', buf['buf'])
+                    msg.debug('Patch:', patch_data['patch'])
+                except Exception as e:
+                    print(e)
+
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
                 msg.debug('Starting data:', buf['buf'])
@@ -436,7 +454,7 @@ class Listener(sublime_plugin.EventListener):
             G.CHAT_VIEW = None
 
     def on_load(self, view):
-        msg.debug('load', self.name(view))
+        msg.debug('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
         if buf:
             f = ON_LOAD.get(buf['id'])
@@ -489,10 +507,7 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     def on_modified(self, view):
-        if not G.CONNECTED or view.is_loading():
-            return
-
-        buf = get_buf(view)
+        buf = is_view_loaded(view)
         if not buf:
             return
 
@@ -507,9 +522,7 @@ class Listener(sublime_plugin.EventListener):
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):
-        if not G.CONNECTED or G.IGNORE_MODIFIED_EVENTS or view.is_loading():
-            return
-        buf = buf or get_buf(view)
+        buf = is_view_loaded(view)
         if buf:
             disable_stalker_mode(2000)
             self.selection_changed.append((view, buf, False))
