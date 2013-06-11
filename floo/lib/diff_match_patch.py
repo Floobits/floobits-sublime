@@ -34,10 +34,12 @@ import time
 try:
   from urllib import parse
   assert parse
+  unquote = lambda x: parse.unquote(x)
   str_instances = str
   unichr = chr
 except ImportError:
   import urllib as parse
+  unquote = lambda x: parse.unquote(x.encode('utf-8')).decode('utf-8')
   str_instances = (str, basestring)
 
 
@@ -1184,7 +1186,7 @@ class diff_match_patch:
     if type(delta) == str:
       # Deltas should be composed of a subset of ascii chars, Unicode not
       # required.  If this encode raises UnicodeEncodeError, delta is invalid.
-      delta = delta.encode("ascii")
+      delta.encode("ascii")
     diffs = []
     pointer = 0  # Cursor in text1
     tokens = delta.split("\t")
@@ -1196,7 +1198,7 @@ class diff_match_patch:
       # operation of this token (delete, insert, equality).
       param = token[1:]
       if token[0] == "+":
-        param = parse.unquote(param).decode("utf-8")
+        param = unquote(param)
         diffs.append((self.DIFF_INSERT, param))
       elif token[0] == "-" or token[0] == "=":
         try:
@@ -1851,7 +1853,7 @@ class diff_match_patch:
           sign = text[0][0]
         else:
           sign = ''
-        line = parse.unquote(text[0][1:])
+        line = unquote(text[0][1:])
         if sign == '+':
           # Insertion.
           patch.diffs.append((self.DIFF_INSERT, line))
