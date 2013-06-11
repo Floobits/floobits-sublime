@@ -218,6 +218,7 @@ class Listener(sublime_plugin.EventListener):
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+            msg.debug('forcing patch for %s' % buf['path'])
             if G.AGENT:
                 G.AGENT.put(patch.to_json())
             else:
