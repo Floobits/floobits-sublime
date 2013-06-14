@@ -2,6 +2,7 @@ import os
 import hashlib
 from datetime import datetime
 import subprocess
+import collections
 
 import sublime
 import sublime_plugin
@@ -27,7 +28,7 @@ DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
-
+PATCHES_PENDING = collections.defaultdict(list)
 
 
 ignore_modified_timeout = None
@@ -58,12 +59,12 @@ def apply_edits(view, edit, selections, r, data):
     stop = min(int(r[1]), view.size())
     region = sublime.Region(start, stop)
 
-    if stop - start > 10000:
-        view.replace(edit, region, data)
-        md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-        msg.debug('1md5 is now ', md5)
-        G.VIEW_TO_HASH[view.buffer_id()] = md5
-        return transform_selections(selections, start, stop - start)
+    # if stop - start > 10000:
+    #     view.replace(edit, region, data)
+    #     md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+    #     msg.debug('1md5 is now ', md5)
+    #     G.VIEW_TO_HASH[view.buffer_id()] = md5
+    #     return transform_selections(selections, start, stop - start)
 
     existing = view.substr(region)
     i = 0
@@ -81,15 +82,24 @@ def apply_edits(view, edit, selections, r, data):
         j += 1
     region = sublime.Region(start + i, stop - j)
     replace_str = data[i:data_len - j]
+    original = md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+    new = get_text(view)
+    new = new[:start+i] + replace_str + new[stop - j:]
+    new_md5 = hashlib.md5(new.encode('utf-8')).hexdigest()
     view.replace(edit, region, replace_str)
     if view.is_loading():
         msg.debug("view is loading: !!!!!!!!!!!!")
     md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-    msg.debug('replaced %s to %s. md5 is now %s' % (start + i, stop - j,  md5))
+    msg.debug('replaced %s to %s. md5 is now %s and %s' % (start + i, stop - j,  md5, new_md5))
+    if md5 != new_md5:
+        msg.warn('md5s dont match?!?!')
+
     G.VIEW_TO_HASH[view.buffer_id()] = md5
     new_offset = len(replace_str) - ((stop - j) - (start + i))
-    return transform_selections(selections, start + i, new_offset)
 
+    G.MODS_PENDING[view.buffer_id()] = [original, md5, new_md5]
+
+    return transform_selections(selections, start + i, new_offset)
 def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
 
@@ -287,10 +297,18 @@ class Listener(sublime_plugin.EventListener):
         if len(patch_data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
             return
+
         msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
         old_text = buf.get('buf', '')
+        if view and view.buffer_id() in G.MODS_PENDING:
+            return PATCHES_PENDING[buf['id']].push(patch_data)
+        pending = PATCHES_PENDING.get(buf['id'])
+        if pending:
+            del PATCHES_PENDING[buf['id']]
+            for p in pending:
+                Listener.apply_patch(p)
         if view:
             view_text = get_text(view)
         if view and old_text != view_text:
@@ -360,14 +378,15 @@ class Listener(sublime_plugin.EventListener):
             commands.append({'r': [offset, offset + length], 'data': patch_text})
         msg.debug('patching')
         # view.run_command('floo_view_replace_regions', {'commands': commands})
-        
         edit = view.begin_edit()
-        selections = [x for x in view.sel()]  # deep copy
-        for command in commands:
-            selections = apply_edits(view, edit, selections, command['r'], command['data'])
-        msg.debug('ending edit')
-        G.IGNORE_MODIFIED_EVENTS = True
-        view.end_edit(edit)
+        try:
+            selections = [x for x in view.sel()]  # deep copy
+            for command in commands:
+                selections = apply_edits(view, edit, selections, command['r'], command['data'])
+            msg.debug('ending edit')
+        finally:
+            view.end_edit(edit)
+
         msg.debug('edit ended')
         md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
         msg.debug('newest md5 is now %s' % md5)
@@ -484,11 +503,13 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('new md5 is ', buf['md5'])
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
         edit = view.begin_edit()
-        selections = [x for x in view.sel()]  # deep copy
-        selections = apply_edits(view, edit, selections, [0, view.size()], buf['buf'])
-        msg.debug('edit ending')
-        G.IGNORE_MODIFIED_EVENTS = True
-        view.end_edit(edit)
+        try:
+            selections = [x for x in view.sel()]  # deep copy
+            selections = apply_edits(view, edit, selections, [0, view.size()], buf['buf'])
+            msg.debug('edit ending')
+            G.IGNORE_MODIFIED_EVENTS = True
+        finally:
+            view.end_edit(edit)
         msg.debug('edit ended')
         md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
         msg.debug('newest md5 is now %s' % md5)
@@ -600,23 +621,33 @@ class Listener(sublime_plugin.EventListener):
 
         cleanup()
 
+    def apply_patches(self, buf):
+        patches = PATCHES_PENDING.get(buf['id'])
+        if not patches:
+            return msg.debug('no patches in pending?!?')
+        for p in patches:
+            self.apply_patch(p)
+
+        del PATCHES_PENDING.get[buf['id']]
+
     def on_modified(self, view):
         buf = is_view_loaded(view)
         if not buf:
             return
 
-        if G.IGNORE_MODIFIED_EVENTS:
-            G.IGNORE_MODIFIED_EVENTS = False
-            msg.debug('ignoring')
-            return
-
         view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-        if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
-            msg.debug('view_md5 matches')
-            return
-        msg.debug('view_md5 does not match %s %s' % (G.VIEW_TO_HASH.get(view.buffer_id()), view_md5))
-        G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
+        buf_id = view.buffer_id()
+        pending = G.MODS_PENDING.get(buf_id)
+        if pending:
+            if view_md5 in pending:
+                msg.debug('ignoring because %s in %s' % (view_md5, pending))
+                del G.MODS_PENDING[buf_id]
+                if PATCHES_PENDING.get(buf['id'], None):
+                    utils.set_timeout(apply_patches, 0, buf)
+                return
+
+        msg.debug('no pending mods')
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
         disable_stalker_mode(2000)
         self.views_changed.append((view, buf))
