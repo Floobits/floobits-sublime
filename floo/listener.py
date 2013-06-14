@@ -21,12 +21,74 @@ except ImportError:
     import utils
 
 
+
 BUFS = {}
 DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
 
+
+
+ignore_modified_timeout = None
+
+
+def unignore_modified_events():
+    G.IGNORE_MODIFIED_EVENTS = False
+
+
+def transform_selections(selections, start, new_offset):
+    new_sels = []
+    for sel in selections:
+        a = sel.a
+        b = sel.b
+        if sel.a > start:
+            a += new_offset
+        if sel.b > start:
+            b += new_offset
+        new_sels.append(sublime.Region(a, b))
+    return new_sels
+
+def apply_edits(view, edit, selections, r, data):
+    global ignore_modified_timeout
+
+    # utils.cancel_timeout(ignore_modified_timeout)
+    # ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
+    start = max(int(r[0]), 0)
+    stop = min(int(r[1]), view.size())
+    region = sublime.Region(start, stop)
+
+    if stop - start > 10000:
+        view.replace(edit, region, data)
+        md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        msg.debug('1md5 is now ', md5)
+        G.VIEW_TO_HASH[view.buffer_id()] = md5
+        return transform_selections(selections, start, stop - start)
+
+    existing = view.substr(region)
+    i = 0
+    data_len = len(data)
+    existing_len = len(existing)
+    length = min(data_len, existing_len)
+    while (i < length):
+        if existing[i] != data[i]:
+            break
+        i += 1
+    j = 0
+    while j < (length - i):
+        if existing[existing_len - j - 1] != data[data_len - j - 1]:
+            break
+        j += 1
+    region = sublime.Region(start + i, stop - j)
+    replace_str = data[i:data_len - j]
+    view.replace(edit, region, replace_str)
+    if view.is_loading():
+        msg.debug("view is loading: !!!!!!!!!!!!")
+    md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+    msg.debug('replaced %s to %s. md5 is now %s' % (start + i, stop - j,  md5))
+    G.VIEW_TO_HASH[view.buffer_id()] = md5
+    new_offset = len(replace_str) - ((stop - j) - (start + i))
+    return transform_selections(selections, start + i, new_offset)
 
 def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
@@ -68,8 +130,11 @@ def is_view_loaded(view):
     """returns a buf if the view is loaded in sublime and 
     the buf is populated by us"""
     
-    if not G.CONNECTED or view.is_loading():
+    if not G.CONNECTED:
         return
+
+    if view.is_loading():
+        return msg.debug('view is loading...')
 
     buf = get_buf(view)
     if not buf or buf.get('buf') is None:
@@ -212,6 +277,7 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def apply_patch(patch_data):
+        print('patching')
         buf_id = patch_data['id']
         buf = BUFS[buf_id]
         if 'buf' not in buf:
@@ -292,8 +358,24 @@ class Listener(sublime_plugin.EventListener):
             region = sublime.Region(offset, offset + length)
             regions.append(region)
             commands.append({'r': [offset, offset + length], 'data': patch_text})
+        msg.debug('patching')
+        # view.run_command('floo_view_replace_regions', {'commands': commands})
+        
+        edit = view.begin_edit()
+        selections = [x for x in view.sel()]  # deep copy
+        for command in commands:
+            selections = apply_edits(view, edit, selections, command['r'], command['data'])
+        msg.debug('ending edit')
+        G.IGNORE_MODIFIED_EVENTS = True
+        view.end_edit(edit)
+        msg.debug('edit ended')
+        md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        msg.debug('newest md5 is now %s' % md5)
 
-        view.run_command('floo_view_replace_regions', {'commands': commands})
+        view.sel().clear()
+        for sel in selections:
+            view.sel().add(sel)
+
         region_key = 'floobits-patch-' + patch_data['username']
         view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(view.erase_regions, 2000, region_key)
@@ -397,11 +479,22 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def update_view(buf, view):
+        msg.debug('old md5 is ', G.VIEW_TO_HASH.get(view.buffer_id()))
         G.VIEW_TO_HASH[view.buffer_id()] = buf['md5']
-        
+        msg.debug('new md5 is ', buf['md5'])
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
+        edit = view.begin_edit()
+        selections = [x for x in view.sel()]  # deep copy
+        selections = apply_edits(view, edit, selections, [0, view.size()], buf['buf'])
+        msg.debug('edit ending')
+        G.IGNORE_MODIFIED_EVENTS = True
+        view.end_edit(edit)
+        msg.debug('edit ended')
+        md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        msg.debug('newest md5 is now %s' % md5)
+
         try:
-            view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
+            # view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf_buf})
             view.set_status('Floobits', 'Floobits synced data for consistency.')
             utils.set_timeout(lambda: view.set_status('Floobits', ''), 5000)
         except Exception as e:
@@ -512,10 +605,16 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
 
-        view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-        if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
+        if G.IGNORE_MODIFIED_EVENTS:
+            G.IGNORE_MODIFIED_EVENTS = False
+            msg.debug('ignoring')
             return
 
+        view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
+            msg.debug('view_md5 matches')
+            return
+        msg.debug('view_md5 does not match %s %s' % (G.VIEW_TO_HASH.get(view.buffer_id()), view_md5))
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))

@@ -742,6 +742,49 @@ def transform_selections(selections, start, new_offset):
         new_sels.append(sublime.Region(a, b))
     return new_sels
 
+def apply_edits(view, edit, selections, r, data):
+    global ignore_modified_timeout
+
+    if not getattr(self, 'view', None):
+        return selections
+
+    G.IGNORE_MODIFIED_EVENTS = True
+    utils.cancel_timeout(ignore_modified_timeout)
+    ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
+    start = max(int(r[0]), 0)
+    stop = min(int(r[1]), self.view.size())
+    region = sublime.Region(start, stop)
+
+    if stop - start > 10000:
+        view.replace(edit, region, data)
+        md5 = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+        msg.debug('1md5 is now ', md5)
+        G.VIEW_TO_HASH[view.buffer_id()] = md5
+        return transform_selections(selections, start, stop - start)
+
+    existing = view.substr(region)
+    i = 0
+    data_len = len(data)
+    existing_len = len(existing)
+    length = min(data_len, existing_len)
+    while (i < length):
+        if existing[i] != data[i]:
+            break
+        i += 1
+    j = 0
+    while j < (length - i):
+        if existing[existing_len - j - 1] != data[data_len - j - 1]:
+            break
+        j += 1
+    region = sublime.Region(start + i, stop - j)
+    replace_str = data[i:data_len - j]
+    view.replace(edit, region, replace_str)
+    if view.is_loading():
+        msg.debug("view is loading: !!!!!!!!!!!!")
+    md5 = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+    msg.debug('replaced %s to %s. md5 is now %s' % (start + i, stop - j,  md5))
+    new_offset = len(replace_str) - ((stop - j) - (start + i))
+    return transform_selections(selections, start + i, new_offset)
 
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegion(sublime_plugin.TextCommand):
@@ -767,7 +810,9 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 
         if stop - start > 10000:
             self.view.replace(edit, region, data)
-            G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+            md5 = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+            msg.debug('1md5 is now ', md5)
+            G.VIEW_TO_HASH[self.view.buffer_id()] = md5
             return transform_selections(selections, start, stop - start)
 
         existing = self.view.substr(region)
@@ -787,7 +832,11 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
         self.view.replace(edit, region, replace_str)
-        G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+        if self.view.is_loading():
+            msg.debug("view is loading: !!!!!!!!!!!!")
+        md5 = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+        msg.debug('replaced %s to %s. md5 is now %s' % (start + i, stop - j,  md5))
+        G.VIEW_TO_HASH[self.view.buffer_id()] = md5
         new_offset = len(replace_str) - ((stop - j) - (start + i))
         return transform_selections(selections, start + i, new_offset)
 
