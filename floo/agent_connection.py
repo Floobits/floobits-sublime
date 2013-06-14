@@ -209,7 +209,9 @@ class AgentConnection(object):
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 buf_id = data['id']
-                buf = listener.BUFS[buf_id]
+                buf = listener.BUFS.get(buf_id)
+                if not buf:
+                    return msg.warn("no buf found: %s.  Hopefully you didn't need that" % data)
                 timeout_id = buf.get('timeout_id')
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
