@@ -50,7 +50,7 @@ def transform_selections(selections, start, new_offset):
         new_sels.append(sublime.Region(a, b))
     return new_sels
 
-def apply_edits(view, edit, selections, r, data):
+def apply_edits(view, edit, selections, r, data, retry=True):
     global ignore_modified_timeout
 
     # utils.cancel_timeout(ignore_modified_timeout)
@@ -82,24 +82,41 @@ def apply_edits(view, edit, selections, r, data):
         j += 1
     region = sublime.Region(start + i, stop - j)
     replace_str = data[i:data_len - j]
-    original = md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-    new = get_text(view)
-    new = new[:start+i] + replace_str + new[stop - j:]
-    new_md5 = hashlib.md5(new.encode('utf-8')).hexdigest()
+    original = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+    expected = get_text(view)
+    expected = expected[:start+i] + replace_str + expected[stop - j:]
+    expected_md5 = hashlib.md5(expected.encode('utf-8')).hexdigest()
+    msg.debug('replacing %s to %s with \n%s\n' % (start+i, stop-j, replace_str))
     view.replace(edit, region, replace_str)
     if view.is_loading():
         msg.debug("view is loading: !!!!!!!!!!!!")
-    md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
-    msg.debug('replaced %s to %s. md5 is now %s and %s' % (start + i, stop - j,  md5, new_md5))
-    if md5 != new_md5:
-        msg.warn('md5s dont match?!?!')
 
+    msg.debug('md5 is now %s' % (expected_md5))
+
+    replaced = get_text(view)
+    new_region = sublime.Region(start + i, start + i + len(replace_str))
+    new_region = view.substr(new_region)
+
+    md5 = hashlib.md5(replaced.encode('utf-8')).hexdigest()
+    if md5 != expected_md5:
+        msg.debug('expected/actual: \n%s\n----------------------\n%s\n----------------------\n' % (expected, replaced))
+        msg.debug('starting, replacement, ending:\n%s\n----------------------------\
+\n%s\n----------------------\n%s\n----------------------' % (existing, data, view.substr(sublime.Region(start, stop))))
+        msg.debug('params are \n%s %s %s %s %s %s %s\n----------------------\n' % (start+i, stop-j, len(replace_str)-1, start, i, stop, j))
+
+    if new_region != replace_str:
+        msg.debug('substrings dont match')
+        msg.debug('replacement str vs actual \n----------------------------\n%s\n----------------------------\n%s\n----------------------\n' % 
+        (replace_str, new_region))
+    else:
+        msg.debug('substrings match')
+    
     G.VIEW_TO_HASH[view.buffer_id()] = md5
     new_offset = len(replace_str) - ((stop - j) - (start + i))
 
-    G.MODS_PENDING[view.buffer_id()] = [original, md5, new_md5]
-
+    G.MODS_PENDING[view.buffer_id()] = [original, md5, expected_md5]
     return transform_selections(selections, start + i, new_offset)
+
 def get_text(view):
     return view.substr(sublime.Region(0, view.size()))
 
@@ -224,6 +241,7 @@ class Listener(sublime_plugin.EventListener):
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
         self.between_save_events = {}
+        self.oh_shit = collections.defaultdict(int)
 
     @staticmethod
     def reset():
@@ -303,7 +321,7 @@ class Listener(sublime_plugin.EventListener):
         # TODO: run this in a separate thread
         old_text = buf.get('buf', '')
         if view and view.buffer_id() in G.MODS_PENDING:
-            return PATCHES_PENDING[buf['id']].push(patch_data)
+            return PATCHES_PENDING[buf['id']].append(patch_data)
         pending = PATCHES_PENDING.get(buf['id'])
         if pending:
             del PATCHES_PENDING[buf['id']]
@@ -499,6 +517,7 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def update_view(buf, view):
         msg.debug('old md5 is ', G.VIEW_TO_HASH.get(view.buffer_id()))
+        view.set_read_only(False)
         G.VIEW_TO_HASH[view.buffer_id()] = buf['md5']
         msg.debug('new md5 is ', buf['md5'])
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
@@ -520,9 +539,7 @@ class Listener(sublime_plugin.EventListener):
             utils.set_timeout(lambda: view.set_status('Floobits', ''), 5000)
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        if 'patch' in G.PERMS:
-            view.set_read_only(False)
-        else:
+        if 'patch' not in G.PERMS:
             view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             view.set_read_only(True)
 
@@ -640,12 +657,20 @@ class Listener(sublime_plugin.EventListener):
         buf_id = view.buffer_id()
         pending = G.MODS_PENDING.get(buf_id)
         if pending:
-            if view_md5 in pending:
-                msg.debug('ignoring because %s in %s' % (view_md5, pending))
+            if view_md5 == pending[-1]:
+                msg.debug('ignoring expected modification %s' % view_md5)
                 del G.MODS_PENDING[buf_id]
                 if PATCHES_PENDING.get(buf['id'], None):
                     utils.set_timeout(apply_patches, 0, buf)
+                if self.oh_shit.get(buf_id):
+                    del self.oh_shit[buf_id]
                 return
+            if view_md5 in pending:
+                self.oh_shit[buf_id] += 1
+                msg.error('we got a modified event for a file that wasn\'t modified?!? %s %s ' % (view_md5, pending))
+            if self.oh_shit.get(buf_id, 0) > 3:
+                msg.debug(get_text(view))                
+                raise Exception('oh shit, didn\'t recover')
 
         msg.debug('no pending mods')
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
