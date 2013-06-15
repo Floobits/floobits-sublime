@@ -810,10 +810,13 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegions(FlooViewReplaceRegion):
     def run(self, edit, commands):
+        is_read_only = self.view.is_read_only()
+        self.view.set_read_only(False)
         selections = [x for x in self.view.sel()]  # deep copy
         for command in commands:
             selections = self._run(edit, selections, **command)
 
+        self.view.read_only(is_read_only)
         self.view.sel().clear()
         for sel in selections:
             self.view.sel().add(sel)
