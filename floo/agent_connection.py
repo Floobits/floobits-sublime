@@ -290,7 +290,6 @@ class AgentConnection(object):
                         if view_md5 == buf['md5']:
                             msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
                             buf['buf'] = view_text
-                            
                             G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                         else:
                             Listener.get_buf(buf_id)
