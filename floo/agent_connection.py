@@ -210,10 +210,11 @@ class AgentConnection(object):
             elif name == 'get_buf':
                 buf_id = data['id']
                 buf = listener.BUFS[buf_id]
+                buf_buf = data['buf']
                 timeout_id = buf.get('timeout_id')
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
-
+                msg.debug('get_buf old md5 is ', buf['md5'])
                 listener.BUFS[buf_id] = data
                 view = listener.get_view(buf_id)
                 if view:

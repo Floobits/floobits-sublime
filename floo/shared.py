@@ -32,3 +32,5 @@ TICK_TIME = 50
 AGENT = None
 
 VIEW_TO_HASH = {}
+
+MODS_PENDING = {}
