@@ -320,7 +320,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
-        reload_settings()
+        if not disconnect_dialog():
+            return
         self.ln_path = ln_path
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
@@ -357,8 +358,13 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             sublime.error_message('Unable to create workspace: %s' % str(e))
             return
 
-        if not disconnect_dialog():
-            return
+        new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
+        if self.ln_path and self.ln_path != new_path:
+            try:
+                os.rename(self.ln_path, new_path)
+            except Exception as e:
+                sublime.error_message('os.rename(%s, %s) failed after creating workspace: %s' % (self.ln_path, new_path, str(e)))
+                return
 
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
 
@@ -501,8 +507,8 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         G.PROJECT_PATH = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
         print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
-            # TODO: really bad prompt here
-            return self.window.show_input_panel('Give me a directory to destructively dump data into (or just press enter):', '', link_dir, None, None)
+            # mediocre prompt here
+            return self.window.show_input_panel('Give me a directory to sync data into (or just press enter):', '', link_dir, None, None)
 
         open_workspace_window(run_thread)
 
@@ -585,7 +591,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def _get_recent_workspaces(self):
         recent_workspaces = []
         if 'recent_workspaces' not in DATA:
-            DATA['recent_workspaces'] = DATA.get('recent_rooms', {})
+            DATA['recent_workspaces'] = DATA.get('recent_rooms', [])
 
         try:
             recent_workspaces = [x.get('url') for x in DATA['recent_workspaces'] if x.get('url') is not None]
@@ -804,10 +810,13 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegions(FlooViewReplaceRegion):
     def run(self, edit, commands):
+        is_read_only = self.view.is_read_only()
+        self.view.set_read_only(False)
         selections = [x for x in self.view.sel()]  # deep copy
         for command in commands:
             selections = self._run(edit, selections, **command)
 
+        self.view.set_read_only(is_read_only)
         self.view.sel().clear()
         for sel in selections:
             self.view.sel().add(sel)

@@ -65,9 +65,9 @@ def get_buf(view):
 
 
 def is_view_loaded(view):
-    """returns a buf if the view is loaded in sublime and 
+    """returns a buf if the view is loaded in sublime and
     the buf is populated by us"""
-    
+
     if not G.CONNECTED or view.is_loading():
         return
 
@@ -312,6 +312,7 @@ class Listener(sublime_plugin.EventListener):
             del buf['buf']
         if view:
             view.set_read_only(True)
+            view.set_status('Floobits', 'Floobits locked this file until it is synced.')
         G.AGENT.put(req)
 
     @staticmethod
@@ -396,18 +397,16 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(event)
 
     @staticmethod
-    def update_view(buf, view=None):
-        view = view or get_view(buf['id'])
+    def update_view(buf, view):
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
+        G.VIEW_TO_HASH[view.buffer_id()] = buf['md5']
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
             view.set_status('Floobits', 'Floobits synced data for consistency.')
             utils.set_timeout(lambda: view.set_status('Floobits', ''), 5000)
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
-        if 'patch' in G.PERMS:
-            view.set_read_only(False)
-        else:
+        if 'patch' not in G.PERMS:
             view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             view.set_read_only(True)
 
@@ -452,6 +451,9 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('close', self.name(view))
         if G.CHAT_VIEW and view.file_name() == G.CHAT_VIEW.file_name():
             G.CHAT_VIEW = None
+        # TODO: the view was closed, but maybe another one is open that shares the buffer_id
+        # if G.VIEW_TO_HASH.get(view.buffer_id()):
+        #     del G.VIEW_TO_HASH[view.buffer_id()]
 
     def on_load(self, view):
         msg.debug('Sublime loaded %s' % self.name(view))

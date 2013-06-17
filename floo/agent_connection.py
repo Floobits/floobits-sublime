@@ -209,7 +209,9 @@ class AgentConnection(object):
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 buf_id = data['id']
-                buf = listener.BUFS[buf_id]
+                buf = listener.BUFS.get(buf_id)
+                if not buf:
+                    return msg.warn("no buf found: %s.  Hopefully you didn't need that" % data)
                 timeout_id = buf.get('timeout_id')
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
@@ -288,7 +290,6 @@ class AgentConnection(object):
                         if view_md5 == buf['md5']:
                             msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
                             buf['buf'] = view_text
-                            
                             G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                         else:
                             Listener.get_buf(buf_id)
