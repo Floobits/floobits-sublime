@@ -400,6 +400,7 @@ class Listener(sublime_plugin.EventListener):
     def update_view(buf, view):
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
         G.VIEW_TO_HASH[view.buffer_id()] = buf['md5']
+        view.set_read_only(False)
         try:
             view.run_command('floo_view_replace_region', {'r': [0, view.size()], 'data': buf['buf']})
             view.set_status('Floobits', 'Floobits synced data for consistency.')
