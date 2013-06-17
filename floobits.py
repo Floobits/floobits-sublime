@@ -591,7 +591,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def _get_recent_workspaces(self):
         recent_workspaces = []
         if 'recent_workspaces' not in DATA:
-            DATA['recent_workspaces'] = DATA.get('recent_rooms', {})
+            DATA['recent_workspaces'] = DATA.get('recent_rooms', [])
 
         try:
             recent_workspaces = [x.get('url') for x in DATA['recent_workspaces'] if x.get('url') is not None]
