@@ -224,7 +224,7 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
-        old_text = buf.get('buf', '')
+        old_text = buf['buf']
         if view:
             view_text = get_text(view)
         if view and old_text != view_text:
@@ -308,7 +308,7 @@ class Listener(sublime_plugin.EventListener):
         }
         buf = BUFS[buf_id]
         msg.warn('Syncing buffer %s for consistency.' % buf['path'])
-        if buf.get('buf'):
+        if 'buf' in buf:
             del buf['buf']
         if view:
             view.set_read_only(True)
