@@ -469,11 +469,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             thread.start()
 
         def link_dir(d):
-            if d == '':
+            if d == '' or d.find(G.PROJECT_PATH) == 0:
                 try:
-                    utils.mkdir(G.PROJECT_PATH)
+                    utils.mkdir(d)
                 except Exception as e:
-                    return sublime.error_message("Couldn't create directory %s: %s" % (G.PROJECT_PATH, str(e)))
+                    return sublime.error_message("Couldn't create directory %s: %s" % (d, str(e)))
                 return open_workspace_window(run_thread)
 
             try:
@@ -508,7 +508,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
             # mediocre prompt here
-            return self.window.show_input_panel('Give me a directory to sync data into (or just press enter):', '', link_dir, None, None)
+            return self.window.show_input_panel('Give me a directory to sync data into:', G.PROJECT_PATH, link_dir, None, None)
 
         open_workspace_window(run_thread)
 
