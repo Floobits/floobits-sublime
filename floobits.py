@@ -70,6 +70,12 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 DATA = {}
 ON_CONNECT = None
 FLOORC_PATH = os.path.expanduser('~/.floorc')
+BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
+old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
+if os.path.isdir(old_colab_dir) and not os.path.exists(BASE_DIR):
+    print('renaming %s to %s' % (old_colab_dir, BASE_DIR))
+    os.rename(old_colab_dir, BASE_DIR)
+    os.symlink(BASE_DIR, old_colab_dir)
 
 
 def update_recent_workspaces(workspace):
@@ -92,7 +98,7 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(os.path.expanduser('~/.floorc'), 'rb')
+        fd = open(FLOORC_PATH, 'rb')
     except IOError as e:
         if e.errno == 2:
             return s
@@ -128,7 +134,7 @@ def reload_settings():
     G.DEBUG = settings.get('debug')
     if G.DEBUG is None:
         G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
+    G.COLAB_DIR = settings.get('share_dir') or os.path.join(BASE_DIR, 'share')
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
@@ -153,23 +159,16 @@ reload_settings()
 
 INITIAL_FLOORC = """# Hello!
 #
-# We noticed you just installed Floobits, but you haven't configured it yet. Floobits reads
-# configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
+# Thank you for installing Floobits. To join and share workspaces, you'll need to finish configuring it.
+# Floobits reads configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
 #
 # If everything has gone according to plan, your browser will open
 # https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
 # this file.
 #
-# This plugin requires a Floobits account. If you don't have one, please sign up and visit
-# https://floobits.com/dash/initial_floorc/
+# For more help, see https://floobits.com/help/plugins/#sublime-text
 #
-# You should log in to your floobits account, copy-paste the customized floorc into this file,
-# and save it. After that, you can right-click on any directory in your sidebar and go to
-# Floobits -> "Create Workspace from folder" to share it with others.
-#
-# For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
-#
-# Thanks for reading. You're almost done setting up the plugin.
+# If you have any problems or questions, please e-mail support@floobits.com
 # -- The Floobits Team
 #
 #
