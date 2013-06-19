@@ -415,9 +415,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             print('poll:', poll_result)
 
             def truncate_chat_view(chat_view):
-                chat_view.set_read_only(False)
-                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                chat_view.set_read_only(True)
+                if chat_view:
+                    chat_view.set_read_only(False)
+                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                    chat_view.set_read_only(True)
                 cb()
 
             def create_chat_view():
@@ -434,9 +435,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
             def truncate_chat_view(chat_view):
-                chat_view.set_read_only(False)
-                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                chat_view.set_read_only(True)
+                if chat_view:
+                    chat_view.set_read_only(False)
+                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                    chat_view.set_read_only(True)
                 cb()
 
             with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:

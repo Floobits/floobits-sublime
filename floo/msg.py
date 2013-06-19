@@ -38,7 +38,10 @@ def get_or_create_chat(cb=None):
         utils.set_timeout(return_view, 0)
 
     # Can't call open_file outside main thread
-    if not G.LOG_TO_CONSOLE:
+    if G.LOG_TO_CONSOLE:
+        if cb:
+            return cb(None)
+    else:
         utils.set_timeout(open_view, 0)
 
 
