@@ -122,6 +122,9 @@ def reload_settings():
     G.ALERT_ON_MSG = settings.get('alert_on_msg')
     if G.ALERT_ON_MSG is None:
         G.ALERT_ON_MSG = True
+    G.LOG_TO_CONSOLE = settings.get('log_to_console')
+    if G.LOG_TO_CONSOLE is None:
+        G.LOG_TO_CONSOLE = False
     G.DEBUG = settings.get('debug')
     if G.DEBUG is None:
         G.DEBUG = False

@@ -38,7 +38,9 @@ def get_or_create_chat(cb=None):
         utils.set_timeout(return_view, 0)
 
     # Can't call open_file outside main thread
-    utils.set_timeout(open_view, 0)
+    if not G.LOG_TO_CONSOLE:
+        print('LOG_TO_CONSOLE is %s' % G.LOG_TO_CONSOLE)
+        utils.set_timeout(open_view, 0)
 
 
 class MSG(object):
@@ -55,7 +57,10 @@ class MSG(object):
         def _display(view):
             view.run_command('floo_view_set_msg', {'data': unicode(self)})
 
-        get_or_create_chat(_display)
+        if G.LOG_TO_CONSOLE:
+            print(unicode(self))
+        else:
+            get_or_create_chat(_display)
 
     def __str__(self):
         if python2:
