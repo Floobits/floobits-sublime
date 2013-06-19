@@ -39,7 +39,6 @@ def get_or_create_chat(cb=None):
 
     # Can't call open_file outside main thread
     if not G.LOG_TO_CONSOLE:
-        print('LOG_TO_CONSOLE is %s' % G.LOG_TO_CONSOLE)
         utils.set_timeout(open_view, 0)
 
 
