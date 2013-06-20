@@ -216,6 +216,7 @@ class AgentConnection(object):
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
 
+                # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
                 listener.BUFS[buf_id] = data
                 view = listener.get_view(buf_id)
                 if view:
