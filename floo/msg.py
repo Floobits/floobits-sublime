@@ -22,12 +22,13 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 
 
 def get_or_create_chat(cb=None):
+    global LOG_LEVEL
+    if G.DEBUG:
+        LOG_LEVEL = LOG_LEVELS['DEBUG']
+
     def return_view():
-        global LOG_LEVEL
         G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
         G.CHAT_VIEW.set_read_only(True)
-        if G.DEBUG:
-            LOG_LEVEL = LOG_LEVELS['DEBUG']
         if cb:
             return cb(G.CHAT_VIEW)
 
