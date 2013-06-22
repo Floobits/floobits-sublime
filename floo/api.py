@@ -23,6 +23,8 @@ def create_workspace(workspace_name):
         'name': workspace_name
     }
     r = Request(url, data=urlencode(post_data).encode('utf-8'))
-    basic_auth = base64.encodestring('%s:%s' % (G.USERNAME, G.SECRET)).replace('\n', '')
+    basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
+    basic_auth = base64.encodestring(basic_auth)
+    basic_auth = basic_auth.decode('ascii').replace('\n', '')
     r.add_header('Authorization', 'Basic %s' % basic_auth)
     urlopen(r, timeout=5)
