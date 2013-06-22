@@ -665,6 +665,13 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
         return 'Add file or directory to currently-joined Floobits workspace.'
 
 
+class FloobitsOpenHangoutCommand(FloobitsBaseCommand):
+    def run(self):
+        owner = G.AGENT.owner
+        workspace = G.AGENT.workspace
+        webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&amp;gd=%s/%s' % (owner, workspace))
+
+
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
