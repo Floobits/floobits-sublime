@@ -3,11 +3,6 @@ import sys
 import hashlib
 import json
 import socket
-try:
-    import queue
-    assert queue
-except ImportError:
-    import Queue as queue
 import time
 import select
 import collections
@@ -35,7 +30,7 @@ Listener = listener.Listener
 settings = sublime.load_settings('Floobits.sublime-settings')
 
 CHAT_VIEW = None
-SOCKET_Q = queue.Queue()
+SOCKET_Q = collections.deque()
 
 
 class AgentConnection(object):
@@ -90,8 +85,8 @@ class AgentConnection(object):
         if not item:
             return
         msg.debug('writing %s: %s' % (item.get('name', 'NO NAME'), item))
-        SOCKET_Q.put(json.dumps(item) + '\n')
-        qsize = SOCKET_Q.qsize()
+        SOCKET_Q.append(json.dumps(item) + '\n')
+        qsize = len(SOCKET_Q)
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
 
@@ -145,9 +140,8 @@ class AgentConnection(object):
         self.select()
 
     def auth(self):
-        global SOCKET_Q
         # TODO: we shouldn't throw away all of this
-        SOCKET_Q = queue.Queue()
+        SOCKET_Q.clear()
         if sys.version_info < (3, 0):
             sublime_version = 2
         else:
@@ -163,11 +157,11 @@ class AgentConnection(object):
         })
 
     def get_patches(self):
-        while True:
-            try:
-                yield SOCKET_Q.get_nowait()
-            except queue.Empty:
-                break
+        try:
+            while True:
+                yield SOCKET_Q.popleft()
+        except IndexError:
+            raise StopIteration()
 
     def chat(self, username, timestamp, message, self_msg=False):
         envelope = msg.MSG(message, timestamp, username)
@@ -191,7 +185,7 @@ class AgentConnection(object):
 
     def protocol(self, req):
         self.buf += req
-        # msg.debug('buf: %s' % self.buf)
+        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n'.encode('utf-8'))
             if not sep:
@@ -361,7 +355,7 @@ class AgentConnection(object):
 
         try:
             # this blocks until the socket is readable or writeable
-            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
+            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
         except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
             return self.reconnect()
@@ -394,12 +388,8 @@ class AgentConnection(object):
 
         if _out:
             for p in self.get_patches():
-                if p is None:
-                    SOCKET_Q.task_done()
-                    continue
                 try:
                     self.sock.sendall(p.encode('utf-8'))
-                    SOCKET_Q.task_done()
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()

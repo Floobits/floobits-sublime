@@ -61,6 +61,12 @@ class MSG(object):
             view.run_command('floo_view_set_msg', {'data': unicode(self)})
 
         if G.LOG_TO_CONSOLE:
+            try:
+                fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
+                fd.write(unicode(self))
+                fd.close()
+            except Exception as e:
+                print(unicode(e))
             print(unicode(self))
         else:
             get_or_create_chat(_display)

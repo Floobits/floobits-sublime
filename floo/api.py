@@ -3,7 +3,7 @@ import base64
 try:
     from urllib.parse import urlencode
     from urllib.request import Request, urlopen
-    assert urlencode, urlopen
+    assert Request and urlencode and urlopen
 except ImportError:
     from urllib import urlencode
     from urllib2 import Request, urlopen
