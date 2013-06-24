@@ -61,7 +61,6 @@ class MSG(object):
             view.run_command('floo_view_set_msg', {'data': unicode(self)})
 
         if G.LOG_TO_CONSOLE:
-            # TODO: REMOVE ME
             try:
                 fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
                 fd.write(unicode(self))
