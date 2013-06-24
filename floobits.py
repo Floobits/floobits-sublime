@@ -5,7 +5,6 @@ import hashlib
 import imp
 import json
 import subprocess
-import threading
 import traceback
 import webbrowser
 
@@ -469,8 +468,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 update_recent_workspaces(joined_workspace)
 
         def run_thread(*args):
-            thread = threading.Thread(target=run_agent, kwargs=result)
-            thread.start()
+            run_agent(**result)
 
         def link_dir(d):
             if d == '' or d.find(G.PROJECT_PATH) == 0:

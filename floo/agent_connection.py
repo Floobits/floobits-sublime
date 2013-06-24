@@ -361,7 +361,7 @@ class AgentConnection(object):
 
         try:
             # this blocks until the socket is readable or writeable
-            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock])
+            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
         except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
             return self.reconnect()
