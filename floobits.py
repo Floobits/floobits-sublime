@@ -301,7 +301,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             os.symlink(dir_to_share, floo_workspace_dir)
         except OSError as e:
             if e.errno != 17:
-                raise
+                return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
         except Exception as e:
             return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
 
@@ -327,13 +327,16 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name):
+        if workspace_name == '':
+            return self.run(ln_path=self.ln_path)
         try:
             api.create_workspace(workspace_name)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             if e.code != 409:
-                raise
+                return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+
             args = {
                 'workspace_name': workspace_name,
                 'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
@@ -356,16 +359,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
             return self.window.run_command('floobits_create_workspace', args)
         except Exception as e:
-            sublime.error_message('Unable to create workspace: %s' % str(e))
-            return
+            return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
         if self.ln_path and self.ln_path != new_path:
             try:
                 os.rename(self.ln_path, new_path)
             except Exception as e:
-                sublime.error_message('os.rename(%s, %s) failed after creating workspace: %s' % (self.ln_path, new_path, str(e)))
-                return
+                return sublime.error_message('os.rename(%s, %s) failed after creating workspace: %s' % (self.ln_path, new_path, str(e)))
 
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
 
