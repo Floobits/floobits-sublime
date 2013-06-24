@@ -191,7 +191,7 @@ class AgentConnection(object):
 
     def protocol(self, req):
         self.buf += req
-        # msg.debug('buf: %s' % self.buf)
+        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n'.encode('utf-8'))
             if not sep:
