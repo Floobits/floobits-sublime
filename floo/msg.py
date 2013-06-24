@@ -22,12 +22,13 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 
 
 def get_or_create_chat(cb=None):
+    global LOG_LEVEL
+    if G.DEBUG:
+        LOG_LEVEL = LOG_LEVELS['DEBUG']
+
     def return_view():
-        global LOG_LEVEL
         G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
         G.CHAT_VIEW.set_read_only(True)
-        if G.DEBUG:
-            LOG_LEVEL = LOG_LEVELS['DEBUG']
         if cb:
             return cb(G.CHAT_VIEW)
 
@@ -38,7 +39,11 @@ def get_or_create_chat(cb=None):
         utils.set_timeout(return_view, 0)
 
     # Can't call open_file outside main thread
-    utils.set_timeout(open_view, 0)
+    if G.LOG_TO_CONSOLE:
+        if cb:
+            return cb(None)
+    else:
+        utils.set_timeout(open_view, 0)
 
 
 class MSG(object):
@@ -55,7 +60,16 @@ class MSG(object):
         def _display(view):
             view.run_command('floo_view_set_msg', {'data': unicode(self)})
 
-        get_or_create_chat(_display)
+        if G.LOG_TO_CONSOLE:
+            try:
+                fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
+                fd.write(unicode(self))
+                fd.close()
+            except Exception as e:
+                print(unicode(e))
+            print(unicode(self))
+        else:
+            get_or_create_chat(_display)
 
     def __str__(self):
         if python2:

@@ -212,6 +212,9 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def apply_patch(patch_data):
+        if not G.AGENT:
+            msg.debug('Not connected. Discarding view change.')
+            return
         buf_id = patch_data['id']
         buf = BUFS[buf_id]
         if 'buf' not in buf:
@@ -224,20 +227,23 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('patch is', patch_data['patch'])
         dmp_patches = DMP.patch_fromText(patch_data['patch'])
         # TODO: run this in a separate thread
-        old_text = buf.get('buf', '')
-        if view:
+        old_text = buf['buf']
+
+        if view and not view.is_loading():
             view_text = get_text(view)
-        if view and old_text != view_text:
-            patch = FlooPatch(view, buf)
-            # Update the current copy of the buffer
-            buf['buf'] = patch.current
-            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
-            msg.debug('forcing patch for %s' % buf['path'])
-            if G.AGENT:
+            if old_text == view_text:
+                buf['forced_patch'] = False
+            elif not buf.get('forced_patch'):
+                patch = FlooPatch(view, buf)
+                # Update the current copy of the buffer
+                buf['buf'] = patch.current
+                buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+                buf['forced_patch'] = True
+                msg.debug('forcing patch for %s' % buf['path'])
                 G.AGENT.put(patch.to_json())
+                old_text = view_text
             else:
-                msg.debug('Not connected. Discarding view change.')
-            old_text = view_text
+                msg.debug('forced patch is true. not sending another patch for buf %s' % buf['path'])
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != patch_data['md5_before']:
             msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
@@ -308,7 +314,7 @@ class Listener(sublime_plugin.EventListener):
         }
         buf = BUFS[buf_id]
         msg.warn('Syncing buffer %s for consistency.' % buf['path'])
-        if buf.get('buf'):
+        if 'buf' in buf:
             del buf['buf']
         if view:
             view.set_read_only(True)
@@ -522,6 +528,7 @@ class Listener(sublime_plugin.EventListener):
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
         disable_stalker_mode(2000)
+        buf['forced_patch'] = False
         self.views_changed.append((view, buf))
 
     def on_selection_modified(self, view, buf=None):

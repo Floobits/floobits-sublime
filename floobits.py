@@ -5,7 +5,6 @@ import hashlib
 import imp
 import json
 import subprocess
-import threading
 import traceback
 import webbrowser
 
@@ -36,7 +35,7 @@ if ssl is False and sublime.platform() == 'linux':
             _ssl = imp.load_module('_ssl', filename, path, desc)
             break
         except ImportError as e:
-            print('Failed loading _ssl module %s: %s' % (so_path, str(e)))
+            print('Failed loading _ssl module %s: %s' % (so_path, unicode(e)))
     if _ssl:
         print('Hooray! %s is a winner!' % so_path)
         filename, path, desc = imp.find_module('ssl', [ssl_path])
@@ -46,7 +45,7 @@ if ssl is False and sublime.platform() == 'linux':
             try:
                 ssl = imp.load_module('ssl', filename, path, desc)
             except ImportError as e:
-                print('Failed loading ssl module at: %s' % str(e))
+                print('Failed loading ssl module at: %s' % unicode(e))
     else:
         print("Couldn't find an _ssl shared lib that's compatible with your version of linux. Sorry :(")
 
@@ -70,6 +69,12 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 DATA = {}
 ON_CONNECT = None
 FLOORC_PATH = os.path.expanduser('~/.floorc')
+BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
+old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
+if os.path.isdir(old_colab_dir) and not os.path.exists(BASE_DIR):
+    print('renaming %s to %s' % (old_colab_dir, BASE_DIR))
+    os.rename(old_colab_dir, BASE_DIR)
+    os.symlink(BASE_DIR, old_colab_dir)
 
 
 def update_recent_workspaces(workspace):
@@ -92,7 +97,7 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(os.path.expanduser('~/.floorc'), 'rb')
+        fd = open(FLOORC_PATH, 'rb')
     except IOError as e:
         if e.errno == 2:
             return s
@@ -122,10 +127,13 @@ def reload_settings():
     G.ALERT_ON_MSG = settings.get('alert_on_msg')
     if G.ALERT_ON_MSG is None:
         G.ALERT_ON_MSG = True
+    G.LOG_TO_CONSOLE = settings.get('log_to_console')
+    if G.LOG_TO_CONSOLE is None:
+        G.LOG_TO_CONSOLE = False
     G.DEBUG = settings.get('debug')
     if G.DEBUG is None:
         G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or '~/.floobits/share/'
+    G.COLAB_DIR = settings.get('share_dir') or os.path.join(BASE_DIR, 'share')
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
@@ -150,23 +158,16 @@ reload_settings()
 
 INITIAL_FLOORC = """# Hello!
 #
-# We noticed you just installed Floobits, but you haven't configured it yet. Floobits reads
-# configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
+# Thank you for installing Floobits. To join and share workspaces, you'll need to finish configuring it.
+# Floobits reads configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
 #
 # If everything has gone according to plan, your browser will open
 # https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
 # this file.
 #
-# This plugin requires a Floobits account. If you don't have one, please sign up and visit
-# https://floobits.com/dash/initial_floorc/
+# For more help, see https://floobits.com/help/plugins/#sublime-text
 #
-# You should log in to your floobits account, copy-paste the customized floorc into this file,
-# and save it. After that, you can right-click on any directory in your sidebar and go to
-# Floobits -> "Create Workspace from folder" to share it with others.
-#
-# For more help, see https://floobits.com/help/floorc/ and https://floobits.com/help/plugins/#sublime-text
-#
-# Thanks for reading. You're almost done setting up the plugin.
+# If you have any problems or questions, please e-mail support@floobits.com
 # -- The Floobits Team
 #
 #
@@ -300,7 +301,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             os.symlink(dir_to_share, floo_workspace_dir)
         except OSError as e:
             if e.errno != 17:
-                raise
+                return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
         except Exception as e:
             return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
 
@@ -326,13 +327,16 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name):
+        if workspace_name == '':
+            return self.run(ln_path=self.ln_path)
         try:
             api.create_workspace(workspace_name)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             if e.code != 409:
-                raise
+                return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+
             args = {
                 'workspace_name': workspace_name,
                 'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
@@ -355,16 +359,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
             return self.window.run_command('floobits_create_workspace', args)
         except Exception as e:
-            sublime.error_message('Unable to create workspace: %s' % str(e))
-            return
+            return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
         if self.ln_path and self.ln_path != new_path:
             try:
                 os.rename(self.ln_path, new_path)
             except Exception as e:
-                sublime.error_message('os.rename(%s, %s) failed after creating workspace: %s' % (self.ln_path, new_path, str(e)))
-                return
+                return sublime.error_message('os.rename(%s, %s) failed after creating workspace: %s' % (self.ln_path, new_path, str(e)))
 
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
 
@@ -412,9 +414,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             print('poll:', poll_result)
 
             def truncate_chat_view(chat_view):
-                chat_view.set_read_only(False)
-                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                chat_view.set_read_only(True)
+                if chat_view:
+                    chat_view.set_read_only(False)
+                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                    chat_view.set_read_only(True)
                 cb()
 
             def create_chat_view():
@@ -431,9 +434,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
             def truncate_chat_view(chat_view):
-                chat_view.set_read_only(False)
-                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                chat_view.set_read_only(True)
+                if chat_view:
+                    chat_view.set_read_only(False)
+                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                    chat_view.set_read_only(True)
                 cb()
 
             with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
@@ -465,15 +469,14 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 update_recent_workspaces(joined_workspace)
 
         def run_thread(*args):
-            thread = threading.Thread(target=run_agent, kwargs=result)
-            thread.start()
+            run_agent(**result)
 
         def link_dir(d):
-            if d == '':
+            if d == '' or d.find(G.PROJECT_PATH) == 0:
                 try:
-                    utils.mkdir(G.PROJECT_PATH)
+                    utils.mkdir(d)
                 except Exception as e:
-                    return sublime.error_message("Couldn't create directory %s: %s" % (G.PROJECT_PATH, str(e)))
+                    return sublime.error_message("Couldn't create directory %s: %s" % (d, str(e)))
                 return open_workspace_window(run_thread)
 
             try:
@@ -508,7 +511,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         print('Project path is %s' % G.PROJECT_PATH)
         if not os.path.isdir(G.PROJECT_PATH):
             # mediocre prompt here
-            return self.window.show_input_panel('Give me a directory to sync data into (or just press enter):', '', link_dir, None, None)
+            return self.window.show_input_panel('Give me a directory to sync data into:', G.PROJECT_PATH, link_dir, None, None)
 
         open_workspace_window(run_thread)
 
@@ -659,6 +662,30 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
+
+
+class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
+    def run(self):
+        owner = G.AGENT.owner
+        workspace = G.AGENT.workspace
+        webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s' % (owner, workspace))
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+
+
+class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
+    def run(self, hangout_url):
+        confirm = bool(sublime.ok_cancel_dialog('This workspace is being edited in a Google+ Hangout? Do you want to join the hangout?'))
+        if not confirm:
+            return
+        webbrowser.open(hangout_url)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
 
 
 class FloobitsHelpCommand(FloobitsBaseCommand):
