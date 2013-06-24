@@ -675,6 +675,20 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
         return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
 
 
+class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
+    def run(self, hangout_url):
+        confirm = bool(sublime.ok_cancel_dialog('This workspace is being edited in a Google+ Hangout? Do you want to join the hangout?'))
+        if not confirm:
+            return
+        webbrowser.open(hangout_url)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+
+
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
