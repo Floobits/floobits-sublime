@@ -665,6 +665,30 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
         return 'Add file or directory to currently-joined Floobits workspace.'
 
 
+class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
+    def run(self):
+        owner = G.AGENT.owner
+        workspace = G.AGENT.workspace
+        webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s' % (owner, workspace))
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+
+
+class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
+    def run(self, hangout_url):
+        confirm = bool(sublime.ok_cancel_dialog('This workspace is being edited in a Google+ Hangout? Do you want to join the hangout?'))
+        if not confirm:
+            return
+        webbrowser.open(hangout_url)
+
+    def is_visible(self):
+        return False
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+
+
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)

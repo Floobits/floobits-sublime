@@ -309,6 +309,13 @@ class AgentConnection(object):
                             Listener.get_buf(buf_id)
 
                 msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
+
+                temp_data = data.get('temp_data', {})
+                hangout = temp_data.get('hangout', {})
+                hangout_url = hangout.get('url')
+                if hangout_url:
+                    G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+
                 if self.on_connect:
                     self.on_connect(self)
                     self.on_connect = None
@@ -338,6 +345,11 @@ class AgentConnection(object):
                 self.stop()
             elif name == 'msg':
                 self.on_msg(data)
+            elif name == 'set_temp_data':
+                hangout = data.get('hangout', {})
+                hangout_url = hangout.get('url')
+                if hangout_url:
+                    G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after

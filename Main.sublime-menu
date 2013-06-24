@@ -11,6 +11,11 @@
         "command": "floobits_share_dir"
       },
       {
+        "id": "floobits_create_hangout",
+        "caption": "Open Workspace in a Google+ Hangout",
+        "command": "floobits_create_hangout"
+      },
+      {
         "id": "floobits_workspace_menu",
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
