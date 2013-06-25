@@ -323,6 +323,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
         if not disconnect_dialog():
             return
+        if ssl == False:
+            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.ln_path = ln_path
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
