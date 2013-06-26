@@ -323,6 +323,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
         if not disconnect_dialog():
             return
+        if ssl == False:
+            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.ln_path = ln_path
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
@@ -396,6 +398,8 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
                 subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
+                if not os.path.exists(subl):
+                    return sublime.error_message('Can\'t find your Sublime Text executable at %s. Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text' % subl)
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:

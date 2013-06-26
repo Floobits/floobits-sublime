@@ -27,6 +27,10 @@
     "command": "floobits_open_message_view"
   },
   {
+    "caption": "Open Workspace in a Google+ Hangout",
+    "command": "floobits_create_hangout"
+  },
+  {
     "caption": "Floobits - Stalk Workspace",
     "command": "floobits_enable_stalker_mode"
   },
