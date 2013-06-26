@@ -1,4 +1,4 @@
-__VERSION__ = '0.02'
+__VERSION__ = '0.03'
 
 DEBUG = False
 

@@ -323,7 +323,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
         if not disconnect_dialog():
             return
-        if ssl == False:
+        if ssl is False:
             return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.ln_path = ln_path
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
@@ -336,8 +336,17 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
-            if e.code != 409:
+            if e.code not in [400, 409]:
                 return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+
+            if e.code == 400:
+                workspace_name = ''.join(workspace_name.split())
+                args = {
+                    'ln_path': self.ln_path,
+                    'workspace_name': workspace_name,
+                    'prompt': 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+                }
+                return self.window.run_command('floobits_create_workspace', args)
 
             args = {
                 'workspace_name': workspace_name,
