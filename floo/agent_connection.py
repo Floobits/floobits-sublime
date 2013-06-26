@@ -308,14 +308,7 @@ class AgentConnection(object):
                 hangout = temp_data.get('hangout', {})
                 hangout_url = hangout.get('url')
                 if hangout_url:
-                    hangout_client = None
-                    users = data.get('users')
-                    for user_id, user in users.items():
-                        if user['username'] == G.USERNAME and 'hangout' in user['client']:
-                            hangout_client = user
-                            break
-                    if not hangout_client:
-                        G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+                    self.prompt_join_hangout(hangout_url)
 
                 if self.on_connect:
                     self.on_connect(self)
@@ -347,10 +340,11 @@ class AgentConnection(object):
             elif name == 'msg':
                 self.on_msg(data)
             elif name == 'set_temp_data':
-                hangout = data.get('hangout', {})
+                hangout_data = data.get('data', {})
+                hangout = hangout_data.get('hangout', {})
                 hangout_url = hangout.get('url')
                 if hangout_url:
-                    G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+                    self.prompt_join_hangout(hangout_url)
             elif name == 'saved':
                 try:
                     username = self.workspace_info['users'][data['user_id']]['username']
@@ -361,6 +355,16 @@ class AgentConnection(object):
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
+
+    def prompt_join_hangout(self, hangout_url):
+        hangout_client = None
+        users = self.workspace_info.get('users')
+        for user_id, user in users.items():
+            if user['username'] == G.USERNAME and 'hangout' in user['client']:
+                hangout_client = user
+                break
+        if not hangout_client:
+            G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
     def select(self):
         if not self.sock:
