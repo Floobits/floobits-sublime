@@ -308,9 +308,14 @@ class AgentConnection(object):
                 hangout = temp_data.get('hangout', {})
                 hangout_url = hangout.get('url')
                 if hangout_url:
+                    hangout_client = None
                     users = data.get('users')
-                    hangout_users = []
-                    G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+                    for user_id, user in users.items():
+                        if user['username'] == G.USERNAME and 'hangout' in user['client']:
+                            hangout_client = user
+                            break
+                    if not hangout_client:
+                        G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
                 if self.on_connect:
                     self.on_connect(self)
