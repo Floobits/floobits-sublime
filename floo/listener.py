@@ -485,10 +485,11 @@ class Listener(sublime_plugin.EventListener):
         event = None
         buf = get_buf(view)
         name = utils.to_rel_path(view.file_name())
+        is_shared = utils.is_shared(view.file_name())
         old_name = self.between_save_events[view.buffer_id()]
 
         if buf is None:
-            if utils.is_shared(view.file_name()):
+            if is_shared:
                 msg.log('new buffer ', name, view.file_name())
                 event = {
                     'name': 'create_buf',
@@ -496,7 +497,7 @@ class Listener(sublime_plugin.EventListener):
                     'path': name
                 }
         elif name != old_name:
-            if utils.is_shared(view.file_name()):
+            if is_shared:
                 msg.log('renamed buffer {0} to {1}'.format(old_name, name))
                 event = {
                     'name': 'rename_buf',
@@ -512,6 +513,8 @@ class Listener(sublime_plugin.EventListener):
 
         if event and G.AGENT:
             G.AGENT.put(event)
+            if is_shared and buf:
+                G.AGENT.put({'name': 'saved', 'id': buf['id']})
 
         cleanup()
 

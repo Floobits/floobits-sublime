@@ -308,6 +308,8 @@ class AgentConnection(object):
                 hangout = temp_data.get('hangout', {})
                 hangout_url = hangout.get('url')
                 if hangout_url:
+                    users = data.get('users')
+                    hangout_users = []
                     G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
                 if self.on_connect:
@@ -315,7 +317,7 @@ class AgentConnection(object):
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
-                self.workspace_info['users'][data['user_id']] = data['username']
+                self.workspace_info['users'][data['user_id']] = data
             elif name == 'part':
                 msg.log('%s left the workspace' % data['username'])
                 try:
@@ -344,6 +346,13 @@ class AgentConnection(object):
                 hangout_url = hangout.get('url')
                 if hangout_url:
                     G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+            elif name == 'saved':
+                try:
+                    username = self.workspace_info['users'][data['user_id']]['username']
+                    buf = listener.BUFS[data['id']]
+                    msg.log('%s saved buffer %s' % (username, buf['path']))
+                except Exception as e:
+                    msg.error(str(e))
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
