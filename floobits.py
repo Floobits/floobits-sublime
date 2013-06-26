@@ -336,8 +336,17 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
-            if e.code != 409:
+            if e.code not in [400, 409]:
                 return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+
+            if e.code == 400:
+                workspace_name = ''.join(workspace_name.split())
+                args = {
+                    'ln_path': self.ln_path,
+                    'workspace_name': workspace_name,
+                    'prompt': 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+                }
+                return self.window.run_command('floobits_create_workspace', args)
 
             args = {
                 'workspace_name': workspace_name,
