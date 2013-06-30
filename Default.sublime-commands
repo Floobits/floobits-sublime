@@ -7,7 +7,7 @@
     }
   },
   {
-    "caption": "Floobits - Create Workspace",
+    "caption": "Floobits - Share Directory (Create Workspace)",
     "command": "floobits_share_dir"
   },
   {
