@@ -297,10 +297,12 @@ class AgentConnection(object):
                     else:
                         try:
                             buf_fd = open(buf_path, 'rb')
-                            buf_buf = buf_fd.read().decode('utf-8')
-                            md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                            buf_buf = buf_fd.read()
+                            md5 = hashlib.md5(buf_buf).hexdigest()
                             if md5 == buf['md5']:
                                 msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                                if buf['encoding'] == 'utf8':
+                                    buf_buf = buf_buf.decode('utf-8')
                                 buf['buf'] = buf_buf
                             else:
                                 Listener.get_buf(buf_id)
