@@ -120,7 +120,10 @@ class FlooPatch(object):
         self.view = view
         self.current = get_text(view)
         self.previous = buf['buf']
-        self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+        if buf['encoding'] == 'base64':
+            self.md5_before = hashlib.md5(self.previous).hexdigest()
+        else:
+            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
 
     def __str__(self):
         return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
@@ -136,9 +139,15 @@ class FlooPatch(object):
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
+
+        if buf['encoding'] == 'base64':
+            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+        else:
+            md5_after = hashlib.md5(self.current).hexdigest()
+
         return {
             'id': self.buf['id'],
-            'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
+            'md5_after': md5_after,
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
