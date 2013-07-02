@@ -2,6 +2,7 @@ import os
 import hashlib
 from datetime import datetime
 import subprocess
+import base64
 
 import sublime
 import sublime_plugin
@@ -358,13 +359,20 @@ class Listener(sublime_plugin.EventListener):
             return
         try:
             buf_fd = open(path, 'rb')
-            buf = buf_fd.read().decode('utf-8')
+            buf = buf_fd.read()
+            encoding = 'utf8'
+            try:
+                buf = buf.decode('utf-8')
+            except Exception:
+                buf = base64.b64encode(buf)
+                encoding = 'base64'
             rel_path = utils.to_rel_path(path)
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
                 'path': rel_path,
+                'encoding': encoding,
             }
             G.AGENT.put(event)
         except (IOError, OSError):
