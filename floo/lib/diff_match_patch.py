@@ -177,7 +177,7 @@ class diff_match_patch:
     try:
       i = longtext.find(shorttext)
     except Exception as e:
-      print e
+      print(e)
       print( type(shorttext), type(longtext))
       print(repr(shorttext), repr(longtext))
       raise
