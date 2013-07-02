@@ -140,7 +140,7 @@ class FlooPatch(object):
         for patch in patches:
             patch_str += str(patch)
 
-        if buf['encoding'] == 'base64':
+        if self.buf['encoding'] == 'base64':
             md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
         else:
             md5_after = hashlib.md5(self.current).hexdigest()
@@ -233,6 +233,10 @@ class Listener(sublime_plugin.EventListener):
         if 'buf' not in buf:
             msg.debug('buf %s not populated yet. not patching' % buf['path'])
             return
+        if buf['encoding'] == 'base64':
+            # TODO apply binary patches
+            return Listener.get_buf(buf_id, None)
+
         view = get_view(buf_id)
         if len(patch_data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
@@ -548,13 +552,21 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
 
-        view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        text = get_text(view)
+        if buf['encoding'] == 'utf8':
+            text = text.encode('utf-8')
+
+        view_md5 = hashlib.md5(text).hexdigest()
         if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
             return
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+
+        if buf['encoding'] != 'utf8':
+            return msg.warn('Floobits does not support patching binary files at this time')
+
         disable_stalker_mode(2000)
         buf['forced_patch'] = False
         self.views_changed.append((view, buf))

@@ -201,7 +201,6 @@ class AgentConnection(object):
                 raise e
             name = data.get('name')
             if name == 'patch':
-                # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 buf_id = data['id']
