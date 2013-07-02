@@ -7,7 +7,7 @@
       {"caption": "-"},
       {"caption": "Add to workspace", "command": "floobits_add_to_workspace", "args": {"paths": []}},
       {"caption": "Delete from workspace", "command": "floobits_delete_from_workspace", "args": {"paths": []}},
-      {"caption": "Create workspace from folder", "command": "floobits_share_dir", "args": {"paths": []}}
+      {"caption": "Share this directory (Create workspace from folder)", "command": "floobits_share_dir", "args": {"paths": []}}
     ]
   }
 ]

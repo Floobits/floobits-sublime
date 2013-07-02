@@ -10,7 +10,10 @@ The Python included with the Windows version of Sublime Text 2 does not have the
 # Installation instructions
 
 * If you don't have one already, go to [Floobits](https://floobits.com/) and create an account (or sign in with GitHub). (It's free.)
-* Clone this repository or download and extract [this tarball](https://github.com/Floobits/floobits-sublime/archive/master.zip).
+
+* If you have [Sublime Package Control](http://wbond.net/sublime_packages/package_control), go to Package Control → Install Package and search for Floobits. Select the Floobits package and install it.
+
+* If you don't have Package Control (or you prefer to install the plugin manually), clone this repository or download and extract [this tarball](https://github.com/Floobits/floobits-sublime/archive/master.zip).
 * Rename the directory to "Floobits".
 * In Sublime Text, go to Preferences -> Browse Packages.
 * Drag, copy, or move the Floobits directory into your Packages directory.
@@ -21,17 +24,10 @@ If you'd rather create a symlink instead of copy/moving, run something like:
 
 # Configuration
 
-Edit your Floobits.sublime-settings file (in `Package Settings -> Floobits -> Settings - User`) and fill in the following info:
-
-    {
-      "username": "user",
-      "secret": "THIS-IS-YOUR-API-KEY DO-NOT-USE-YOUR-PASSWORD"
-    }
-
-Replace user with your Floobits username. The secret is your API secret, which you can see in [your settings](https://floobits.com/dash/settings/).
+All configuration settings are stored in `~/.floorc`. If you don’t have a `~/.floorc` file, the plugin will create one and open it in Sublime Text. It will also open a web page showing the minimal information you’ll need to put in your `~/.floorc`. After saving the file, restart Sublime Text.
 
 # Using Floobits to Collaborate
 
 After creating your account, you’ll want to create a workspace or two. A workspace is a collection of files and buffers that users can collaborate on.
 
-See https://floobits.com/help for instructions on how to set up workspaces and collaborate with others.
+See https://floobits.com/help/plugins/#sublime-usage for instructions on how to create workspaces and collaborate with others.
