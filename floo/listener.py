@@ -82,7 +82,10 @@ def save_buf(buf):
     path = utils.get_full_path(buf['path'])
     utils.mkdir(os.path.split(path)[0])
     with open(path, 'wb') as fd:
-        fd.write(buf['buf'].encode('utf-8'))
+        if buf['encoding'] == 'utf8':
+            fd.write(buf['buf'].encode('utf-8'))
+        else:
+            fd.write(buf['buf'])
 
 
 def delete_buf(buf_id):

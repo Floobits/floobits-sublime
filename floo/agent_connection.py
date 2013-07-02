@@ -6,6 +6,7 @@ import socket
 import time
 import select
 import collections
+import base64
 
 import sublime
 
@@ -153,6 +154,7 @@ class AgentConnection(object):
             'room_owner': self.owner,
             'client': 'SublimeText-%s' % sublime_version,
             'platform': sys.platform,
+            'supported_encodings': ['utf8', 'base64'],
             'version': G.__VERSION__
         })
 
@@ -210,6 +212,8 @@ class AgentConnection(object):
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
 
+                if data['encoding'] == 'base64':
+                    data['buf'] = base64.b64decode(data['buf'])
                 # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
                 listener.BUFS[buf_id] = data
                 view = listener.get_view(buf_id)
@@ -218,6 +222,8 @@ class AgentConnection(object):
                 else:
                     listener.save_buf(data)
             elif name == 'create_buf':
+                if data['encoding'] == 'base64':
+                    data['buf'] = base64.b64decode(data['buf'])
                 listener.BUFS[data['id']] = data
                 listener.save_buf(data)
             elif name == 'rename_buf':
