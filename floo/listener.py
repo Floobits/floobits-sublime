@@ -141,9 +141,9 @@ class FlooPatch(object):
             patch_str += str(patch)
 
         if self.buf['encoding'] == 'base64':
-            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
-        else:
             md5_after = hashlib.md5(self.current).hexdigest()
+        else:
+            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
 
         return {
             'id': self.buf['id'],
@@ -553,9 +553,10 @@ class Listener(sublime_plugin.EventListener):
             return
 
         text = get_text(view)
-        if buf['encoding'] == 'utf8':
-            text = text.encode('utf-8')
+        if buf['encoding'] != 'utf8':
+            return msg.warn('Floobits does not support patching binary files at this time')
 
+        text = text.encode('utf-8')
         view_md5 = hashlib.md5(text).hexdigest()
         if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
             return
@@ -563,9 +564,6 @@ class Listener(sublime_plugin.EventListener):
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
-
-        if buf['encoding'] != 'utf8':
-            return msg.warn('Floobits does not support patching binary files at this time')
 
         disable_stalker_mode(2000)
         buf['forced_patch'] = False
