@@ -127,7 +127,7 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
-            self.sock.settimeout(10)  # Seconds before timing out connecting
+            self.sock.settimeout(6)  # Seconds before timing out connecting
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
