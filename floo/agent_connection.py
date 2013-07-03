@@ -284,7 +284,7 @@ class AgentConnection(object):
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
                     view = listener.get_view(buf_id)
-                    if view and not view.is_loading():
+                    if view and not view.is_loading() and buf['encoding'] == 'utf8':
                         view_text = listener.get_text(view)
                         view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
                         if view_md5 == buf['md5']:
