@@ -57,7 +57,7 @@ class MSG(object):
         if self.level < LOG_LEVEL:
             return
 
-        if G.LOG_TO_CONSOLE:
+        if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
             try:
                 fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
                 fd.write(unicode(self))
@@ -65,7 +65,7 @@ class MSG(object):
             except Exception as e:
                 print(unicode(e))
             print(unicode(self))
-        elif G.CHAT_VIEW:
+        else:
             G.CHAT_VIEW.run_command('floo_view_set_msg', {'data': unicode(self)})
 
     def __str__(self):
