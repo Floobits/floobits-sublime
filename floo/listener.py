@@ -2,6 +2,7 @@ import os
 import hashlib
 from datetime import datetime
 import subprocess
+import base64
 
 import sublime
 import sublime_plugin
@@ -82,7 +83,10 @@ def save_buf(buf):
     path = utils.get_full_path(buf['path'])
     utils.mkdir(os.path.split(path)[0])
     with open(path, 'wb') as fd:
-        fd.write(buf['buf'].encode('utf-8'))
+        if buf['encoding'] == 'utf8':
+            fd.write(buf['buf'].encode('utf-8'))
+        else:
+            fd.write(buf['buf'])
 
 
 def delete_buf(buf_id):
@@ -116,7 +120,10 @@ class FlooPatch(object):
         self.view = view
         self.current = get_text(view)
         self.previous = buf['buf']
-        self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+        if buf['encoding'] == 'base64':
+            self.md5_before = hashlib.md5(self.previous).hexdigest()
+        else:
+            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
 
     def __str__(self):
         return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
@@ -132,9 +139,15 @@ class FlooPatch(object):
         patch_str = ''
         for patch in patches:
             patch_str += str(patch)
+
+        if self.buf['encoding'] == 'base64':
+            md5_after = hashlib.md5(self.current).hexdigest()
+        else:
+            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+
         return {
             'id': self.buf['id'],
-            'md5_after': hashlib.md5(self.current.encode('utf-8')).hexdigest(),
+            'md5_after': md5_after,
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
@@ -220,6 +233,10 @@ class Listener(sublime_plugin.EventListener):
         if 'buf' not in buf:
             msg.debug('buf %s not populated yet. not patching' % buf['path'])
             return
+        if buf['encoding'] == 'base64':
+            # TODO apply binary patches
+            return Listener.get_buf(buf_id, None)
+
         view = get_view(buf_id)
         if len(patch_data['patch']) == 0:
             msg.error('wtf? no patches to apply. server is being stupid')
@@ -355,13 +372,20 @@ class Listener(sublime_plugin.EventListener):
             return
         try:
             buf_fd = open(path, 'rb')
-            buf = buf_fd.read().decode('utf-8')
+            buf = buf_fd.read()
+            encoding = 'utf8'
+            try:
+                buf = buf.decode('utf-8')
+            except Exception:
+                buf = base64.b64encode(buf)
+                encoding = 'base64'
             rel_path = utils.to_rel_path(path)
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
                 'path': rel_path,
+                'encoding': encoding,
             }
             G.AGENT.put(event)
         except (IOError, OSError):
@@ -528,13 +552,19 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
 
-        view_md5 = hashlib.md5(get_text(view).encode('utf-8')).hexdigest()
+        text = get_text(view)
+        if buf['encoding'] != 'utf8':
+            return msg.warn('Floobits does not support patching binary files at this time')
+
+        text = text.encode('utf-8')
+        view_md5 = hashlib.md5(text).hexdigest()
         if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
             return
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+
         disable_stalker_mode(2000)
         buf['forced_patch'] = False
         self.views_changed.append((view, buf))
