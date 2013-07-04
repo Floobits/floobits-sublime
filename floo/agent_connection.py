@@ -117,7 +117,7 @@ class AgentConnection(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.secure:
             if ssl:
-                cert_path = os.path.join(G.COLAB_DIR, 'startssl-ca.pem')
+                cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
                 with open(cert_path, 'wb') as cert_fd:
                     cert_fd.write(cert.CA_CERT.encode('utf-8'))
                 self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_path, cert_reqs=ssl.CERT_REQUIRED)
