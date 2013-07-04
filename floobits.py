@@ -7,6 +7,7 @@ import json
 import subprocess
 import traceback
 import webbrowser
+from collections import defaultdict
 
 import sublime_plugin
 import sublime
@@ -69,16 +70,18 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 DATA = {}
 ON_CONNECT = None
 FLOORC_PATH = os.path.expanduser('~/.floorc')
-BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
+G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
+# TODO: one day this can be removed (once all our users have updated)
 old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
-if os.path.isdir(old_colab_dir) and not os.path.exists(BASE_DIR):
-    print('renaming %s to %s' % (old_colab_dir, BASE_DIR))
-    os.rename(old_colab_dir, BASE_DIR)
-    os.symlink(BASE_DIR, old_colab_dir)
+if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
+    print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
+    os.rename(old_colab_dir, G.BASE_DIR)
+    os.symlink(G.BASE_DIR, old_colab_dir)
 
 
 def update_recent_workspaces(workspace):
-    recent_workspaces = DATA.get('recent_workspaces', [])
+    d = utils.get_persistent_data()
+    recent_workspaces = d.get('recent_workspaces', [])
     recent_workspaces.insert(0, workspace)
     recent_workspaces = recent_workspaces[:25]
     seen = set()
@@ -90,7 +93,7 @@ def update_recent_workspaces(workspace):
             seen.add(stringified)
 
     DATA['recent_workspaces'] = new
-    utils.update_persistent_data(DATA)
+    utils.update_persistent_data(d)
 
 
 def load_floorc():
@@ -133,7 +136,7 @@ def reload_settings():
     G.DEBUG = settings.get('debug')
     if G.DEBUG is None:
         G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or os.path.join(BASE_DIR, 'share')
+    G.COLAB_DIR = settings.get('share_dir') or os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     utils.mkdir(G.COLAB_DIR)
@@ -155,6 +158,59 @@ def reload_settings():
 
 settings.add_on_change('', reload_settings)
 reload_settings()
+
+
+def get_legacy_projects():
+    a = ['msgs.floobits.log', 'persistent.json']
+    owners = os.listdir(G.COLAB_DIR)
+    floorc_json = defaultdict(defaultdict)
+    for owner in owners:
+        if len(owner) > 0 and owner[0] == '.':
+            continue
+        if owner in a:
+            continue
+        workspaces_path = os.path.join(G.COLAB_DIR, owner)
+        try:
+            workspaces = os.listdir(workspaces_path)
+        except OSError:
+            continue
+        for workspace in workspaces:
+            workspace_path = os.path.join(workspaces_path, workspace)
+            workspace_path = os.path.realpath(workspace_path)
+            try:
+                fd = open(os.path.join(workspace_path, '.floo'), 'rb')
+                url = json.loads(fd.read())['url']
+                fd.close()
+            except Exception:
+                url = utils.to_workspace_url({
+                    'port': 3448, 'secure': True, 'host': "floobits.com", 'owner': owner, 'workspace': workspace
+                })
+            floorc_json[owner][workspace] = {
+                'path': workspace_path,
+                'url': url
+            }
+
+    return floorc_json
+
+
+def migrate_symlinks():
+    data = {}
+    old_path = os.path.join(G.COLAB_DIR, 'persistent.json')
+    if not os.path.exists(old_path):
+        return
+    old_data = utils.get_persistent_data(old_path)
+    data['workspaces'] = get_legacy_projects()
+    data['recent_workspaces'] = old_data.get('recent_workspaces')
+    utils.update_persistent_data(data)
+    try:
+        os.unlink(old_path)
+        os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
+    except Exception:
+        pass
+    return json.dumps(data, indent=2)
+
+print(migrate_symlinks())
+
 
 INITIAL_FLOORC = """# Hello!
 #
@@ -253,7 +309,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
     def on_input(self, dir_to_share):
         global ON_CONNECT
         dir_to_share = os.path.expanduser(dir_to_share)
-        dir_to_share = utils.unfuck_path(dir_to_share)
+        dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
         floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
         print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
@@ -283,33 +339,26 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                 result = utils.parse_url(workspace_url)
             except Exception as e:
                 sublime.error_message(str(e))
+                workspace_url = None
             else:
                 workspace_name = result['workspace']
-                floo_workspace_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
-                if os.path.realpath(floo_workspace_dir) == os.path.realpath(dir_to_share):
-                    if result['owner'] == G.USERNAME:
-                        try:
-                            api.create_workspace(workspace_name)
-                            print('Created workspace %s' % workspace_url)
-                        except Exception as e:
-                            print('Tried to create workspace' + str(e))
-                    # they wanted to share teh dir, so always share it
-                    return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
-        # go make sym link
-        try:
-            utils.mkdir(os.path.dirname(floo_workspace_dir))
-            os.symlink(dir_to_share, floo_workspace_dir)
-        except OSError as e:
-            if e.errno != 17:
-                return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
-        except Exception as e:
-            return sublime.error_message("Couldn't create symlink from %s to %s: %s" % (dir_to_share, floo_workspace_dir, str(e)))
+
+                # floo_workspace_dir = os.path.join(G.COLAB_DIR, result['owner'], result['workspace'])
+        for owner, workspaces in DATA['workspaces']:
+            for name, workspace in workspaces:
+                if workspace['path'] == dir_to_share:
+                    workspace_url = workspace['url']
+                    break
+
+        if workspace_url:
+            ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
+            return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
         ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
-            'ln_path': floo_workspace_dir,
+            'dir_to_share': dir_to_share,
         })
 
 
@@ -320,17 +369,18 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
         return True
 
-    def run(self, workspace_name='', ln_path=None, prompt='Workspace name:'):
+    def run(self, workspace_name='', dir_to_share='', prompt='Workspace name:'):
         if not disconnect_dialog():
             return
         if ssl is False:
             return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
-        self.ln_path = ln_path
+        self.owner = G.USERNAME
+        self.dir_to_share = dir_to_share
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name):
         if workspace_name == '':
-            return self.run(ln_path=self.ln_path)
+            return self.run(dir_to_share=self.dir_to_share)
         try:
             api.create_workspace(workspace_name)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
@@ -342,36 +392,24 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             if e.code == 400:
                 workspace_name = ''.join(workspace_name.split())
                 args = {
-                    'ln_path': self.ln_path,
+                    'dir_to_share': self.dir_to_share,
                     'workspace_name': workspace_name,
                     'prompt': 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
                 }
                 return self.window.run_command('floobits_create_workspace', args)
 
             args = {
+                'dir_to_share': self.dir_to_share,
                 'workspace_name': workspace_name,
                 'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
             }
-
-            if self.ln_path:
-                while True:
-                    workspace_name = workspace_name + '1'
-                    new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
-                    try:
-                        os.rename(self.ln_path, new_path)
-                    except OSError:
-                        continue
-                    args = {
-                        'ln_path': new_path,
-                        'workspace_name': workspace_name,
-                        'prompt': 'Workspace %s already exists. Choose another name:' % workspace_name
-                    }
-                    break
 
             return self.window.run_command('floobits_create_workspace', args)
         except Exception as e:
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
+        d = utils.get_persistent_data()
+        d['workspaces'][self.owner]
         new_path = os.path.join(os.path.dirname(self.ln_path), workspace_name)
         if self.ln_path and self.ln_path != new_path:
             try:
@@ -434,7 +472,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 cb()
 
             def create_chat_view():
-                with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                     msgs_fd.write('')
                 msg.get_or_create_chat(truncate_chat_view)
             utils.set_workspace_window(create_chat_view)
@@ -453,7 +491,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                     chat_view.set_read_only(True)
                 cb()
 
-            with open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                 msgs_fd.write('')
             msg.get_or_create_chat(truncate_chat_view)
 
@@ -607,6 +645,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def _get_recent_workspaces(self):
         recent_workspaces = []
         if 'recent_workspaces' not in DATA:
+            # TODO: remove this when everyone has had plenty of time to update the plugin
             DATA['recent_workspaces'] = DATA.get('recent_rooms', [])
 
         try:
