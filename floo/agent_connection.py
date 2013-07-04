@@ -6,6 +6,7 @@ import socket
 import time
 import select
 import collections
+import base64
 
 import sublime
 
@@ -126,7 +127,7 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         try:
-            self.sock.settimeout(10)  # Seconds before timing out connecting
+            self.sock.settimeout(6)  # Seconds before timing out connecting
             self.sock.connect((self.host, self.port))
             if self.secure and ssl:
                 self.sock.do_handshake()
@@ -153,6 +154,7 @@ class AgentConnection(object):
             'room_owner': self.owner,
             'client': 'SublimeText-%s' % sublime_version,
             'platform': sys.platform,
+            'supported_encodings': ['utf8', 'base64'],
             'version': G.__VERSION__
         })
 
@@ -199,7 +201,6 @@ class AgentConnection(object):
                 raise e
             name = data.get('name')
             if name == 'patch':
-                # TODO: we should do this in a separate thread
                 Listener.apply_patch(data)
             elif name == 'get_buf':
                 buf_id = data['id']
@@ -210,6 +211,8 @@ class AgentConnection(object):
                 if timeout_id:
                     utils.cancel_timeout(timeout_id)
 
+                if data['encoding'] == 'base64':
+                    data['buf'] = base64.b64decode(data['buf'])
                 # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
                 listener.BUFS[buf_id] = data
                 view = listener.get_view(buf_id)
@@ -218,6 +221,8 @@ class AgentConnection(object):
                 else:
                     listener.save_buf(data)
             elif name == 'create_buf':
+                if data['encoding'] == 'base64':
+                    data['buf'] = base64.b64decode(data['buf'])
                 listener.BUFS[data['id']] = data
                 listener.save_buf(data)
             elif name == 'rename_buf':
@@ -279,7 +284,7 @@ class AgentConnection(object):
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
                     view = listener.get_view(buf_id)
-                    if view and not view.is_loading():
+                    if view and not view.is_loading() and buf['encoding'] == 'utf8':
                         view_text = listener.get_text(view)
                         view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
                         if view_md5 == buf['md5']:
@@ -291,10 +296,12 @@ class AgentConnection(object):
                     else:
                         try:
                             buf_fd = open(buf_path, 'rb')
-                            buf_buf = buf_fd.read().decode('utf-8')
-                            md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                            buf_buf = buf_fd.read()
+                            md5 = hashlib.md5(buf_buf).hexdigest()
                             if md5 == buf['md5']:
                                 msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                                if buf['encoding'] == 'utf8':
+                                    buf_buf = buf_buf.decode('utf-8')
                                 buf['buf'] = buf_buf
                             else:
                                 Listener.get_buf(buf_id)
