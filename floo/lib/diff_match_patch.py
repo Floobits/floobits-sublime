@@ -174,13 +174,7 @@ class diff_match_patch:
       (longtext, shorttext) = (text1, text2)
     else:
       (shorttext, longtext) = (text1, text2)
-    try:
-      i = longtext.find(shorttext)
-    except Exception as e:
-      print(e)
-      print( type(shorttext), type(longtext))
-      print(repr(shorttext), repr(longtext))
-      raise
+    i = longtext.find(shorttext)
     if i != -1:
       # Shorter text is inside the longer text (speedup).
       diffs = [(self.DIFF_INSERT, longtext[:i]), (self.DIFF_EQUAL, shorttext),
