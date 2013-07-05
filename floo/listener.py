@@ -173,7 +173,7 @@ class Listener(sublime_plugin.EventListener):
     @staticmethod
     def reset():
         global BUFS, PATHS_TO_IDS
-        BUFS = {},
+        BUFS = {}
         PATHS_TO_IDS = {}
         Listener.views_changed = []
         Listener.selection_changed = []
