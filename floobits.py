@@ -437,6 +437,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 chat_view.set_read_only(True)
             cb()
 
+        def create_chat_view(cb):
+            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                msgs_fd.write('')
+            msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+
         def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
@@ -462,12 +467,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             poll_result = p.poll()
             print('poll:', poll_result)
 
-            def create_chat_view():
-                with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
-                    msgs_fd.write('')
-                msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
-
-            utils.set_workspace_window(create_chat_view)
+            utils.set_workspace_window(lambda: create_chat_view(cb))
 
         def open_workspace_window3(cb):
             G.WORKSPACE_WINDOW = utils.get_workspace_window()
@@ -475,10 +475,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.WORKSPACE_WINDOW = sublime.active_window()
             msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-
-            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
-                msgs_fd.write('')
-            msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+            create_chat_view(cb)
 
         def open_workspace_window(cb):
             if PY2:
