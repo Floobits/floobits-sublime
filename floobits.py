@@ -86,9 +86,11 @@ def update_recent_workspaces(workspace):
     seen = set()
     new = []
     for r in recent_workspaces:
-        if r not in seen:
+        string = json.dumps(r)
+        if string not in seen:
             new.append(r)
-            seen.add(r)
+            seen.add(string)
+    d['recent_workspaces'] = new
     utils.update_persistent_data(d)
 
 
@@ -496,10 +498,36 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 joined_workspace = {'url': workspace_url}
                 update_recent_workspaces(joined_workspace)
 
+        def link_dir(d):
+            if d == '' or d.find(G.PROJECT_PATH) == 0:
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    return sublime.error_message("Couldn't create directory %s: %s" % (d, str(e)))
+                return open_workspace_window(lambda: run_agent(**result))
+
+            try:
+                utils.mkdir(os.path.dirname(G.PROJECT_PATH))
+            except Exception as e:
+                return sublime.error_message("Couldn't create directory %s: %s" % (os.path.dirname(G.PROJECT_PATH), str(e)))
+
+            d = os.path.realpath(os.path.expanduser(d))
+            if not os.path.isdir(d):
+                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
+                if not make_dir:
+                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    return sublime.error_message("Could not create directory %s: %s" % (d, str(e)))
+
+            open_workspace_window(lambda: run_agent(**result))
+
         try:
             result = utils.parse_url(workspace_url)
         except Exception as e:
             return sublime.error_message(str(e))
+            
         reload_settings()
         if not (G.USERNAME and G.SECRET):
             return initial_run()
@@ -514,7 +542,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
         if not os.path.isdir(G.PROJECT_PATH):
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
-            return self.window.show_input_panel('What directory should this workspace live?', default_dir, None, None, None)
+            return self.window.show_input_panel('What directory should this workspace live?', default_dir, link_dir, None, None)
 
         open_workspace_window(lambda: run_agent(**result))
 
