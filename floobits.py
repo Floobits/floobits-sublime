@@ -429,6 +429,14 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace_url):
+
+        def truncate_chat_view(chat_view, cb):
+            if chat_view:
+                chat_view.set_read_only(False)
+                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
+                chat_view.set_read_only(True)
+            cb()
+
         def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
@@ -454,17 +462,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             poll_result = p.poll()
             print('poll:', poll_result)
 
-            def truncate_chat_view(chat_view):
-                if chat_view:
-                    chat_view.set_read_only(False)
-                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                    chat_view.set_read_only(True)
-                cb()
-
             def create_chat_view():
                 with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                     msgs_fd.write('')
-                msg.get_or_create_chat(truncate_chat_view)
+                msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+
             utils.set_workspace_window(create_chat_view)
 
         def open_workspace_window3(cb):
@@ -474,16 +476,9 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
 
-            def truncate_chat_view(chat_view):
-                if chat_view:
-                    chat_view.set_read_only(False)
-                    chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                    chat_view.set_read_only(True)
-                cb()
-
             with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                 msgs_fd.write('')
-            msg.get_or_create_chat(truncate_chat_view)
+            msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
 
         def open_workspace_window(cb):
             if PY2:
@@ -512,31 +507,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         def run_thread(*args):
             run_agent(**result)
 
-        def link_dir(d):
-            if d == '' or d.find(G.PROJECT_PATH) == 0:
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    return sublime.error_message("Couldn't create directory %s: %s" % (d, str(e)))
-                return open_workspace_window(run_thread)
-
-            try:
-                utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-            except Exception as e:
-                return sublime.error_message("Couldn't create directory %s: %s" % (os.path.dirname(G.PROJECT_PATH), str(e)))
-
-            d = os.path.realpath(os.path.expanduser(d))
-            if not os.path.isdir(d):
-                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
-                if not make_dir:
-                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    return sublime.error_message("Could not create directory %s: %s" % (d, str(e)))
-
-            open_workspace_window(run_thread)
-
         try:
             result = utils.parse_url(workspace_url)
         except Exception as e:
@@ -557,7 +527,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             # mediocre prompt here
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
             return self.window.show_input_panel('What directory should this workspace live?', default_dir, None, None, None)
-
 
         open_workspace_window(run_thread)
 
