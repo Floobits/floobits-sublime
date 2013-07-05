@@ -67,7 +67,6 @@ PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
-DATA = {}
 ON_CONNECT = None
 FLOORC_PATH = os.path.expanduser('~/.floorc')
 G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
@@ -83,16 +82,13 @@ def update_recent_workspaces(workspace):
     d = utils.get_persistent_data()
     recent_workspaces = d.get('recent_workspaces', [])
     recent_workspaces.insert(0, workspace)
-    recent_workspaces = recent_workspaces[:25]
+    recent_workspaces = recent_workspaces[:100]
     seen = set()
     new = []
     for r in recent_workspaces:
-        stringified = json.dumps(r)
-        if stringified not in seen:
+        if r not in seen:
             new.append(r)
-            seen.add(stringified)
-
-    DATA['recent_workspaces'] = new
+            seen.add(r)
     utils.update_persistent_data(d)
 
 
@@ -260,8 +256,6 @@ def initial_run():
 if not (G.USERNAME and G.SECRET):
     initial_run()
 
-DATA = utils.get_persistent_data()
-
 
 def global_tick():
     Listener.push()
@@ -343,7 +337,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             else:
                 workspace_name = result['workspace']
 
-        for owner, workspaces in DATA['workspaces']:
+        for owner, workspaces in utils.get_persistent_data()['workspaces']:
             for name, workspace in workspaces:
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
@@ -407,6 +401,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             d['workspaces'][self.owner] = {}
         d['workspaces'][self.owner][workspace_name] = {'url': workspace_url, "path": self.dir_to_share}
         utils.update_persistent_data(d)
+        update_recent_workspaces({'url': workspace_url})
 
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
@@ -501,9 +496,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 joined_workspace = {'url': workspace_url}
                 update_recent_workspaces(joined_workspace)
 
-        def run_thread(*args):
-            run_agent(**result)
-
         try:
             result = utils.parse_url(workspace_url)
         except Exception as e:
@@ -521,11 +513,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         print('Project path is %s' % G.PROJECT_PATH)
 
         if not os.path.isdir(G.PROJECT_PATH):
-            # mediocre prompt here
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
             return self.window.show_input_panel('What directory should this workspace live?', default_dir, None, None, None)
 
-        open_workspace_window(run_thread)
+        open_workspace_window(lambda: run_agent(**result))
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
@@ -555,7 +546,7 @@ class FloobitsRejoinWorkspaceCommand(FloobitsBaseCommand):
             G.AGENT = None
         else:
             try:
-                workspace_url = DATA['recent_workspaces'][0]['url']
+                workspace_url = utils.get_persistent_data()['recent_workspaces'][0]['url']
             except Exception:
                 sublime.error_message('No recent workspace to rejoin.')
                 return
@@ -604,13 +595,10 @@ class FloobitsSummonCommand(FloobitsBaseCommand):
 
 class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def _get_recent_workspaces(self):
-        recent_workspaces = []
-        if 'recent_workspaces' not in DATA:
-            # TODO: remove this when everyone has had plenty of time to update the plugin
-            DATA['recent_workspaces'] = DATA.get('recent_rooms', [])
+        self.recent_workspaces = utils.get_persistent_data()['recent_workspaces']
 
         try:
-            recent_workspaces = [x.get('url') for x in DATA['recent_workspaces'] if x.get('url') is not None]
+            recent_workspaces = [x.get('url') for x in self.recent_workspaces if x.get('url') is not None]
         except Exception:
             pass
         return recent_workspaces
@@ -622,7 +610,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def on_done(self, item):
         if item == -1:
             return
-        workspace = DATA['recent_workspaces'][item]
+        workspace = self.recent_workspaces[item]
         if disconnect_dialog():
             self.window.run_command('floobits_join_workspace', {'workspace_url': workspace['url']})
 
