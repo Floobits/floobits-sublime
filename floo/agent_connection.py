@@ -224,8 +224,11 @@ class AgentConnection(object):
                 if data['encoding'] == 'base64':
                     data['buf'] = base64.b64decode(data['buf'])
                 listener.BUFS[data['id']] = data
+                listener.PATHS_TO_IDS[data['path']] = data['id']
                 listener.save_buf(data)
             elif name == 'rename_buf':
+                del listener.PATHS_TO_IDS[data['old_path']]
+                listener.PATHS_TO_IDS[data['path']] = data['id']
                 new = utils.get_full_path(data['path'])
                 old = utils.get_full_path(data['old_path'])
                 new_dir = os.path.split(new)[0]
@@ -283,6 +286,7 @@ class AgentConnection(object):
                     new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
+                    listener.PATHS_TO_IDS[buf['path']] = buf_id
                     view = listener.get_view(buf_id)
                     if view and not view.is_loading() and buf['encoding'] == 'utf8':
                         view_text = listener.get_text(view)
