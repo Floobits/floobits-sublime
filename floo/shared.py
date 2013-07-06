@@ -6,7 +6,9 @@ PLUGIN_PATH = None
 
 CONNECTED = False
 
+BASE_DIR = ''
 COLAB_DIR = ''
+
 PROJECT_PATH = ''
 DEFAULT_HOST = ''
 DEFAULT_PORT = ''

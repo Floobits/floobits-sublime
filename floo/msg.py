@@ -34,7 +34,7 @@ def get_or_create_chat(cb=None):
 
     def open_view():
         if not G.CHAT_VIEW:
-            p = os.path.join(G.COLAB_DIR, 'msgs.floobits.log')
+            p = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
             G.CHAT_VIEW = G.WORKSPACE_WINDOW.open_file(p)
         utils.set_timeout(return_view, 0)
 
@@ -59,7 +59,7 @@ class MSG(object):
 
         if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
             try:
-                fd = open(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'), "a+")
+                fd = open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), "a+")
                 fd.write(unicode(self))
                 fd.close()
             except Exception as e:
