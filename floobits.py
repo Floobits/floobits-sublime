@@ -735,6 +735,22 @@ class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
         return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
 
 
+class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
+    def run(self):
+        try:
+            agent = G.AGENT
+            url = utils.to_workspace_url({
+                'port': agent.port,
+                'secure': agent.secure,
+                'owner': agent.owner,
+                'workspace': agent.workspace,
+                'host': agent.host,
+            })
+            webbrowser.open(url)
+        except Exception as e:
+            sublime.error_message('Unable to open workspace in web editor: %s' % unicode(e))
+
+
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)

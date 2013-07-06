@@ -31,6 +31,10 @@
     "command": "floobits_create_hangout"
   },
   {
+    "caption": "Open Workspace in web editor",
+    "command": "floobits_open_web_editor"
+  },
+  {
     "caption": "Floobits - Stalk Workspace",
     "command": "floobits_enable_stalker_mode"
   },
