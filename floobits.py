@@ -56,6 +56,7 @@ try:
     from .floo import api, AgentConnection, listener, msg, shared as G, utils
     from .floo.listener import Listener
     assert HTTPError and api and AgentConnection and G and Listener and listener and msg and utils
+    unicode = str
 except (ImportError, ValueError):
     from urllib2 import HTTPError
     from floo import api, AgentConnection, listener, msg, utils
