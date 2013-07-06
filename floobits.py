@@ -24,7 +24,7 @@ except ImportError:
     ssl = False
 
 if ssl is False and sublime.platform() == 'linux':
-    plugin_path = os.path.split(os.path.dirname(__file__))[0]
+    plugin_path = os.path.dirname(os.path.realpath(__file__))
     if plugin_path in ('.', ''):
         plugin_path = os.getcwd()
     _ssl = None
