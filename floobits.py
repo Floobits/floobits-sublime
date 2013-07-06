@@ -94,6 +94,15 @@ def update_recent_workspaces(workspace):
     utils.update_persistent_data(d)
 
 
+def add_workspace_to_persistent_json(owner, name, url, path):
+    d = utils.get_persistent_data()
+    workspaces = d['workspaces']
+    if owner not in workspaces:
+        workspaces[owner] = {}
+    workspaces[owner][name] = {'url': url, "path": path}
+    utils.update_persistent_data(d)
+
+
 def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
@@ -330,17 +339,22 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             print("Couldn't read the floo_info file: %s" % floo_file)
 
         workspace_url = info.get('url')
-        if workspace_url:
+        try:
+            result = utils.parse_url(workspace_url)
+        except Exception:
+            workspace_url = None
+        else:
+            workspace_name = result['workspace']
             try:
-                result = utils.parse_url(workspace_url)
-            except Exception as e:
-                sublime.error_message(str(e))
+                api.get_workspace_by_url(workspace_url)
+            except HTTPError:
                 workspace_url = None
+                workspace_name = os.path.basename(dir_to_share)
             else:
-                workspace_name = result['workspace']
+                add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
 
-        for owner, workspaces in utils.get_persistent_data()['workspaces']:
-            for name, workspace in workspaces:
+        for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
+            for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
                     break
@@ -390,7 +404,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             if e.code == 400:
                 workspace_name = ''.join(workspace_name.split())
                 kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
-            else:            
+            else:
                 kwargs['prompt'] = 'Workspace %s already exists. Choose another name:' % workspace_name
 
             return self.window.run_command('floobits_create_workspace', kwargs)
@@ -398,12 +412,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         except Exception as e:
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        d = utils.get_persistent_data()
-        if self.owner not in d['workspaces']:
-            d['workspaces'][self.owner] = {}
-        d['workspaces'][self.owner][workspace_name] = {'url': workspace_url, "path": self.dir_to_share}
-        utils.update_persistent_data(d)
-        update_recent_workspaces({'url': workspace_url})
+        add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
         webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
@@ -487,7 +496,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.AGENT = None
             try:
                 G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
-                # owner and workspace name are slugfields so this should be safe
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:
@@ -495,23 +503,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 tb = traceback.format_exc()
                 print(tb)
             else:
-                joined_workspace = {'url': workspace_url}
-                update_recent_workspaces(joined_workspace)
+                update_recent_workspaces({'url': workspace_url})
 
-        def link_dir(d):
-            if d == '' or d.find(G.PROJECT_PATH) == 0:
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    return sublime.error_message("Couldn't create directory %s: %s" % (d, str(e)))
-                return open_workspace_window(lambda: run_agent(**result))
-
-            try:
-                utils.mkdir(os.path.dirname(G.PROJECT_PATH))
-            except Exception as e:
-                return sublime.error_message("Couldn't create directory %s: %s" % (os.path.dirname(G.PROJECT_PATH), str(e)))
-
+        def make_dir(d):
             d = os.path.realpath(os.path.expanduser(d))
+
             if not os.path.isdir(d):
                 make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
                 if not make_dir:
@@ -521,13 +517,15 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 except Exception as e:
                     return sublime.error_message("Could not create directory %s: %s" % (d, str(e)))
 
+            G.PROJECT_PATH = d
+            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
         try:
             result = utils.parse_url(workspace_url)
         except Exception as e:
             return sublime.error_message(str(e))
-            
+
         reload_settings()
         if not (G.USERNAME and G.SECRET):
             return initial_run()
@@ -535,14 +533,14 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         d = utils.get_persistent_data()
         try:
             G.PROJECT_PATH = d['workspaces'][result['owner']][result['workspace']]['path']
-        except:
+        except Exception as e:
             G.PROJECT_PATH = ""
-        
+
         print('Project path is %s' % G.PROJECT_PATH)
 
         if not os.path.isdir(G.PROJECT_PATH):
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
-            return self.window.show_input_panel('What directory should this workspace live?', default_dir, link_dir, None, None)
+            return self.window.show_input_panel('What directory should this workspace live?', default_dir, make_dir, None, None)
 
         open_workspace_window(lambda: run_agent(**result))
 
