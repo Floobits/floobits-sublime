@@ -34,7 +34,7 @@ CHAT_VIEW = None
 SOCKET_Q = collections.deque()
 
 try:
-    connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY)
+    connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY, errno.WSAEINVAL)
     iscon_errno = errno.WSAEISCONN
 except Exception:
     connect_errno = (errno.EINPROGRESS, errno.EALREADY)
