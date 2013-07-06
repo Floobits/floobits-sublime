@@ -351,22 +351,23 @@ class Listener(sublime_plugin.EventListener):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
-        if os.path.isdir(path) and os.path.exists(os.path.join(path, '.git')):
-            command = 'git ls-files %s' % path
-            try:
-                p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
-                stdoutdata, stderrdata = p.communicate()
-                if p.returncode == 0:
-                    for git_path in stdoutdata.split('\n'):
-                        git_path = git_path.strip()
-                        if not git_path:
-                            continue
-                        add_path = os.path.join(path, git_path)
-                        msg.debug('adding %s' % add_path)
-                        utils.set_timeout(Listener.create_buf, 0, add_path)
-                    return
-            except Exception as e:
-                msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
+        if os.path.isdir(path):
+            if os.path.exists(os.path.join(path, '.git')):
+                command = 'git ls-files %s' % path
+                try:
+                    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
+                    stdoutdata, stderrdata = p.communicate()
+                    if p.returncode == 0:
+                        for git_path in stdoutdata.split('\n'):
+                            git_path = git_path.strip()
+                            if not git_path:
+                                continue
+                            add_path = os.path.join(path, git_path)
+                            msg.debug('adding %s' % add_path)
+                            utils.set_timeout(Listener.create_buf, 0, add_path)
+                        return
+                except Exception as e:
+                    msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
 
             for dirpath, dirnames, filenames in os.walk(path):
                 # Don't care about hidden stuff
