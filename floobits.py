@@ -215,9 +215,9 @@ def migrate_symlinks():
         os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
     except Exception:
         pass
-    return json.dumps(data, indent=2)
+    print('migrated')
 
-print(migrate_symlinks())
+migrate_symlinks()
 
 
 INITIAL_FLOORC = """# Hello!

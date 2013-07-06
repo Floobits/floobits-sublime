@@ -417,7 +417,6 @@ class AgentConnection(object):
                     self.handshaken = True
 
             for p in self.get_patches():
-                print p
                 try:
                     self.sock.sendall(p.encode('utf-8'))
                 except Exception as e:
