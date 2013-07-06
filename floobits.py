@@ -301,10 +301,10 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
-        return True
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return True
+        return not bool(G.AGENT and G.AGENT.is_ready())
 
     def run(self, dir_to_share='', paths=None, current_file=False):
         reload_settings()
@@ -318,6 +318,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
     def on_input(self, dir_to_share):
         global ON_CONNECT
+        file_to_share = None
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
@@ -325,7 +326,8 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
 
         if os.path.isfile(dir_to_share):
-            return sublime.error_message('Give me a directory please')
+            file_to_share = dir_to_share
+            dir_to_share = os.path.dirname(dir_to_share)
 
         try:
             utils.mkdir(dir_to_share)
@@ -378,7 +380,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
+        ON_CONNECT = lambda: Listener.create_buf(file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
