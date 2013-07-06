@@ -366,6 +366,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
         if workspace_url:
             ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
+            webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
             return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
