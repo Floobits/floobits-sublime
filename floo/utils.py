@@ -131,12 +131,13 @@ def is_shared(p):
 
 
 def get_persistent_data(per_path=None):
+    per_data = {'recent_workspaces': [], 'workspaces': {}}
     per_path = per_path or os.path.join(G.BASE_DIR, 'persistent.json')
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
         print('Failed to open %s. Recent workspace list will be empty.' % per_path)
-        return {}
+        return per_data
     try:
         data = per.read().decode('utf-8')
         persistent_data = json.loads(data)
@@ -144,7 +145,11 @@ def get_persistent_data(per_path=None):
         print('Failed to parse %s. Recent workspace list will be empty.' % per_path)
         print(e)
         print(data)
-        return {}
+        return per_data
+    if 'recent_workspaces' not in persistent_data:
+        persistent_data['recent_workspaces'] = []
+    if 'workspaces' not in persistent_data:
+        persistent_data['workspaces'] = {}
     return persistent_data
 
 
