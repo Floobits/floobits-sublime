@@ -301,10 +301,10 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
 
 class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
-        return True
+        return bool(self.is_enabled())
 
     def is_enabled(self):
-        return True
+        return not bool(G.AGENT and G.AGENT.is_ready())
 
     def run(self, dir_to_share='', paths=None, current_file=False):
         reload_settings()
@@ -318,6 +318,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
 
     def on_input(self, dir_to_share):
         global ON_CONNECT
+        file_to_share = None
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
@@ -325,39 +326,40 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
 
         if os.path.isfile(dir_to_share):
-            return sublime.error_message('Give me a directory please')
-
-        try:
-            utils.mkdir(dir_to_share)
-        except Exception:
-            return sublime.error_message("The directory %s doesn't exist and I can't make it." % dir_to_share)
-
-        floo_file = os.path.join(dir_to_share, '.floo')
-
-        info = {}
-        try:
-            floo_info = open(floo_file, 'rb').read().decode('utf-8')
-            info = json.loads(floo_info)
-        except (IOError, OSError):
-            pass
-        except Exception:
-            print("Couldn't read the floo_info file: %s" % floo_file)
-
-        workspace_url = info.get('url')
-        try:
-            result = utils.parse_url(workspace_url)
-        except Exception:
-            workspace_url = None
+            file_to_share = dir_to_share
+            dir_to_share = os.path.dirname(dir_to_share)
         else:
-            workspace_name = result['workspace']
             try:
-                # TODO: blocking. beachballs sublime 2 if API is super slow
-                api.get_workspace_by_url(workspace_url)
-            except HTTPError:
+                utils.mkdir(dir_to_share)
+            except Exception:
+                return sublime.error_message("The directory %s doesn't exist and I can't make it." % dir_to_share)
+
+            floo_file = os.path.join(dir_to_share, '.floo')
+
+            info = {}
+            try:
+                floo_info = open(floo_file, 'rb').read().decode('utf-8')
+                info = json.loads(floo_info)
+            except (IOError, OSError):
+                pass
+            except Exception:
+                print("Couldn't read the floo_info file: %s" % floo_file)
+
+            workspace_url = info.get('url')
+            try:
+                result = utils.parse_url(workspace_url)
+            except Exception:
                 workspace_url = None
-                workspace_name = os.path.basename(dir_to_share)
             else:
-                add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+                workspace_name = result['workspace']
+                try:
+                    # TODO: blocking. beachballs sublime 2 if API is super slow
+                    api.get_workspace_by_url(workspace_url)
+                except HTTPError:
+                    workspace_url = None
+                    workspace_name = os.path.basename(dir_to_share)
+                else:
+                    add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
 
         for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
             for name, workspace in workspaces.items():
@@ -370,15 +372,14 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
-                workspace_url = None
-                workspace_name = os.path.basename(dir_to_share)
+                pass
             else:
                 ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
                 webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
+        ON_CONNECT = lambda: Listener.create_buf(file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
@@ -401,7 +402,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.dir_to_share = dir_to_share
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
-    def on_input(self, workspace_name):
+    def on_input(self, workspace_name, dir_to_share=None):
+        if dir_to_share:
+            self.dir_to_share = dir_to_share
         if workspace_name == '':
             return self.run(dir_to_share=self.dir_to_share)
         try:
