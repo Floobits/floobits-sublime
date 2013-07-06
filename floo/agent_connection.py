@@ -33,6 +33,13 @@ settings = sublime.load_settings('Floobits.sublime-settings')
 CHAT_VIEW = None
 SOCKET_Q = collections.deque()
 
+try:
+    connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY)
+    iscon_errno = errno.WSAEISCONN
+except Exception:
+    connect_errno = (errno.EINPROGRESS, errno.EALREADY)
+    iscon_errno = errno.EISCONN
+
 
 class AgentConnection(object):
     ''' Simple chat server using select '''
@@ -127,9 +134,9 @@ class AgentConnection(object):
             self.sock.connect((self.host, self.port))
             select.select([self.sock], [self.sock], [], 0)
         except socket.error as e:
-            if e.errno == errno.EISCONN:
+            if e.errno == iscon_errno:
                 pass
-            elif e.errno in (errno.EINPROGRESS, errno.EALREADY):
+            elif e.errno in connect_errno:
                 return utils.set_timeout(self._connect, 20, attempts + 1)
             else:
                 msg.error('Error connecting:', e)
