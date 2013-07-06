@@ -7,6 +7,7 @@ import time
 import select
 import collections
 import base64
+import errno
 
 import sublime
 
@@ -29,7 +30,6 @@ except (ImportError, ValueError):
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
-
 CHAT_VIEW = None
 SOCKET_Q = collections.deque()
 
@@ -57,6 +57,8 @@ class AgentConnection(object):
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
+        self.handshaken = False
+        self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
 
     def cleanup(self):
         utils.cancel_timeout(self.reconnect_timeout)
@@ -99,6 +101,7 @@ class AgentConnection(object):
         except Exception:
             pass
         G.CONNECTED = False
+        self.handshaken = False
         self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
@@ -111,34 +114,43 @@ class AgentConnection(object):
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
+    # All of this craziness is necessary to work-around a Python 2.6 bug: http://bugs.python.org/issue11326
+    def _connect(self, attempts=0):
+        if attempts > 200:
+            msg.error('Connection attempt timed out.')
+            return self.reconnect()
+        try:
+            self.sock.connect((self.host, self.port))
+            select.select([self.sock], [self.sock], [], 0)
+        except socket.error as e:
+            if e.errno == errno.EISCONN:
+                pass
+            elif e.errno in (errno.EINPROGRESS, errno.EALREADY):
+                return utils.set_timeout(self._connect, 50, attempts + 1)
+            else:
+                msg.error('Error connecting:', e)
+                return self.reconnect()
+        if self.secure:
+            self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
+        self.auth()
+        self.select()
+
     def connect(self):
         self.cleanup()
         self.empty_selects = 0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setblocking(False)
         if self.secure:
             if ssl:
-                cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
-                with open(cert_path, 'wb') as cert_fd:
+                with open(self.cert_path, 'wb') as cert_fd:
                     cert_fd.write(cert.CA_CERT.encode('utf-8'))
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_path, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
+                self.secure = False
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
-        try:
-            self.sock.settimeout(6)  # Seconds before timing out connecting
-            self.sock.connect((self.host, self.port))
-            if self.secure and ssl:
-                self.sock.do_handshake()
-        except socket.error as e:
-            msg.error('Error connecting:', e)
-            self.reconnect()
-            return
-        self.sock.setblocking(False)
-        msg.log('Connected!')
-        self.auth()
-        self.select()
+        self._connect()
 
     def auth(self):
         # TODO: we shouldn't throw away all of this
@@ -383,7 +395,6 @@ class AgentConnection(object):
             return self.reconnect()
 
         try:
-            # this blocks until the socket is readable or writeable
             _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
         except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
@@ -392,6 +403,26 @@ class AgentConnection(object):
         if _except:
             msg.error('Socket error')
             return self.reconnect()
+
+        if _out:
+            if self.secure and not self.handshaken:
+                try:
+                    self.sock.do_handshake()
+                except ssl.SSLError as e:
+                    return
+                except Exception as e:
+                    msg.error("Error in SSL handshake:", e)
+                    return self.reconnect()
+                else:
+                    self.handshaken = True
+
+            for p in self.get_patches():
+                print p
+                try:
+                    self.sock.sendall(p.encode('utf-8'))
+                except Exception as e:
+                    msg.error('Couldn\'t write to socket: %s' % str(e))
+                    return self.reconnect()
 
         if _in:
             buf = ''.encode('utf-8')
@@ -413,12 +444,4 @@ class AgentConnection(object):
                 self.empty_selects += 1
                 if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
-                    return self.reconnect()
-
-        if _out:
-            for p in self.get_patches():
-                try:
-                    self.sock.sendall(p.encode('utf-8'))
-                except Exception as e:
-                    msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
