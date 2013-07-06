@@ -7,6 +7,7 @@ import time
 import select
 import collections
 import base64
+import errno
 
 import sublime
 
@@ -29,9 +30,15 @@ except (ImportError, ValueError):
 Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
-
 CHAT_VIEW = None
 SOCKET_Q = collections.deque()
+
+try:
+    connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY, errno.WSAEINVAL)
+    iscon_errno = errno.WSAEISCONN
+except Exception:
+    connect_errno = (errno.EINPROGRESS, errno.EALREADY)
+    iscon_errno = errno.EISCONN
 
 
 class AgentConnection(object):
@@ -57,20 +64,31 @@ class AgentConnection(object):
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
+        self.handshaken = False
+        self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+        self.call_select = False
 
     def cleanup(self):
-        utils.cancel_timeout(self.reconnect_timeout)
-        self.reconnect_timeout = None
-        G.CONNECTED = False
         try:
             self.sock.shutdown(2)
+        except Exception:
+            pass
+        try:
             self.sock.close()
         except Exception:
             pass
+        G.CONNECTED = False
+        self.call_select = False
+        self.handshaken = False
+        self.workspace_info = {}
+        self.buf = bytes()
+        self.sock = None
 
     def stop(self):
         msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         self.retries = -1
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
 
@@ -94,14 +112,7 @@ class AgentConnection(object):
     def reconnect(self):
         if self.reconnect_timeout:
             return
-        try:
-            self.sock.close()
-        except Exception:
-            pass
-        G.CONNECTED = False
-        self.workspace_info = {}
-        self.buf = bytes()
-        self.sock = None
+        self.cleanup()
         self.reconnect_delay = min(10000, int(1.5 * self.reconnect_delay))
 
         if self.retries > 0:
@@ -111,37 +122,53 @@ class AgentConnection(object):
             sublime.error_message('Floobits Error! Too many reconnect failures. Giving up.')
         self.retries -= 1
 
+    # All of this craziness is necessary to work-around a Python 2.6 bug: http://bugs.python.org/issue11326
+    def _connect(self, attempts=0):
+        if attempts > 500:
+            msg.error('Connection attempt timed out.')
+            return self.reconnect()
+        if not self.sock:
+            msg.debug('_connect: No socket')
+            return
+        try:
+            self.sock.connect((self.host, self.port))
+            select.select([self.sock], [self.sock], [], 0)
+        except socket.error as e:
+            if e.errno == iscon_errno:
+                pass
+            elif e.errno in connect_errno:
+                return utils.set_timeout(self._connect, 20, attempts + 1)
+            else:
+                msg.error('Error connecting:', e)
+                return self.reconnect()
+        if self.secure:
+            self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
+        self.auth()
+        self.call_select = True
+        self.select()
+
     def connect(self):
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
         self.cleanup()
+
         self.empty_selects = 0
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setblocking(False)
         if self.secure:
             if ssl:
-                cert_path = os.path.join(G.COLAB_DIR, 'startssl-ca.pem')
-                with open(cert_path, 'wb') as cert_fd:
+                with open(self.cert_path, 'wb') as cert_fd:
                     cert_fd.write(cert.CA_CERT.encode('utf-8'))
-                self.sock = ssl.wrap_socket(self.sock, ca_certs=cert_path, cert_reqs=ssl.CERT_REQUIRED)
             else:
                 msg.log('No SSL module found. Connection will not be encrypted.')
+                self.secure = False
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
-        try:
-            self.sock.settimeout(6)  # Seconds before timing out connecting
-            self.sock.connect((self.host, self.port))
-            if self.secure and ssl:
-                self.sock.do_handshake()
-        except socket.error as e:
-            msg.error('Error connecting:', e)
-            self.reconnect()
-            return
-        self.sock.setblocking(False)
-        msg.log('Connected!')
-        self.auth()
-        self.select()
+        self._connect()
 
     def auth(self):
-        # TODO: we shouldn't throw away all of this
         SOCKET_Q.clear()
         if sys.version_info < (3, 0):
             sublime_version = 2
@@ -224,8 +251,11 @@ class AgentConnection(object):
                 if data['encoding'] == 'base64':
                     data['buf'] = base64.b64decode(data['buf'])
                 listener.BUFS[data['id']] = data
+                listener.PATHS_TO_IDS[data['path']] = data['id']
                 listener.save_buf(data)
             elif name == 'rename_buf':
+                del listener.PATHS_TO_IDS[data['old_path']]
+                listener.PATHS_TO_IDS[data['path']] = data['id']
                 new = utils.get_full_path(data['path'])
                 old = utils.get_full_path(data['old_path'])
                 new_dir = os.path.split(new)[0]
@@ -283,6 +313,7 @@ class AgentConnection(object):
                     new_dir = os.path.dirname(buf_path)
                     utils.mkdir(new_dir)
                     listener.BUFS[buf_id] = buf
+                    listener.PATHS_TO_IDS[buf['path']] = buf_id
                     view = listener.get_view(buf_id)
                     if view and not view.is_loading() and buf['encoding'] == 'utf8':
                         view_text = listener.get_text(view)
@@ -318,7 +349,7 @@ class AgentConnection(object):
                     self.prompt_join_hangout(hangout_url)
 
                 if self.on_connect:
-                    self.on_connect(self)
+                    self.on_connect()
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
@@ -374,12 +405,14 @@ class AgentConnection(object):
             G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
     def select(self):
+        if not self.call_select:
+            return
+
         if not self.sock:
             msg.debug('select(): No socket.')
             return self.reconnect()
 
         try:
-            # this blocks until the socket is readable or writeable
             _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
         except (select.error, socket.error, Exception) as e:
             msg.error('Error in select(): %s' % str(e))
@@ -388,6 +421,25 @@ class AgentConnection(object):
         if _except:
             msg.error('Socket error')
             return self.reconnect()
+
+        if _out:
+            if self.secure and not self.handshaken:
+                try:
+                    self.sock.do_handshake()
+                except ssl.SSLError as e:
+                    return
+                except Exception as e:
+                    msg.error("Error in SSL handshake:", e)
+                    return self.reconnect()
+                else:
+                    self.handshaken = True
+
+            for p in self.get_patches():
+                try:
+                    self.sock.sendall(p.encode('utf-8'))
+                except Exception as e:
+                    msg.error('Couldn\'t write to socket: %s' % str(e))
+                    return self.reconnect()
 
         if _in:
             buf = ''.encode('utf-8')
@@ -409,12 +461,4 @@ class AgentConnection(object):
                 self.empty_selects += 1
                 if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
-                    return self.reconnect()
-
-        if _out:
-            for p in self.get_patches():
-                try:
-                    self.sock.sendall(p.encode('utf-8'))
-                except Exception as e:
-                    msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()

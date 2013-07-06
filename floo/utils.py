@@ -130,26 +130,33 @@ def is_shared(p):
     return True
 
 
-def get_persistent_data():
-    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
+def get_persistent_data(per_path=None):
+    per_data = {'recent_workspaces': [], 'workspaces': {}}
+    per_path = per_path or os.path.join(G.BASE_DIR, 'persistent.json')
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
         print('Failed to open %s. Recent workspace list will be empty.' % per_path)
-        return {}
+        return per_data
     try:
-        persistent_data = json.loads(per.read().decode('utf-8'))
+        data = per.read().decode('utf-8')
+        persistent_data = json.loads(data)
     except Exception as e:
         print('Failed to parse %s. Recent workspace list will be empty.' % per_path)
         print(e)
-        return {}
+        print(data)
+        return per_data
+    if 'recent_workspaces' not in persistent_data:
+        persistent_data['recent_workspaces'] = []
+    if 'workspaces' not in persistent_data:
+        persistent_data['workspaces'] = {}
     return persistent_data
 
 
 def update_persistent_data(data):
-    per_path = os.path.join(G.COLAB_DIR, 'persistent.json')
+    per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
-        per.write(json.dumps(data).encode('utf-8'))
+        per.write(json.dumps(data, indent=2).encode('utf-8'))
 
 
 def rm(path):
