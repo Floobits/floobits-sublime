@@ -124,7 +124,7 @@ class AgentConnection(object):
 
     # All of this craziness is necessary to work-around a Python 2.6 bug: http://bugs.python.org/issue11326
     def _connect(self, attempts=0):
-        if attempts > 200:
+        if attempts > 500:
             msg.error('Connection attempt timed out.')
             return self.reconnect()
         if not self.sock:
