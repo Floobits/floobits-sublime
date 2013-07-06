@@ -351,6 +351,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         else:
             workspace_name = result['workspace']
             try:
+                # TODO: blocking. beachballs sublime 2 if API is super slow
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
                 workspace_url = None
@@ -362,15 +363,22 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
+                    print('found workspace url', workspace_url)
                     break
 
         if workspace_url:
-            ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
-            webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
-            return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
+            try:
+                api.get_workspace_by_url(workspace_url)
+            except HTTPError:
+                workspace_url = None
+                workspace_name = os.path.basename(dir_to_share)
+            else:
+                ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
+                webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
+                return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        ON_CONNECT = lambda x: Listener.create_buf(dir_to_share)
+        ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
@@ -500,16 +508,19 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 msg.debug('Stopping agent.')
                 G.AGENT.stop()
                 G.AGENT = None
+
+            def on_connect():
+                update_recent_workspaces({'url': workspace_url})
+                if ON_CONNECT:
+                    ON_CONNECT()
             try:
-                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=ON_CONNECT)
+                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=on_connect)
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:
                 print(e)
                 tb = traceback.format_exc()
                 print(tb)
-            else:
-                update_recent_workspaces({'url': workspace_url})
 
         def make_dir(d):
             d = os.path.realpath(os.path.expanduser(d))
@@ -546,7 +557,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
         if not os.path.isdir(G.PROJECT_PATH):
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
-            return self.window.show_input_panel('What directory should this workspace live?', default_dir, make_dir, None, None)
+            return self.window.show_input_panel('Save workspace in directory:', default_dir, make_dir, None, None)
 
         open_workspace_window(lambda: run_agent(**result))
 
