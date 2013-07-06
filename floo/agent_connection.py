@@ -59,20 +59,29 @@ class AgentConnection(object):
         self.workspace_info = {}
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+        self.call_select = False
 
     def cleanup(self):
-        utils.cancel_timeout(self.reconnect_timeout)
-        self.reconnect_timeout = None
-        G.CONNECTED = False
         try:
             self.sock.shutdown(2)
+        except Exception:
+            pass
+        try:
             self.sock.close()
         except Exception:
             pass
+        G.CONNECTED = False
+        self.call_select = False
+        self.handshaken = False
+        self.workspace_info = {}
+        self.buf = bytes()
+        self.sock = None
 
     def stop(self):
         msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         self.retries = -1
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
 
@@ -96,15 +105,7 @@ class AgentConnection(object):
     def reconnect(self):
         if self.reconnect_timeout:
             return
-        try:
-            self.sock.close()
-        except Exception:
-            pass
-        G.CONNECTED = False
-        self.handshaken = False
-        self.workspace_info = {}
-        self.buf = bytes()
-        self.sock = None
+        self.cleanup()
         self.reconnect_delay = min(10000, int(1.5 * self.reconnect_delay))
 
         if self.retries > 0:
@@ -119,6 +120,9 @@ class AgentConnection(object):
         if attempts > 200:
             msg.error('Connection attempt timed out.')
             return self.reconnect()
+        if not self.sock:
+            msg.debug('_connect: No socket')
+            return
         try:
             self.sock.connect((self.host, self.port))
             select.select([self.sock], [self.sock], [], 0)
@@ -126,18 +130,23 @@ class AgentConnection(object):
             if e.errno == errno.EISCONN:
                 pass
             elif e.errno in (errno.EINPROGRESS, errno.EALREADY):
-                return utils.set_timeout(self._connect, 50, attempts + 1)
+                return utils.set_timeout(self._connect, 20, attempts + 1)
             else:
                 msg.error('Error connecting:', e)
                 return self.reconnect()
         if self.secure:
             self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
         self.auth()
+        self.call_select = True
         self.select()
 
     def connect(self):
+        utils.cancel_timeout(self.reconnect_timeout)
+        self.reconnect_timeout = None
         self.cleanup()
+
         self.empty_selects = 0
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setblocking(False)
         if self.secure:
@@ -153,7 +162,6 @@ class AgentConnection(object):
         self._connect()
 
     def auth(self):
-        # TODO: we shouldn't throw away all of this
         SOCKET_Q.clear()
         if sys.version_info < (3, 0):
             sublime_version = 2
@@ -334,7 +342,7 @@ class AgentConnection(object):
                     self.prompt_join_hangout(hangout_url)
 
                 if self.on_connect:
-                    self.on_connect(self)
+                    self.on_connect()
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
@@ -390,6 +398,9 @@ class AgentConnection(object):
             G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
     def select(self):
+        if not self.call_select:
+            return
+
         if not self.sock:
             msg.debug('select(): No socket.')
             return self.reconnect()
