@@ -3,7 +3,7 @@
     "caption": "Floobits",
     "children": [
       {
-        "caption": "Stalk Workspace",
+        "caption": "Stalk Workspace (Follow changes)",
         "command": "floobits_enable_stalker_mode"
       },
       {
