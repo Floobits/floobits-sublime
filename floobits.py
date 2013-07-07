@@ -793,6 +793,18 @@ class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
         return bool(G.AGENT and G.AGENT.is_ready() and G.STALKER_MODE)
 
 
+class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
+    def run(self):
+        url = G.AGENT.workspace_url + '/settings'
+        webbrowser.open(url, new=2, autoraise=True)
+
+    def is_visible(self):
+        return bool(self.is_enabled())
+
+    def is_enabled(self):
+        return bool(G.AGENT and G.AGENT.is_ready() and G.PERMS and "admin" in G.PERMS)
+
+
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
         pass

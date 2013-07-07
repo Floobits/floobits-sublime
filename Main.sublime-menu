@@ -21,6 +21,10 @@
         "command": "floobits_open_web_editor"
       },
       {
+        "caption": "Open Workspace Settings (Web)",
+        "command": "floobits_open_workspace_settings"
+      },
+      {
         "id": "floobits_workspace_menu",
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
