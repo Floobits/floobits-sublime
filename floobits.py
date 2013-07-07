@@ -72,7 +72,6 @@ PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
-ON_CONNECT = None
 FLOORC_PATH = os.path.expanduser('~/.floorc')
 G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 # TODO: one day this can be removed (once all our users have updated)
@@ -81,6 +80,9 @@ if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
     print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
     os.rename(old_colab_dir, G.BASE_DIR)
     os.symlink(G.BASE_DIR, old_colab_dir)
+
+
+on_connect_waterfall = utils.Waterfall()
 
 
 def update_recent_workspaces(workspace):
@@ -317,7 +319,6 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
-        global ON_CONNECT
         file_to_share = None
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
@@ -374,12 +375,13 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             except HTTPError:
                 pass
             else:
-                ON_CONNECT = lambda: Listener.create_buf(dir_to_share)
+                on_connect_waterfall.add(Listener.create_buf, dir_to_share)
                 webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        ON_CONNECT = lambda: Listener.create_buf(file_to_share or dir_to_share)
+
+        on_connect_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
@@ -403,7 +405,6 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name, dir_to_share=None):
-        global ON_CONNECT
         if dir_to_share:
             self.dir_to_share = dir_to_share
         if workspace_name == '':
@@ -432,13 +433,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
         add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
-        f = ON_CONNECT
+        _msg = "You just created the new workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
+        on_connect_waterfall.add(sublime.message_dialog, _msg)
 
-        def on_connect():
-            if f:
-                f()
-            sublime.message_dialog("You just created a new workspace. Other people can join you using either Floobits or their browser at {url}.".format(url=workspace_url))
-        ON_CONNECT = on_connect
         # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
@@ -520,12 +517,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.AGENT.stop()
                 G.AGENT = None
 
-            def on_connect():
-                update_recent_workspaces({'url': workspace_url})
-                if ON_CONNECT:
-                    ON_CONNECT()
+            on_connect_waterfall.add(update_recent_workspaces, {'url': workspace_url})
+
             try:
-                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=on_connect)
+                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=on_connect_waterfall.call)
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:

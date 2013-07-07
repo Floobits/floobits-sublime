@@ -68,12 +68,6 @@ class AgentConnection(object):
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
 
-    @property
-    def workspace_url(self):
-        protocol = self.secure and 'https' or 'http'
-        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol,
-            host=self.host, owner=self.owner, name=self.workspace)
-
     def cleanup(self):
         try:
             self.sock.shutdown(2)
