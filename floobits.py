@@ -797,7 +797,7 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.PERMS and "admin" in G.PERMS)
+        return bool(G.AGENT and G.AGENT.is_ready() and G.PERMS and 'kick' in G.PERMS)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
