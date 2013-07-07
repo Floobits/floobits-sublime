@@ -23,6 +23,7 @@ except ImportError:
 
 
 BUFS = {}
+PATHS_TO_IDS = {}
 DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
@@ -51,6 +52,13 @@ def create_view(buf):
     return view
 
 
+def get_buf_by_path(path):
+    p = utils.to_rel_path(path)
+    buf_id = PATHS_TO_IDS.get(p)
+    if buf_id:
+        return BUFS.get(buf_id)
+
+
 def get_buf(view):
     if view.is_scratch():
         return None
@@ -58,11 +66,7 @@ def get_buf(view):
         return None
     if view is G.CHAT_VIEW:
         return None
-    rel_path = utils.to_rel_path(view.file_name())
-    for buf_id, buf in BUFS.items():
-        if rel_path == buf['path']:
-            return buf
-    return None
+    return get_buf_by_path(view.file_name())
 
 
 def is_view_loaded(view):
@@ -92,7 +96,10 @@ def save_buf(buf):
 def delete_buf(buf_id):
     # TODO: somehow tell the user about this. maybe delete on disk too?
     try:
-        del BUFS[buf_id]
+        buf = BUFS.get(buf_id)
+        if buf:
+            del PATHS_TO_IDS[buf['path']]
+            del BUFS[buf_id]
     except KeyError:
         msg.debug("KeyError deleting buf id %s" % buf_id)
 
@@ -165,8 +172,9 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def reset():
-        global BUFS
+        global BUFS, PATHS_TO_IDS
         BUFS = {}
+        PATHS_TO_IDS = {}
         Listener.views_changed = []
         Listener.selection_changed = []
 
@@ -344,21 +352,22 @@ class Listener(sublime_plugin.EventListener):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.isdir(path):
-            command = 'git ls-files %s' % path
-            try:
-                p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
-                stdoutdata, stderrdata = p.communicate()
-                if p.returncode == 0:
-                    for git_path in stdoutdata.split('\n'):
-                        git_path = git_path.strip()
-                        if not git_path:
-                            continue
-                        add_path = os.path.join(path, git_path)
-                        msg.debug('adding %s' % add_path)
-                        utils.set_timeout(Listener.create_buf, 0, add_path)
-                    return
-            except Exception as e:
-                msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
+            if os.path.exists(os.path.join(path, '.git')):
+                command = 'git ls-files %s' % path
+                try:
+                    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
+                    stdoutdata, stderrdata = p.communicate()
+                    if p.returncode == 0:
+                        for git_path in stdoutdata.split('\n'):
+                            git_path = git_path.strip()
+                            if not git_path:
+                                continue
+                            add_path = os.path.join(path, git_path)
+                            msg.debug('adding %s' % add_path)
+                            utils.set_timeout(Listener.create_buf, 0, add_path)
+                        return
+                except Exception as e:
+                    msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
 
             for dirpath, dirnames, filenames in os.walk(path):
                 # Don't care about hidden stuff
@@ -374,12 +383,16 @@ class Listener(sublime_plugin.EventListener):
             buf_fd = open(path, 'rb')
             buf = buf_fd.read()
             encoding = 'utf8'
+            rel_path = utils.to_rel_path(path)
+            existing_buf = get_buf_by_path(path)
+            if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
+                msg.debug('%s already exists and has the same md5. Skipping creating.')
+                return
             try:
                 buf = buf.decode('utf-8')
             except Exception:
                 buf = base64.b64encode(buf)
                 encoding = 'base64'
-            rel_path = utils.to_rel_path(path)
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
@@ -410,16 +423,11 @@ class Listener(sublime_plugin.EventListener):
                     else:
                         Listener.delete_buf(f_path)
             return
-        buf_to_delete = None
-        rel_path = utils.to_rel_path(path)
-        for buf_id, buf in BUFS.items():
-            if rel_path == buf['path']:
-                buf_to_delete = buf
-                break
+        buf_to_delete = get_buf_by_path(path)
         if buf_to_delete is None:
             msg.error('%s is not in this workspace' % path)
             return
-        msg.log('deleting buffer ', rel_path)
+        msg.log('deleting buffer ', utils.to_rel_path(path))
         event = {
             'name': 'delete_buf',
             'id': buf_to_delete['id'],

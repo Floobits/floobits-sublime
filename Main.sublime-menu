@@ -16,6 +16,11 @@
         "command": "floobits_create_hangout"
       },
       {
+        "id": "floobits_open_web_editor",
+        "caption": "Open Workspace in web editor",
+        "command": "floobits_open_web_editor"
+      },
+      {
         "id": "floobits_workspace_menu",
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
