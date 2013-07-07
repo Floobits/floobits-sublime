@@ -403,6 +403,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name, dir_to_share=None):
+        global ON_CONNECT
         if dir_to_share:
             self.dir_to_share = dir_to_share
         if workspace_name == '':
@@ -431,7 +432,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
         add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
-        webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
+        f = ON_CONNECT
+
+        def on_connect():
+            if f:
+                f()
+            sublime.message_dialog("You just created a new workspace. Other people can join you using either Floobits or their browser at {url}.".format(url=workspace_url))
+        ON_CONNECT = on_connect
+        # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
         })
