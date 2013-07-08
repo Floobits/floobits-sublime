@@ -405,10 +405,8 @@ class AgentConnection(object):
                 user_id = str(data.get('user_id'))
                 try:
                     username = self.workspace_info['users'][user_id]['username']
-                except Exception as e:
+                except Exception:
                     msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
-                    print(self.workspace_info['users'])
-                    print(str(e))
                     return
                 perm_mapping = {
                     'edit_room': 'edit',
