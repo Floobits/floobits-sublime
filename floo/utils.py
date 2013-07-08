@@ -31,7 +31,6 @@ class Waterfall(object):
     def call(self):
         res = [f() for f in self.chain]
         self.chain = []
-        print(res)
         return res
 
 
