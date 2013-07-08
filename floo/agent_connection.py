@@ -452,7 +452,7 @@ class AgentConnection(object):
             buf = ''.encode('utf-8')
             while True:
                 try:
-                    d = self.sock.recv(4096)
+                    d = self.sock.recv(65536)
                     if not d:
                         break
                     buf += d
