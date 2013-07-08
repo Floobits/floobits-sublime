@@ -71,8 +71,7 @@ class AgentConnection(object):
     @property
     def workspace_url(self):
         protocol = self.secure and 'https' or 'http'
-        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol,
-            host=self.host, owner=self.owner, name=self.workspace)
+        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
     def cleanup(self):
         try:
