@@ -430,6 +430,23 @@ class AgentConnection(object):
                     'user_id': user_id,
                     'perms': perms
                 })
+            elif name == 'perms':
+                action = data['action']
+                user_id = str(data['user_id'])
+                user = self.workspace_info['users'].get(user_id)
+                if user is None:
+                    msg.log('No user for id %s. Not handling perms event' % user_id)
+                    return
+                perms = set(user['perms'])
+                if action == 'add':
+                    perms += data['perms']
+                elif action == 'remove':
+                    perms -= data['perms']
+                else:
+                    return
+                user['perms'] = list(perms)
+                if user_id == self.room_info['user_id']:
+                    G.PERMS = perms
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
