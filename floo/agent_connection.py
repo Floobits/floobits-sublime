@@ -397,6 +397,38 @@ class AgentConnection(object):
                     msg.log('%s saved buffer %s' % (username, buf['path']))
                 except Exception as e:
                     msg.error(str(e))
+            elif name == 'request_perms':
+                print(data)
+                user_id = str(data.get('user_id'))
+                try:
+                    username = self.workspace_info['users'][user_id]['username']
+                except Exception as e:
+                    msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+                    print(self.workspace_info['users'])
+                    print(str(e))
+                    return
+                perm_mapping = {
+                    'edit_room': 'edit',
+                    'admin_room': 'admin',
+                }
+                perms = data.get('perms')
+                perms_str = ''.join([perm_mapping.get(p) for p in perms])
+                prompt = 'User %s is requesting %s permission for this room.' % (username, perms_str)
+                message = data.get('message')
+                if message:
+                    prompt += '\n\n%s says: %s' % (username, message)
+                prompt += '\n\nDo you want to grant them permission?'
+                confirm = bool(sublime.ok_cancel_dialog(prompt))
+                if confirm:
+                    action = 'add'
+                else:
+                    action = 'reject'
+                self.put({
+                    'name': 'perms',
+                    'action': action,
+                    'user_id': user_id,
+                    'perms': perms
+                })
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
