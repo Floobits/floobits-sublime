@@ -27,15 +27,19 @@
     "command": "floobits_open_message_view"
   },
   {
-    "caption": "Open Workspace in a Google+ Hangout",
+    "caption": "Floobits - Open Workspace Settings (in Browser)",
+    "command": "floobits_open_workspace_settings"
+  },
+  {
+    "caption": "Floobits - Open Workspace in a Google+ Hangout",
     "command": "floobits_create_hangout"
   },
   {
-    "caption": "Open Workspace in web editor",
+    "caption": "Floobits - Open Workspace in your Browser",
     "command": "floobits_open_web_editor"
   },
   {
-    "caption": "Floobits - Stalk Workspace (Follow changes)",
+    "caption": "Floobits - Stalk Workspace (Follow Changes)",
     "command": "floobits_enable_stalker_mode"
   },
   {
