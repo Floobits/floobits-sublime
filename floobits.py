@@ -375,12 +375,13 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
             except HTTPError:
                 pass
             else:
+                _msg = "You just joined the workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
+                on_connect_waterfall.add(sublime.message_dialog, _msg)
                 on_connect_waterfall.add(Listener.create_buf, dir_to_share)
-                webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
+                # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-
         on_connect_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
@@ -395,13 +396,16 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
         return True
 
-    def run(self, workspace_name='', dir_to_share='', prompt='Workspace name:'):
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:'):
         if not disconnect_dialog():
             return
         if ssl is False:
             return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
+        self.workspace_name = workspace_name
+        if workspace_name and dir_to_share:
+            return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name, dir_to_share=None):
