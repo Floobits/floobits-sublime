@@ -358,14 +358,16 @@ class AgentConnection(object):
                     self.on_connect = None
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
-                self.workspace_info['users'][data['user_id']] = data
+                user_id = str(data['user_id'])
+                self.workspace_info['users'][user_id] = data
             elif name == 'part':
                 msg.log('%s left the workspace' % data['username'])
+                user_id = str(data['user_id'])
                 try:
-                    del self.workspace_info['users'][data['user_id']]
+                    del self.workspace_info['users'][user_id]
                 except Exception as e:
                     print('Unable to delete user %s from user list' % (data))
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
+                region_key = 'floobits-highlight-%s' % (user_id)
                 for window in sublime.windows():
                     for view in window.views():
                         view.erase_regions(region_key)
