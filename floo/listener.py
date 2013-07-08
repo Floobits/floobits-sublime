@@ -391,7 +391,7 @@ class Listener(sublime_plugin.EventListener):
             try:
                 buf = buf.decode('utf-8')
             except Exception:
-                buf = base64.b64encode(buf)
+                buf = str(base64.b64encode(buf))
                 encoding = 'base64'
             msg.log('creating buffer ', rel_path)
             event = {
