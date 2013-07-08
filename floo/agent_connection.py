@@ -357,8 +357,10 @@ class AgentConnection(object):
                     self.on_connect = None
             elif name == 'user_info':
                 user_id = str(data['user_id'])
-                self.workspace_info['users'][user_id] = data
-                # TODO: check if user id is ours and update our perms, etc
+                user_info = data['user_info']
+                self.workspace_info['users'][user_id] = user_info
+                if user_id == str(self.room_info['user_id']):
+                    G.PERMS = user_info['perms']
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
                 user_id = str(data['user_id'])
