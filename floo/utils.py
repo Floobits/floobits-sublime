@@ -21,6 +21,19 @@ cancelled_timeouts = set()
 timeouts = set()
 
 
+class Waterfall(object):
+    def __init__(self):
+        self.chain = []
+
+    def add(self, f, *args, **kwargs):
+        self.chain.append(lambda: f(*args, **kwargs))
+
+    def call(self):
+        res = [f() for f in self.chain]
+        self.chain = []
+        return res
+
+
 def set_timeout(func, timeout, *args, **kwargs):
     global top_timeout_id
     timeout_id = top_timeout_id

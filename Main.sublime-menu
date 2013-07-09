@@ -36,6 +36,10 @@
         "command": "floobits_leave_workspace"
       },
       {
+        "caption": "Floobits - Open Workspace Settings (in Browser)",
+        "command": "floobits_open_workspace_settings"
+      },
+      {
         "id": "floobits_msg",
         "caption": "Send Message",
         "command": "floobits_prompt_msg"

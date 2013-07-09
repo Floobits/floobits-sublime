@@ -68,6 +68,11 @@ class AgentConnection(object):
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
 
+    @property
+    def workspace_url(self):
+        protocol = self.secure and 'https' or 'http'
+        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+
     def cleanup(self):
         try:
             self.sock.shutdown(2)
@@ -214,7 +219,6 @@ class AgentConnection(object):
 
     def protocol(self, req):
         self.buf += req
-        msg.debug('buf: %s' % self.buf)
         while True:
             before, sep, after = self.buf.partition('\n'.encode('utf-8'))
             if not sep:
@@ -351,16 +355,24 @@ class AgentConnection(object):
                 if self.on_connect:
                     self.on_connect()
                     self.on_connect = None
+            elif name == 'user_info':
+                user_id = str(data['user_id'])
+                user_info = data['user_info']
+                self.workspace_info['users'][user_id] = user_info
+                if user_id == str(self.workspace_info['user_id']):
+                    G.PERMS = user_info['perms']
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
-                self.workspace_info['users'][data['user_id']] = data
+                user_id = str(data['user_id'])
+                self.workspace_info['users'][user_id] = data
             elif name == 'part':
                 msg.log('%s left the workspace' % data['username'])
+                user_id = str(data['user_id'])
                 try:
-                    del self.workspace_info['users'][data['user_id']]
+                    del self.workspace_info['users'][user_id]
                 except Exception as e:
                     print('Unable to delete user %s from user list' % (data))
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
+                region_key = 'floobits-highlight-%s' % (user_id)
                 for window in sublime.windows():
                     for view in window.views():
                         view.erase_regions(region_key)
@@ -390,6 +402,53 @@ class AgentConnection(object):
                     msg.log('%s saved buffer %s' % (username, buf['path']))
                 except Exception as e:
                     msg.error(str(e))
+            elif name == 'request_perms':
+                print(data)
+                user_id = str(data.get('user_id'))
+                try:
+                    username = self.workspace_info['users'][user_id]['username']
+                except Exception:
+                    msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+                    return
+                perm_mapping = {
+                    'edit_room': 'edit',
+                    'admin_room': 'admin',
+                }
+                perms = data.get('perms')
+                perms_str = ''.join([perm_mapping.get(p) for p in perms])
+                prompt = 'User %s is requesting %s permission for this room.' % (username, perms_str)
+                message = data.get('message')
+                if message:
+                    prompt += '\n\n%s says: %s' % (username, message)
+                prompt += '\n\nDo you want to grant them permission?'
+                confirm = bool(sublime.ok_cancel_dialog(prompt))
+                if confirm:
+                    action = 'add'
+                else:
+                    action = 'reject'
+                self.put({
+                    'name': 'perms',
+                    'action': action,
+                    'user_id': user_id,
+                    'perms': perms
+                })
+            elif name == 'perms':
+                action = data['action']
+                user_id = str(data['user_id'])
+                user = self.workspace_info['users'].get(user_id)
+                if user is None:
+                    msg.log('No user for id %s. Not handling perms event' % user_id)
+                    return
+                perms = set(user['perms'])
+                if action == 'add':
+                    perms += data['perms']
+                elif action == 'remove':
+                    perms -= data['perms']
+                else:
+                    return
+                user['perms'] = list(perms)
+                if user_id == self.workspace_info['user_id']:
+                    G.PERMS = perms
             else:
                 msg.debug('unknown name!', name, 'data:', data)
             self.buf = after
@@ -445,7 +504,7 @@ class AgentConnection(object):
             buf = ''.encode('utf-8')
             while True:
                 try:
-                    d = self.sock.recv(4096)
+                    d = self.sock.recv(65536)
                     if not d:
                         break
                     buf += d
