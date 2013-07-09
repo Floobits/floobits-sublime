@@ -359,7 +359,7 @@ class AgentConnection(object):
                 user_id = str(data['user_id'])
                 user_info = data['user_info']
                 self.workspace_info['users'][user_id] = user_info
-                if user_id == str(self.room_info['user_id']):
+                if user_id == str(self.workspace_info['user_id']):
                     G.PERMS = user_info['perms']
             elif name == 'join':
                 msg.log('%s joined the workspace' % data['username'])
@@ -447,7 +447,7 @@ class AgentConnection(object):
                 else:
                     return
                 user['perms'] = list(perms)
-                if user_id == self.room_info['user_id']:
+                if user_id == self.workspace_info['user_id']:
                     G.PERMS = perms
             else:
                 msg.debug('unknown name!', name, 'data:', data)
