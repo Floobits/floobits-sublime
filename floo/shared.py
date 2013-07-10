@@ -1,3 +1,6 @@
+import os
+
+
 __VERSION__ = '0.03'
 
 DEBUG = False
@@ -35,3 +38,5 @@ TICK_TIME = 100
 AGENT = None
 
 VIEW_TO_HASH = {}
+
+FLOORC_PATH = os.path.expanduser('~/.floorc')

@@ -9,6 +9,7 @@ import os
 import hashlib
 import imp
 import json
+import uuid
 import subprocess
 import traceback
 import webbrowser
@@ -16,6 +17,8 @@ from collections import defaultdict
 
 import sublime_plugin
 import sublime
+
+PY2 = sys.version_info < (3, 0)
 
 try:
     import ssl
@@ -31,6 +34,8 @@ if ssl is False and sublime.platform() == 'linux':
     ssl_versions = ['0.9.8', '1.0.0', '10']
     ssl_path = os.path.join(plugin_path, 'lib', 'linux')
     lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
+    if not PY2:
+        lib_path += "-py3"
     for version in ssl_versions:
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
@@ -68,11 +73,8 @@ except (ImportError, ValueError):
     from floo import shared as G
 
 
-PY2 = sys.version_info < (3, 0)
+utils.reload_settings()
 
-settings = sublime.load_settings('Floobits.sublime-settings')
-
-FLOORC_PATH = os.path.expanduser('~/.floorc')
 G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 # TODO: one day this can be removed (once all our users have updated)
 old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
@@ -108,70 +110,6 @@ def add_workspace_to_persistent_json(owner, name, url, path):
         workspaces[owner] = {}
     workspaces[owner][name] = {'url': url, "path": path}
     utils.update_persistent_data(d)
-
-
-def load_floorc():
-    """try to read settings out of the .floorc file"""
-    s = {}
-    try:
-        fd = open(FLOORC_PATH, 'rb')
-    except IOError as e:
-        if e.errno == 2:
-            return s
-        raise
-
-    default_settings = fd.read().decode('utf-8').split('\n')
-    fd.close()
-
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
-    return s
-
-
-def reload_settings():
-    global settings
-    print('Reloading settings...')
-    # TODO: settings doesn't seem to load most settings.
-    # Also, settings.get('key', 'default_value') returns None
-    settings = sublime.load_settings('Floobits.sublime-settings')
-    G.ALERT_ON_MSG = settings.get('alert_on_msg')
-    if G.ALERT_ON_MSG is None:
-        G.ALERT_ON_MSG = True
-    G.LOG_TO_CONSOLE = settings.get('log_to_console')
-    if G.LOG_TO_CONSOLE is None:
-        G.LOG_TO_CONSOLE = False
-    G.DEBUG = settings.get('debug')
-    if G.DEBUG is None:
-        G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or os.path.join(G.BASE_DIR, 'share')
-    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
-    G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    utils.mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host') or 'floobits.com'
-    G.DEFAULT_PORT = settings.get('port') or 3448
-    G.SECURE = settings.get('secure')
-    if G.SECURE is None:
-        G.SECURE = True
-    G.USERNAME = settings.get('username')
-    G.SECRET = settings.get('secret')
-    floorc_settings = load_floorc()
-    for name, val in floorc_settings.items():
-        setattr(G, name, val)
-    if G.AGENT and G.AGENT.is_ready():
-        msg.log('Reconnecting due to settings change')
-        G.AGENT.reconnect()
-    print('Floobits debug is %s' % G.DEBUG)
-
-
-settings.add_on_change('', reload_settings)
-reload_settings()
 
 
 def get_legacy_projects():
@@ -226,30 +164,6 @@ def migrate_symlinks():
 migrate_symlinks()
 
 
-INITIAL_FLOORC = """# Hello!
-#
-# Thank you for installing Floobits. To join and share workspaces, you'll need to finish configuring it.
-# Floobits reads configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
-#
-# If everything has gone according to plan, your browser will open
-# https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
-# this file.
-#
-# For more help, see https://floobits.com/help/plugins/#sublime-text
-#
-# If you have any problems or questions, please e-mail support@floobits.com
-# -- The Floobits Team
-#
-#
-######  UNCOMMENT AND CHANGE THE LINES BELOW  ######
-
-# username your_username
-# secret your_api_secret
-
-######  UNCOMMENT AND CHANGE THE LINES ABOVE  ######
-"""
-
-
 def get_active_window(cb):
     win = sublime.active_window()
     if not win:
@@ -258,17 +172,19 @@ def get_active_window(cb):
 
 
 def initial_run():
-    timeout = 0
-    if not os.path.exists(FLOORC_PATH):
-        timeout = 7000
-        with open(FLOORC_PATH, 'wb') as floorc_fd:
-            floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
+    account = sublime.ok_cancel_dialog('Thanks for installing the Floobits plugin!\n\nClick "Link account" to open a browser window and link this editor to your Floobits.com account. If you don\'t have ', 'Yes')
+    token = uuid.uuid4().bytes.encode('hex')
+    if account:
+        try:
+            G.AGENT = AgentConnection(token=token, host='staging.floobits.com', secure=True)
+            Listener.reset()
+            G.AGENT.connect()
+        except Exception as e:
+            print(e)
+            tb = traceback.format_exc()
+            print(tb)
 
-    def open_floorc(active_window):
-        active_window.open_file(FLOORC_PATH)
-        utils.set_timeout(webbrowser.open, timeout, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
-
-    get_active_window(open_floorc)
+        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s' % token)
 
 
 if not (G.USERNAME and G.SECRET):
@@ -284,7 +200,7 @@ def global_tick():
 
 def disconnect_dialog():
     if G.AGENT and G.CONNECTED:
-        disconnect = bool(sublime.ok_cancel_dialog('You can only be in one workspace at a time. Leave the current workspace?'))
+        disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave workspace %s.' % G.AGENT.workspace)
         if disconnect:
             msg.debug('Stopping agent.')
             G.AGENT.stop()
@@ -309,7 +225,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
         return not bool(G.AGENT and G.AGENT.is_ready())
 
     def run(self, dir_to_share='', paths=None, current_file=False):
-        reload_settings()
+        utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
             return initial_run()
         if paths:
@@ -479,6 +395,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
+                settings = sublime.load_settings('Floobits.sublime-settings')
                 subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
                 if not os.path.exists(subl):
                     return sublime.error_message('Can\'t find your Sublime Text executable at %s. Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text' % subl)
@@ -524,7 +441,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             on_connect_waterfall.add(update_recent_workspaces, {'url': workspace_url})
 
             try:
-                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=on_connect_waterfall.call)
+                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_connect=on_connect_waterfall.call)
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:
@@ -553,7 +470,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         except Exception as e:
             return sublime.error_message(str(e))
 
-        reload_settings()
+        utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
             return initial_run()
 
@@ -704,7 +621,7 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
         if not self.is_enabled():
             return
 
-        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?'))
+        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?', 'Delete'))
         if not confirm:
             return
 
