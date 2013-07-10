@@ -172,7 +172,7 @@ def get_active_window(cb):
 
 
 def initial_run():
-    account = sublime.ok_cancel_dialog('Thanks for installing the Floobits plugin!\n\nClick "Link account" to open a browser window and link this editor to your Floobits.com account. If you don\'t have ', 'Yes')
+    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. If you have an account or want to create one, click "Open browser". You can create an account any time.', 'Open browser')
     token = uuid.uuid4().bytes.encode('hex')
     if account:
         try:
@@ -184,7 +184,7 @@ def initial_run():
             tb = traceback.format_exc()
             print(tb)
 
-        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s' % token)
+        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
 
 
 if not (G.USERNAME and G.SECRET):

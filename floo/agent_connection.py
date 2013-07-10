@@ -18,9 +18,10 @@ except ImportError:
     ssl = False
 
 try:
-    from . import cert, listener, msg, shared as G, utils
-    assert cert and G and listener and msg and utils
+    from . import api, cert, listener, msg, shared as G, utils
+    assert api and cert and G and listener and msg and utils
 except (ImportError, ValueError):
+    import api
     import cert
     import shared as G
     import utils
@@ -263,8 +264,12 @@ class AgentConnection(object):
             with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                 floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc.encode('utf-8'))
-            utils.load_floorc()
-            sublime.message_dialog('Your account has been linked.')
+            utils.reload_settings()  # This only works because G.CONNECTED is False
+            if not G.USERNAME or not G.SECRET:
+                sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
+                api.send_error({'message': 'No username or secret'})
+            else:
+                sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
             self.stop()
         elif name == 'error':
             message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
