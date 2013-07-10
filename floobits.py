@@ -17,6 +17,8 @@ from collections import defaultdict
 import sublime_plugin
 import sublime
 
+PY2 = sys.version_info < (3, 0)
+
 try:
     import ssl
     assert ssl
@@ -31,6 +33,8 @@ if ssl is False and sublime.platform() == 'linux':
     ssl_versions = ['0.9.8', '1.0.0', '10']
     ssl_path = os.path.join(plugin_path, 'lib', 'linux')
     lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
+    if not PY2:
+        lib_path += "-py3"
     for version in ssl_versions:
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
@@ -67,8 +71,6 @@ except (ImportError, ValueError):
     from floo.listener import Listener
     from floo import shared as G
 
-
-PY2 = sys.version_info < (3, 0)
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 
