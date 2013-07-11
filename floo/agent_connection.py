@@ -256,7 +256,10 @@ class AgentConnection(object):
                 msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
-            self.handler(name, data)
+            try:
+                self.handler(name, data)
+            except Exception as e:
+                msg.error('Error handling %s event with data %s: %s' % (name, data, e))
             self.buf = after
 
     def account_link_handler(self, name, data):
