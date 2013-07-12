@@ -10,6 +10,7 @@ import hashlib
 import imp
 import json
 import uuid
+import binascii
 import subprocess
 import traceback
 import webbrowser
@@ -173,7 +174,7 @@ def get_active_window(cb):
 
 def initial_run():
     account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
-    token = uuid.uuid4().bytes.encode('hex')
+    token = binascii.b2a_hex(uuid.uuid4().bytes)
     if account:
         try:
             G.AGENT = RequestCredentialsConnection(token, host='staging.floobits.com', secure=True)
