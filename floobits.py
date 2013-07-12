@@ -84,7 +84,7 @@ if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
     os.symlink(G.BASE_DIR, old_colab_dir)
 
 
-on_connect_waterfall = utils.Waterfall()
+on_room_info_waterfall = utils.Waterfall()
 
 
 def update_recent_workspaces(workspace):
@@ -292,13 +292,13 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                 pass
             else:
                 _msg = "You just joined the workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-                on_connect_waterfall.add(sublime.message_dialog, _msg)
-                on_connect_waterfall.add(Listener.create_buf, dir_to_share)
+                on_room_info_waterfall.add(sublime.message_dialog, _msg)
+                on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
                 # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        on_connect_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
+        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
@@ -356,7 +356,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
         _msg = "You just created the new workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-        on_connect_waterfall.add(sublime.message_dialog, _msg)
+        on_room_info_waterfall.add(sublime.message_dialog, _msg)
 
         # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
@@ -440,10 +440,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.AGENT.stop()
                 G.AGENT = None
 
-            on_connect_waterfall.add(update_recent_workspaces, {'url': workspace_url})
+            on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
 
             try:
-                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_connect=on_connect_waterfall.call)
+                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_room_info=on_room_info_waterfall.call)
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:

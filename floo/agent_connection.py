@@ -47,12 +47,7 @@ class AgentConnection(object):
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    def __init__(self, token=None, owner=None, workspace=None, host=None, port=None, secure=True, on_connect=None):
-        assert (token or (owner and workspace)), "i need a token or owner/workspace"
-        if token:
-            self.handler = self.account_link_handler
-        else:
-            self.handler = self.floobits_handler
+    def __init__(self, owner=None, workspace=None, host=None, port=None, secure=True, on_room_info=None):
         self.sock = None
         self.buf = bytes()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
@@ -65,15 +60,22 @@ class AgentConnection(object):
         self.secure = secure
         self.owner = owner
         self.workspace = workspace
-        self.token = token
 
-        self.on_connect = on_connect
+        self.on_room_info = on_room_info
         self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
         self.workspace_info = {}
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
+
+    @property
+    def client(self):
+        if sys.version_info < (3, 0):
+            sublime_version = 2
+        else:
+            sublime_version = 3
+        return 'SublimeText-%s' % sublime_version
 
     @property
     def workspace_url(self):
@@ -156,12 +158,23 @@ class AgentConnection(object):
         if self.secure:
             self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
 
-        if self.token:
-            self.request_credentials()
-        else:
-            self.auth()
+        self.on_connect()
         self.call_select = True
         self.select()
+
+    def on_connect(self):
+        SOCKET_Q.clear()
+
+        self.put({
+            'username': self.username,
+            'secret': self.secret,
+            'room': self.workspace,
+            'room_owner': self.owner,
+            'client': self.client,
+            'platform': sys.platform,
+            'supported_encodings': ['utf8', 'base64'],
+            'version': G.__VERSION__
+        })
 
     def connect(self):
         utils.cancel_timeout(self.reconnect_timeout)
@@ -183,37 +196,6 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         self._connect()
-
-    def auth(self):
-        SOCKET_Q.clear()
-        if sys.version_info < (3, 0):
-            sublime_version = 2
-        else:
-            sublime_version = 3
-        self.put({
-            'username': self.username,
-            'secret': self.secret,
-            'room': self.workspace,
-            'room_owner': self.owner,
-            'client': 'SublimeText-%s' % sublime_version,
-            'platform': sys.platform,
-            'supported_encodings': ['utf8', 'base64'],
-            'version': G.__VERSION__
-        })
-
-    def request_credentials(self):
-        SOCKET_Q.clear()
-        if sys.version_info < (3, 0):
-            sublime_version = 2
-        else:
-            sublime_version = 3
-        self.put({
-            'name': 'request_credentials',
-            'client': 'SublimeText-%s' % sublime_version,
-            'platform': sys.platform,
-            'token': self.token,
-            'version': G.__VERSION__
-        })
 
     def get_patches(self):
         try:
@@ -257,35 +239,23 @@ class AgentConnection(object):
                 raise e
             name = data.get('name')
             try:
-                self.handler(name, data)
+                if name == 'error':
+                    message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
+                    msg.error(message)
+                elif name == 'disconnect':
+                    message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
+                    msg.error(message)
+                    sublime.error_message(message)
+                    self.stop()
+                elif name == 'msg':
+                    self.on_msg(data)
+                else:
+                    self.handler(name, data)
             except Exception as e:
                 msg.error('Error handling %s event with data %s: %s' % (name, data, e))
             self.buf = after
 
-    def account_link_handler(self, name, data):
-        if name == 'credentials':
-            with open(G.FLOORC_PATH, 'wb') as floorc_fd:
-                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
-                floorc_fd.write(floorc.encode('utf-8'))
-            utils.reload_settings()  # This only works because G.CONNECTED is False
-            if not G.USERNAME or not G.SECRET:
-                sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
-                api.send_error({'message': 'No username or secret'})
-            else:
-                sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
-            self.stop()
-        elif name == 'error':
-            message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
-            msg.error(message)
-        elif name == 'disconnect':
-            message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
-            msg.error(message)
-            sublime.error_message(message)
-            self.stop()
-        elif name == 'msg':
-            self.on_msg(data)
-
-    def floobits_handler(self, name, data):
+    def handler(self, name, data):
         if name == 'patch':
             Listener.apply_patch(data)
         elif name == 'get_buf':
@@ -407,9 +377,9 @@ class AgentConnection(object):
             if hangout_url:
                 self.prompt_join_hangout(hangout_url)
 
-            if self.on_connect:
-                self.on_connect()
-                self.on_connect = None
+            if self.on_room_info:
+                self.on_room_info()
+                self.on_room_info = None
         elif name == 'user_info':
             user_id = str(data['user_id'])
             user_info = data['user_info']
@@ -434,16 +404,6 @@ class AgentConnection(object):
         elif name == 'highlight':
             region_key = 'floobits-highlight-%s' % (data['user_id'])
             Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
-        elif name == 'error':
-            message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
-            msg.error(message)
-        elif name == 'disconnect':
-            message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
-            msg.error(message)
-            sublime.error_message(message)
-            self.stop()
-        elif name == 'msg':
-            self.on_msg(data)
         elif name == 'set_temp_data':
             hangout_data = data.get('data', {})
             hangout = hangout_data.get('hangout', {})
