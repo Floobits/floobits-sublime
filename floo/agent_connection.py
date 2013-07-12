@@ -8,7 +8,7 @@ import select
 import collections
 import base64
 import errno
-
+import getpass
 import sublime
 
 try:
@@ -535,3 +535,67 @@ class AgentConnection(object):
                 if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
+
+
+class RequestCredentialsConnection(AgentConnection):
+
+    def __init__(self, token, **kwargs):
+        super(RequestCredentialsConnection, self).__init__(**kwargs)
+        self.token = token
+
+    def on_connect(self):
+        self.put({
+            'name': 'request_credentials',
+            'client': self.client,
+            'platform': sys.platform,
+            'token': self.token,
+            'version': G.__VERSION__
+        })
+
+    def handler(self, name, data):
+        if name == 'credentials':
+            with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
+                floorc_fd.write(floorc.encode('utf-8'))
+            utils.reload_settings()  # This only works because G.CONNECTED is False
+            if not G.USERNAME or not G.SECRET:
+                sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
+                api.send_error({'message': 'No username or secret'})
+            else:
+                sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
+            self.stop()
+
+
+class CreateAccountConnection(AgentConnection):
+
+    def __init__(self, token, **kwargs):
+        super(AgentConnection, self).__init__(**kwargs)
+        self.token = token
+
+    def on_connect(self):
+        try:
+            username = getpass.getuser()
+        except:
+            username = ""
+
+        self.put({
+            'name': 'create_user',
+            'username': username,
+            'client': self.client,
+            'platform': sys.platform,
+            'token': self.token,
+            'version': G.__VERSION__
+        })
+
+    def handler(self, name, data):
+        if name == 'credentials':
+            with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
+                floorc_fd.write(floorc.encode('utf-8'))
+            utils.reload_settings()  # This only works because G.CONNECTED is False
+            if not G.USERNAME or not G.SECRET:
+                sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
+                api.send_error({'message': 'No username or secret'})
+            else:
+                sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
+            self.stop()

@@ -63,12 +63,12 @@ if ssl is False and sublime.platform() == 'linux':
 
 try:
     from urllib.error import HTTPError
-    from .floo import api, AgentConnection, listener, msg, shared as G, utils
+    from .floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, shared as G, utils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and G and Listener and listener and msg and utils
+    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and listener and msg and utils
 except (ImportError, ValueError):
     from urllib2 import HTTPError
-    from floo import api, AgentConnection, listener, msg, utils
+    from floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, utils
     from floo.listener import Listener
     from floo import shared as G
 
@@ -172,11 +172,11 @@ def get_active_window(cb):
 
 
 def initial_run():
-    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. If you have an account or want to create one, click "Open browser". You can create an account any time.', 'Open browser')
+    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
     token = uuid.uuid4().bytes.encode('hex')
     if account:
         try:
-            G.AGENT = AgentConnection(token=token, host='staging.floobits.com', secure=True)
+            G.AGENT = RequestCredentialsConnection(token, host='staging.floobits.com', secure=True)
             Listener.reset()
             G.AGENT.connect()
         except Exception as e:
@@ -185,7 +185,15 @@ def initial_run():
             print(tb)
 
         webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
-
+    else:
+        try:
+            G.AGENT = CreateAccountConnection()
+            Listener.reset()
+            G.AGENT.connect()
+        except Exception as e:
+            print(e)
+            tb = traceback.format_exc()
+            print(tb)
 
 if not (G.USERNAME and G.SECRET):
     initial_run()
