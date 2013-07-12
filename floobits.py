@@ -188,7 +188,7 @@ def initial_run():
         webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
     else:
         try:
-            G.AGENT = CreateAccountConnection()
+            G.AGENT = CreateAccountConnection(host='staging.floobits.com', secure=True)
             Listener.reset()
             G.AGENT.connect()
         except Exception as e:
