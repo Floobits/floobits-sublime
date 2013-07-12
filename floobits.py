@@ -316,7 +316,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         if not disconnect_dialog():
             return
         if ssl is False:
-            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
+            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
+                                         'This is a known issue on Linux and Windows builds of Sublime Text 2. '
+                                         'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
