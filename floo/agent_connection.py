@@ -584,5 +584,22 @@ class CreateAccountConnection(AgentConnection):
 
     def handler(self, name, data):
         if name == 'create_user':
-            print(data)
-            self.stop()
+            del data['name']
+            try:
+                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
+                with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+                    floorc_fd.write(floorc.encode('utf-8'))
+                utils.reload_settings()  # This only works because G.CONNECTED is False
+                if not G.USERNAME or not G.SECRET:
+                    sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
+                    api.send_error({'message': 'No username or secret2'})
+                else:
+                    sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
+            except Exception as e:
+                msg.error(e)
+            try:
+                d = utils.get_persistent_data()
+                d['disable_account_creation'] = True
+                utils.update_persistent_data(d)
+            finally:
+                self.stop()

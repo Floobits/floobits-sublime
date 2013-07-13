@@ -186,7 +186,7 @@ def initial_run():
             print(tb)
 
         webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
-    else:
+    elif not utils.get_persistent_data().get('disable_account_creation'):
         try:
             G.AGENT = CreateAccountConnection(host='staging.floobits.com', secure=True)
             Listener.reset()
