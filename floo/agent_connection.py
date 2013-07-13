@@ -42,29 +42,23 @@ except Exception:
     iscon_errno = errno.EISCONN
 
 
-class AgentConnection(object):
+class BaseAgentConnection(object):
     ''' Simple chat server using select '''
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    def __init__(self, owner=None, workspace=None, host=None, port=None, secure=True, on_room_info=None):
+    def __init__(self, host=None, port=None, secure=True):
         self.sock = None
         self.buf = bytes()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.retries = self.MAX_RETRIES
         self.reconnect_timeout = None
-        self.username = G.USERNAME
-        self.secret = G.SECRET
+
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
-        self.owner = owner
-        self.workspace = workspace
 
-        self.on_room_info = on_room_info
-        self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
-        self.workspace_info = {}
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
@@ -76,11 +70,6 @@ class AgentConnection(object):
         else:
             sublime_version = 3
         return 'SublimeText-%s' % sublime_version
-
-    @property
-    def workspace_url(self):
-        protocol = self.secure and 'https' or 'http'
-        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
     def cleanup(self):
         try:
@@ -94,21 +83,15 @@ class AgentConnection(object):
         G.CONNECTED = False
         self.call_select = False
         self.handshaken = False
-        self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
 
     def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         self.retries = -1
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
-
-    def send_msg(self, msg):
-        self.put({'name': 'msg', 'data': msg})
-        self.chat(self.username, time.time(), msg, True)
 
     def is_ready(self):
         return G.CONNECTED
@@ -162,20 +145,6 @@ class AgentConnection(object):
         self.call_select = True
         self.select()
 
-    def on_connect(self):
-        SOCKET_Q.clear()
-
-        self.put({
-            'username': self.username,
-            'secret': self.secret,
-            'room': self.workspace,
-            'room_owner': self.owner,
-            'client': self.client,
-            'platform': sys.platform,
-            'supported_encodings': ['utf8', 'base64'],
-            'version': G.__VERSION__
-        })
-
     def connect(self):
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
@@ -196,33 +165,6 @@ class AgentConnection(object):
                     self.port = 3148  # plaintext port
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         self._connect()
-
-    def get_patches(self):
-        try:
-            while True:
-                yield SOCKET_Q.popleft()
-        except IndexError:
-            raise StopIteration()
-
-    def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(message, timestamp, username)
-        if not self_msg:
-            self.chat_deck.appendleft(envelope)
-        envelope.display()
-
-    def on_msg(self, data):
-        message = data.get('data')
-        self.chat(data['username'], data['time'], message)
-        window = G.WORKSPACE_WINDOW
-
-        def cb(selected):
-            if selected == -1:
-                return
-            envelope = self.chat_deck[selected]
-            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
-
-        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
-            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
     def protocol(self, req):
         self.buf += req
@@ -247,13 +189,130 @@ class AgentConnection(object):
                     msg.error(message)
                     sublime.error_message(message)
                     self.stop()
-                elif name == 'msg':
-                    self.on_msg(data)
                 else:
                     self.handler(name, data)
             except Exception as e:
                 msg.error('Error handling %s event with data %s: %s' % (name, data, e))
             self.buf = after
+
+    def get_patches(self):
+        while True:
+            try:
+                yield SOCKET_Q.popleft()
+            except IndexError:
+                raise StopIteration()
+
+    def select(self):
+        if not self.call_select:
+            return
+
+        if not self.sock:
+            msg.debug('select(): No socket.')
+            return self.reconnect()
+
+        try:
+            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
+        except (select.error, socket.error, Exception) as e:
+            msg.error('Error in select(): %s' % str(e))
+            return self.reconnect()
+
+        if _except:
+            msg.error('Socket error')
+            return self.reconnect()
+
+        if _out:
+            if self.secure and not self.handshaken:
+                try:
+                    self.sock.do_handshake()
+                except ssl.SSLError as e:
+                    return
+                except Exception as e:
+                    msg.error("Error in SSL handshake:", e)
+                    return self.reconnect()
+                else:
+                    self.handshaken = True
+
+            for p in self.get_patches():
+                try:
+                    self.sock.sendall(p.encode('utf-8'))
+                except Exception as e:
+                    msg.error('Couldn\'t write to socket: %s' % str(e))
+                    return self.reconnect()
+
+        if _in:
+            buf = ''.encode('utf-8')
+            while True:
+                try:
+                    d = self.sock.recv(65536)
+                    if not d:
+                        break
+                    buf += d
+                except (AttributeError):
+                    return self.reconnect()
+                except (socket.error, TypeError):
+                    break
+
+            if buf:
+                self.empty_selects = 0
+                self.protocol(buf)
+            else:
+                self.empty_selects += 1
+                if self.empty_selects > (2000 / G.TICK_TIME):
+                    msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
+                    return self.reconnect()
+
+
+class AgentConnection(BaseAgentConnection):
+    def __init__(self, owner, workspace, on_room_info, **kwargs):
+        super(AgentConnection, self).__init__(**kwargs)
+
+        self.owner = owner
+        self.workspace = workspace
+        self.on_room_info = on_room_info
+
+        self.username = G.USERNAME
+        self.secret = G.SECRET
+
+        self.on_room_info = on_room_info
+        self.chat_deck = collections.deque(maxlen=10)
+        self.workspace_info = {}
+
+    @property
+    def workspace_url(self):
+        protocol = self.secure and 'https' or 'http'
+        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+
+    def on_connect(self):
+        SOCKET_Q.clear()
+
+        self.put({
+            'username': self.username,
+            'secret': self.secret,
+            'room': self.workspace,
+            'room_owner': self.owner,
+            'client': self.client,
+            'platform': sys.platform,
+            'supported_encodings': ['utf8', 'base64'],
+            'version': G.__VERSION__
+        })
+
+    def stop(self):
+        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        super(AgentConnection, self).stop()
+
+    def cleanup(self, *args, **kwargs):
+        super(AgentConnection, self).cleanup(*args, **kwargs)
+        self.workspace_info = {}
+
+    def send_msg(self, msg):
+        self.put({'name': 'msg', 'data': msg})
+        self.chat(self.username, time.time(), msg, True)
+
+    def chat(self, username, timestamp, message, self_msg=False):
+        envelope = msg.MSG(message, timestamp, username)
+        if not self_msg:
+            self.chat_deck.appendleft(envelope)
+        envelope.display()
 
     def handler(self, name, data):
         if name == 'patch':
@@ -464,6 +523,8 @@ class AgentConnection(object):
             user['perms'] = list(perms)
             if user_id == self.workspace_info['user_id']:
                 G.PERMS = perms
+        elif name == 'msg':
+            self.on_msg(data)
         else:
             msg.debug('unknown name!', name, 'data:', data)
 
@@ -477,67 +538,22 @@ class AgentConnection(object):
         if not hangout_client:
             G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
-    def select(self):
-        if not self.call_select:
-            return
+    def on_msg(self, data):
+        message = data.get('data')
+        self.chat(data['username'], data['time'], message)
+        window = G.WORKSPACE_WINDOW
 
-        if not self.sock:
-            msg.debug('select(): No socket.')
-            return self.reconnect()
+        def cb(selected):
+            if selected == -1:
+                return
+            envelope = self.chat_deck[selected]
+            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
 
-        try:
-            _in, _out, _except = select.select([self.sock], [self.sock], [self.sock], 0)
-        except (select.error, socket.error, Exception) as e:
-            msg.error('Error in select(): %s' % str(e))
-            return self.reconnect()
-
-        if _except:
-            msg.error('Socket error')
-            return self.reconnect()
-
-        if _out:
-            if self.secure and not self.handshaken:
-                try:
-                    self.sock.do_handshake()
-                except ssl.SSLError as e:
-                    return
-                except Exception as e:
-                    msg.error("Error in SSL handshake:", e)
-                    return self.reconnect()
-                else:
-                    self.handshaken = True
-
-            for p in self.get_patches():
-                try:
-                    self.sock.sendall(p.encode('utf-8'))
-                except Exception as e:
-                    msg.error('Couldn\'t write to socket: %s' % str(e))
-                    return self.reconnect()
-
-        if _in:
-            buf = ''.encode('utf-8')
-            while True:
-                try:
-                    d = self.sock.recv(65536)
-                    if not d:
-                        break
-                    buf += d
-                except (AttributeError):
-                    return self.reconnect()
-                except (socket.error, TypeError):
-                    break
-
-            if buf:
-                self.empty_selects = 0
-                self.protocol(buf)
-            else:
-                self.empty_selects += 1
-                if self.empty_selects > (2000 / G.TICK_TIME):
-                    msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
-                    return self.reconnect()
+        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
+            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
 
 
-class RequestCredentialsConnection(AgentConnection):
+class RequestCredentialsConnection(BaseAgentConnection):
 
     def __init__(self, token, **kwargs):
         super(RequestCredentialsConnection, self).__init__(**kwargs)
@@ -566,7 +582,7 @@ class RequestCredentialsConnection(AgentConnection):
             self.stop()
 
 
-class CreateAccountConnection(AgentConnection):
+class CreateAccountConnection(BaseAgentConnection):
 
     def on_connect(self):
         try:
