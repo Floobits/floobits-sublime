@@ -578,7 +578,10 @@ class RequestCredentialsConnection(BaseAgentConnection):
                 sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
                 api.send_error({'message': 'No username or secret'})
             else:
-                sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
+                p = os.path.join(G.BASE_DIR, 'welcome.md')
+                with open(p, 'wb') as fd:
+                    fd.write('Welcome %s!\n\nYou\'re all set to collaborate.  You may want to check out our docs at https://floobits.com/help/plugins/#sublime-usage' % G.USERNAME)
+                sublime.active_window().open_file(p)
             self.stop()
 
 
@@ -610,8 +613,10 @@ class CreateAccountConnection(BaseAgentConnection):
                     sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
                     api.send_error({'message': 'No username or secret2'})
                 else:
-                    view = sublime.active_window().new_file()
-                    view.run_command('floo_view_replace_region', {'r': [0, 0], 'data': 'Welcome %s! You\'re all set to collaborate.' % G.USERNAME})
+                    p = os.path.join(G.BASE_DIR, 'welcome.md')
+                    with open(p, 'wb') as fd:
+                        fd.write('Welcome %s!\n\nYou\'re all set to collaborate.  You may want to check out our docs at https://floobits.com/help/plugins/#sublime-usage' % G.USERNAME)
+                    sublime.active_window().open_file(p)
             except Exception as e:
                 msg.error(e)
             try:

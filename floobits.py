@@ -807,7 +807,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         for sel in selections:
             self.view.sel().add(sel)
 
-    def _run(self, edit, selections, r, data):
+    def _run(self, edit, selections, r, data, view=None):
         global ignore_modified_timeout
 
         if not getattr(self, 'view', None):
