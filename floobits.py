@@ -77,6 +77,7 @@ except (ImportError, ValueError):
 utils.reload_settings()
 
 G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
+
 # TODO: one day this can be removed (once all our users have updated)
 old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
 if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
@@ -498,6 +499,17 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             return self.window.show_input_panel('Save workspace in directory:', default_dir, make_dir, None, None)
 
         open_workspace_window(lambda: run_agent(**result))
+
+
+class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        floorc = utils.load_floorc()
+        username = floorc.get('USERNAME')
+        secret = floorc.get('SECRET')
+        print(username, secret)
+        if not (username and secret):
+            return sublime.error_message("You don't appear to have a floobits account of any sort")
+        webbrowser.open('https://staging.floobits.com/u/%s/pinocchio/%s/' % (username, secret))
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):

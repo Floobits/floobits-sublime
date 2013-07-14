@@ -59,6 +59,10 @@
     "command": "floobits_leave_workspace"
   },
   {
+    "caption": "Floobits - Signup",
+    "command": "floobits_pinocchio"
+  },
+  {
     "caption": "Floobits - Add To Workspace",
     "command": "floobits_add_to_workspace",
     "args": {

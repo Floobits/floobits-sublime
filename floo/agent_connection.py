@@ -610,7 +610,8 @@ class CreateAccountConnection(BaseAgentConnection):
                     sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
                     api.send_error({'message': 'No username or secret2'})
                 else:
-                    sublime.message_dialog('Welcome %s! You\'re all set to collaborate.' % G.USERNAME)
+                    view = sublime.active_window().new_file()
+                    view.run_command('floo_view_replace_region', {'r': [0, 0], 'data': 'Welcome %s! You\'re all set to collaborate.' % G.USERNAME})
             except Exception as e:
                 msg.error(e)
             try:
