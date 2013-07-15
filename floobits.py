@@ -77,8 +77,6 @@ except (ImportError, ValueError):
 
 utils.reload_settings()
 
-G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
-
 # TODO: one day this can be removed (once all our users have updated)
 old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
 if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):

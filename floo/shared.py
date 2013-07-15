@@ -9,7 +9,7 @@ PLUGIN_PATH = None
 
 CONNECTED = False
 
-BASE_DIR = ''
+BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 COLAB_DIR = ''
 
 PROJECT_PATH = ''
