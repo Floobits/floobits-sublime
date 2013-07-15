@@ -32,7 +32,7 @@ if ssl is False and sublime.platform() == 'linux':
     if plugin_path in ('.', ''):
         plugin_path = os.getcwd()
     _ssl = None
-    ssl_versions = ['0.9.8', '1.0.0', '10']
+    ssl_versions = ['0.9.8', '1.0.0', '10', '1.0.1']
     ssl_path = os.path.join(plugin_path, 'lib', 'linux')
     lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
     if not PY2:
