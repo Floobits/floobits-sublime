@@ -34,7 +34,7 @@ class Waterfall(object):
         return res
 
 
-def reload_settings(should_reconnect=False):
+def reload_settings(should_reconnect=True):
     print('Reloading settings...')
     # TODO: settings doesn't seem to load most settings.
     # Also, settings.get('key', 'default_value') returns None
