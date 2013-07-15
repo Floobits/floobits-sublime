@@ -34,7 +34,7 @@ class Waterfall(object):
         return res
 
 
-def reload_settings():
+def reload_settings(should_reconnect=False):
     print('Reloading settings...')
     # TODO: settings doesn't seem to load most settings.
     # Also, settings.get('key', 'default_value') returns None
@@ -62,7 +62,7 @@ def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
-    if G.AGENT and G.AGENT.is_ready():
+    if G.AGENT and G.AGENT.is_ready() and should_reconnect:
         print('Reconnecting due to settings change')
         G.AGENT.reconnect()
     print('Floobits debug is %s' % G.DEBUG)

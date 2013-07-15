@@ -270,24 +270,29 @@ class AgentConnection(BaseAgentConnection):
         self.owner = owner
         self.workspace = workspace
         self.on_room_info = on_room_info
-
-        self.username = G.USERNAME
-        self.secret = G.SECRET
-
-        self.on_room_info = on_room_info
         self.chat_deck = collections.deque(maxlen=10)
         self.workspace_info = {}
+        self.reload_settings()
 
     @property
     def workspace_url(self):
         protocol = self.secure and 'https' or 'http'
         return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
+    def reload_settings(self):
+        utils.reload_settings(False)
+        self.username = G.USERNAME
+        self.secret = G.SECRET
+        self.api_key = G.API_KEY
+
     def on_connect(self):
         SOCKET_Q.clear()
 
+        self.reload_settings()
+
         self.put({
             'username': self.username,
+            'api_key': self.api_key,
             'secret': self.secret,
             'room': self.workspace,
             'room_owner': self.owner,
