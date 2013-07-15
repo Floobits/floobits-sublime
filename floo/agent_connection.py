@@ -10,6 +10,7 @@ import base64
 import errno
 import getpass
 import sublime
+import webbrowser
 
 try:
     import ssl
@@ -558,6 +559,7 @@ class RequestCredentialsConnection(BaseAgentConnection):
     def __init__(self, token, **kwargs):
         super(RequestCredentialsConnection, self).__init__(**kwargs)
         self.token = token
+        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
 
     def on_connect(self):
         self.put({

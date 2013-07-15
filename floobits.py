@@ -173,32 +173,29 @@ def get_active_window(cb):
     cb(win)
 
 
-def initial_run():
-    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
-    token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+def create_or_link_account():
+    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account.'
+        'If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
     if account:
-        try:
-            G.AGENT = RequestCredentialsConnection(token, host='staging.floobits.com', secure=True)
-            Listener.reset()
-            G.AGENT.connect()
-        except Exception as e:
-            print(e)
-            tb = traceback.format_exc()
-            print(tb)
-
-        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
+        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+        agent = RequestCredentialsConnection(token, host='staging.floobits.com', secure=True)
     elif not utils.get_persistent_data().get('disable_account_creation'):
-        try:
-            G.AGENT = CreateAccountConnection(host='staging.floobits.com', secure=True)
-            Listener.reset()
-            G.AGENT.connect()
-        except Exception as e:
-            print(e)
-            tb = traceback.format_exc()
-            print(tb)
+        agent = CreateAccountConnection(host='staging.floobits.com', secure=True)
+    if not agent:
+        return
+    try:
+        Listener.reset()
+        G.AGENT = agent
+        agent.connect()
+    except Exception as e:
+        print(e)
+        tb = traceback.format_exc()
+        print(tb)
 
-if not (G.USERNAME and G.SECRET):
-    initial_run()
+
+can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+if not can_auth:
+    create_or_link_account()
 
 
 def global_tick():
@@ -237,7 +234,7 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
     def run(self, dir_to_share='', paths=None, current_file=False):
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
-            return initial_run()
+            return create_or_link_account()
         if paths:
             if len(paths) != 1:
                 return sublime.error_message('Only one folder at a time, please. :(')
@@ -484,7 +481,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
-            return initial_run()
+            return create_or_link_account()
 
         d = utils.get_persistent_data()
         try:
