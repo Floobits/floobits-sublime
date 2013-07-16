@@ -12,10 +12,10 @@ if G.PLUGIN_PATH in ('.', ''):
 
 try:
     from .listener import Listener
-    from .agent_connection import AgentConnection
+    from .agent_connection import AgentConnection, CreateAccountConnection, RequestCredentialsConnection
     assert AgentConnection and Listener
 except ImportError:
     from listener import Listener
-    from agent_connection import AgentConnection
+    from agent_connection import AgentConnection, CreateAccountConnection, RequestCredentialsConnection
 
-assert AgentConnection and Listener
+assert AgentConnection and CreateAccountConnection and RequestCredentialsConnection and Listener

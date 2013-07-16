@@ -1,21 +1,26 @@
+import os
+
+
 __VERSION__ = '0.03'
 
 DEBUG = False
 
 PLUGIN_PATH = None
 
-CONNECTED = False
+JOINED_WORKSPACE = False
+AUTO_GENERATED_ACCOUNT = False
 
-BASE_DIR = ''
+BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 COLAB_DIR = ''
 
 PROJECT_PATH = ''
-DEFAULT_HOST = ''
-DEFAULT_PORT = ''
+DEFAULT_HOST = 'floobits.com'
+DEFAULT_PORT = 3448
 SECURE = True
 
 USERNAME = ''
 SECRET = ''
+API_KEY = ''
 
 ALERT_ON_MSG = True
 
@@ -35,3 +40,5 @@ TICK_TIME = 100
 AGENT = None
 
 VIEW_TO_HASH = {}
+
+FLOORC_PATH = os.path.expanduser('~/.floorc')
