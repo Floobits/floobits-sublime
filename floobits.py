@@ -187,7 +187,7 @@ def create_or_link_account():
         agent = CreateAccountConnection()
 
     if not agent:
-        print('Not attempting to make account or link it. Maybe disable_account_creation is set.')
+        sublime.error_message('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.')
         return
 
     try:
