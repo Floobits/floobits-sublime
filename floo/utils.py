@@ -34,6 +34,62 @@ class Waterfall(object):
         return res
 
 
+def reload_settings():
+    print('Reloading settings...')
+    # TODO: settings doesn't seem to load most settings.
+    # Also, settings.get('key', 'default_value') returns None
+    settings = sublime.load_settings('Floobits.sublime-settings')
+    G.ALERT_ON_MSG = settings.get('alert_on_msg')
+    if G.ALERT_ON_MSG is None:
+        G.ALERT_ON_MSG = True
+    G.LOG_TO_CONSOLE = settings.get('log_to_console')
+    if G.LOG_TO_CONSOLE is None:
+        G.LOG_TO_CONSOLE = False
+    G.DEBUG = settings.get('debug')
+    if G.DEBUG is None:
+        G.DEBUG = False
+    G.COLAB_DIR = settings.get('share_dir') or os.path.join(G.BASE_DIR, 'share')
+    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
+    G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
+    mkdir(G.COLAB_DIR)
+    G.DEFAULT_HOST = settings.get('host') or G.DEFAULT_HOST
+    G.DEFAULT_PORT = settings.get('port') or G.DEFAULT_PORT
+    G.SECURE = settings.get('secure')
+    if G.SECURE is None:
+        G.SECURE = True
+    G.USERNAME = settings.get('username')
+    G.SECRET = settings.get('secret')
+    floorc_settings = load_floorc()
+    for name, val in floorc_settings.items():
+        setattr(G, name, val)
+    print('Floobits debug is %s' % G.DEBUG)
+
+
+def load_floorc():
+    """try to read settings out of the .floorc file"""
+    s = {}
+    try:
+        fd = open(G.FLOORC_PATH, 'rb')
+    except IOError as e:
+        if e.errno == 2:
+            return s
+        raise
+
+    default_settings = fd.read().decode('utf-8').split('\n')
+    fd.close()
+
+    for setting in default_settings:
+        # TODO: this is horrible
+        if len(setting) == 0 or setting[0] == '#':
+            continue
+        try:
+            name, value = setting.split(' ', 1)
+        except IndexError:
+            continue
+        s[name.upper()] = value
+    return s
+
+
 def set_timeout(func, timeout, *args, **kwargs):
     global top_timeout_id
     timeout_id = top_timeout_id
@@ -135,7 +191,7 @@ def to_scheme(secure):
 
 
 def is_shared(p):
-    if not G.CONNECTED:
+    if not G.JOINED_WORKSPACE:
         return False
     p = unfuck_path(p)
     if to_rel_path(p).find("../") == 0:

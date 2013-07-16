@@ -9,6 +9,8 @@ import os
 import hashlib
 import imp
 import json
+import uuid
+import binascii
 import subprocess
 import traceback
 import webbrowser
@@ -16,6 +18,8 @@ from collections import defaultdict
 
 import sublime_plugin
 import sublime
+
+PY2 = sys.version_info < (3, 0)
 
 try:
     import ssl
@@ -28,9 +32,12 @@ if ssl is False and sublime.platform() == 'linux':
     if plugin_path in ('.', ''):
         plugin_path = os.getcwd()
     _ssl = None
-    ssl_versions = ['0.9.8', '1.0.0', '10']
+    ssl_versions = ['0.9.8', '1.0.0', '10', '1.0.1']
     ssl_path = os.path.join(plugin_path, 'lib', 'linux')
     lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
+    if not PY2:
+        ssl_path += "-py3"
+        lib_path += "-py3"
     for version in ssl_versions:
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
@@ -58,22 +65,18 @@ if ssl is False and sublime.platform() == 'linux':
 
 try:
     from urllib.error import HTTPError
-    from .floo import api, AgentConnection, listener, msg, shared as G, utils
+    from .floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, shared as G, utils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and G and Listener and listener and msg and utils
+    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and listener and msg and utils
 except (ImportError, ValueError):
     from urllib2 import HTTPError
-    from floo import api, AgentConnection, listener, msg, utils
+    from floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, utils
     from floo.listener import Listener
     from floo import shared as G
 
 
-PY2 = sys.version_info < (3, 0)
+utils.reload_settings()
 
-settings = sublime.load_settings('Floobits.sublime-settings')
-
-FLOORC_PATH = os.path.expanduser('~/.floorc')
-G.BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 # TODO: one day this can be removed (once all our users have updated)
 old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
 if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
@@ -82,7 +85,7 @@ if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
     os.symlink(G.BASE_DIR, old_colab_dir)
 
 
-on_connect_waterfall = utils.Waterfall()
+on_room_info_waterfall = utils.Waterfall()
 
 
 def update_recent_workspaces(workspace):
@@ -108,70 +111,6 @@ def add_workspace_to_persistent_json(owner, name, url, path):
         workspaces[owner] = {}
     workspaces[owner][name] = {'url': url, "path": path}
     utils.update_persistent_data(d)
-
-
-def load_floorc():
-    """try to read settings out of the .floorc file"""
-    s = {}
-    try:
-        fd = open(FLOORC_PATH, 'rb')
-    except IOError as e:
-        if e.errno == 2:
-            return s
-        raise
-
-    default_settings = fd.read().decode('utf-8').split('\n')
-    fd.close()
-
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
-    return s
-
-
-def reload_settings():
-    global settings
-    print('Reloading settings...')
-    # TODO: settings doesn't seem to load most settings.
-    # Also, settings.get('key', 'default_value') returns None
-    settings = sublime.load_settings('Floobits.sublime-settings')
-    G.ALERT_ON_MSG = settings.get('alert_on_msg')
-    if G.ALERT_ON_MSG is None:
-        G.ALERT_ON_MSG = True
-    G.LOG_TO_CONSOLE = settings.get('log_to_console')
-    if G.LOG_TO_CONSOLE is None:
-        G.LOG_TO_CONSOLE = False
-    G.DEBUG = settings.get('debug')
-    if G.DEBUG is None:
-        G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or os.path.join(G.BASE_DIR, 'share')
-    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
-    G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    utils.mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host') or 'floobits.com'
-    G.DEFAULT_PORT = settings.get('port') or 3448
-    G.SECURE = settings.get('secure')
-    if G.SECURE is None:
-        G.SECURE = True
-    G.USERNAME = settings.get('username')
-    G.SECRET = settings.get('secret')
-    floorc_settings = load_floorc()
-    for name, val in floorc_settings.items():
-        setattr(G, name, val)
-    if G.AGENT and G.AGENT.is_ready():
-        msg.log('Reconnecting due to settings change')
-        G.AGENT.reconnect()
-    print('Floobits debug is %s' % G.DEBUG)
-
-
-settings.add_on_change('', reload_settings)
-reload_settings()
 
 
 def get_legacy_projects():
@@ -225,29 +164,8 @@ def migrate_symlinks():
 
 migrate_symlinks()
 
-
-INITIAL_FLOORC = """# Hello!
-#
-# Thank you for installing Floobits. To join and share workspaces, you'll need to finish configuring it.
-# Floobits reads configuration settings from ~/.floorc. You didn't have a ~/.floorc file, so we created it.
-#
-# If everything has gone according to plan, your browser will open
-# https://floobits.com/dash/initial_floorc/. That page will show you the settings to put in
-# this file.
-#
-# For more help, see https://floobits.com/help/plugins/#sublime-text
-#
-# If you have any problems or questions, please e-mail support@floobits.com
-# -- The Floobits Team
-#
-#
-######  UNCOMMENT AND CHANGE THE LINES BELOW  ######
-
-# username your_username
-# secret your_api_secret
-
-######  UNCOMMENT AND CHANGE THE LINES ABOVE  ######
-"""
+d = utils.get_persistent_data()
+G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account')
 
 
 def get_active_window(cb):
@@ -257,22 +175,34 @@ def get_active_window(cb):
     cb(win)
 
 
-def initial_run():
-    timeout = 0
-    if not os.path.exists(FLOORC_PATH):
-        timeout = 7000
-        with open(FLOORC_PATH, 'wb') as floorc_fd:
-            floorc_fd.write(INITIAL_FLOORC.encode('utf-8'))
+def create_or_link_account():
+    agent = None
+    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. '
+                                       'If you have an account, click "Open browser". '
+                                       'You can create an account any time.', 'Open browser')
+    if account:
+        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+        agent = RequestCredentialsConnection(token)
+    elif not utils.get_persistent_data().get('disable_account_creation'):
+        agent = CreateAccountConnection()
 
-    def open_floorc(active_window):
-        active_window.open_file(FLOORC_PATH)
-        utils.set_timeout(webbrowser.open, timeout, 'https://floobits.com/dash/initial_floorc', new=2, autoraise=True)
+    if not agent:
+        sublime.error_message('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.')
+        return
 
-    get_active_window(open_floorc)
+    try:
+        Listener.reset()
+        G.AGENT = agent
+        agent.connect()
+    except Exception as e:
+        print(e)
+        tb = traceback.format_exc()
+        print(tb)
 
 
-if not (G.USERNAME and G.SECRET):
-    initial_run()
+can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+if not can_auth:
+    create_or_link_account()
 
 
 def global_tick():
@@ -283,8 +213,8 @@ def global_tick():
 
 
 def disconnect_dialog():
-    if G.AGENT and G.CONNECTED:
-        disconnect = bool(sublime.ok_cancel_dialog('You can only be in one workspace at a time. Leave the current workspace?'))
+    if G.AGENT and G.JOINED_WORKSPACE:
+        disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave workspace %s.' % G.AGENT.workspace)
         if disconnect:
             msg.debug('Stopping agent.')
             G.AGENT.stop()
@@ -301,17 +231,21 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
         return bool(G.AGENT and G.AGENT.is_ready())
 
 
-class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
-    def is_visible(self):
-        return bool(self.is_enabled())
+class FloobitsOpenSettingsCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        window = sublime.active_window()
+        if window:
+            window.open_file(G.FLOORC_PATH)
 
+
+class FloobitsShareDirCommand(FloobitsBaseCommand):
     def is_enabled(self):
-        return not bool(G.AGENT and G.AGENT.is_ready())
+        return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share='', paths=None, current_file=False):
-        reload_settings()
+        utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
-            return initial_run()
+            return create_or_link_account()
         if paths:
             if len(paths) != 1:
                 return sublime.error_message('Only one folder at a time, please. :(')
@@ -376,13 +310,13 @@ class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
                 pass
             else:
                 _msg = "You just joined the workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-                on_connect_waterfall.add(sublime.message_dialog, _msg)
-                on_connect_waterfall.add(Listener.create_buf, dir_to_share)
+                on_room_info_waterfall.add(sublime.message_dialog, _msg)
+                on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
                 # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
-        on_connect_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
+        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
@@ -400,7 +334,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         if not disconnect_dialog():
             return
         if ssl is False:
-            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. This is a known issue on Linux and Windows builds of Sublime Text 2. Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
+            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
+                                         'This is a known issue on Linux and Windows builds of Sublime Text 2. '
+                                         'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
@@ -438,7 +374,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
         _msg = "You just created the new workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-        on_connect_waterfall.add(sublime.message_dialog, _msg)
+        on_room_info_waterfall.add(sublime.message_dialog, _msg)
 
         # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
@@ -479,6 +415,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
                 # TODO: totally explodes if you install ST2 somewhere else
+                settings = sublime.load_settings('Floobits.sublime-settings')
                 subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
                 if not os.path.exists(subl):
                     return sublime.error_message('Can\'t find your Sublime Text executable at %s. Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text' % subl)
@@ -521,10 +458,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.AGENT.stop()
                 G.AGENT = None
 
-            on_connect_waterfall.add(update_recent_workspaces, {'url': workspace_url})
+            on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
 
             try:
-                G.AGENT = AgentConnection(owner, workspace, host=host, port=port, secure=secure, on_connect=on_connect_waterfall.call)
+                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_room_info=on_room_info_waterfall.call)
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:
@@ -553,9 +490,9 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         except Exception as e:
             return sublime.error_message(str(e))
 
-        reload_settings()
+        utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
-            return initial_run()
+            return create_or_link_account()
 
         d = utils.get_persistent_data()
         try:
@@ -572,6 +509,23 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         open_workspace_window(lambda: run_agent(**result))
 
 
+class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return G.AUTO_GENERATED_ACCOUNT
+
+    def run(self):
+        floorc = utils.load_floorc()
+        username = floorc.get('USERNAME')
+        secret = floorc.get('SECRET')
+        print(username, secret)
+        if not (username and secret):
+            return sublime.error_message("You don't seem to have a Floobits account of any sort")
+        webbrowser.open('https://%s/u/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+
+
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
 
     def run(self):
@@ -582,36 +536,6 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
             sublime.error_message('You have left the workspace.')
         else:
             sublime.error_message('You are not joined to any workspace.')
-
-
-class FloobitsRejoinWorkspaceCommand(FloobitsBaseCommand):
-
-    def run(self):
-        if G.AGENT:
-            workspace_url = utils.to_workspace_url({
-                'host': G.AGENT.host,
-                'owner': G.AGENT.owner,
-                'port': G.AGENT.port,
-                'workspace': G.AGENT.workspace,
-                'secure': G.AGENT.secure,
-            })
-            G.AGENT.stop()
-            G.AGENT = None
-        else:
-            try:
-                workspace_url = utils.get_persistent_data()['recent_workspaces'][0]['url']
-            except Exception:
-                sublime.error_message('No recent workspace to rejoin.')
-                return
-        self.window.run_command('floobits_join_workspace', {
-            'workspace_url': workspace_url,
-        })
-
-    def is_visible(self):
-        return bool(self.is_enabled())
-
-    def is_enabled(self):
-        return True
 
 
 class FloobitsPromptMsgCommand(FloobitsBaseCommand):
@@ -704,7 +628,7 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
         if not self.is_enabled():
             return
 
-        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?'))
+        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?', 'Delete'))
         if not confirm:
             return
 
@@ -725,10 +649,10 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
         webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s' % (owner, workspace))
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+        return bool(super(FloobitsCreateHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
-class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
+class FloobitsPromptHangoutCommand(FloobitsBaseCommand):
     def run(self, hangout_url):
         confirm = bool(sublime.ok_cancel_dialog('This workspace is being edited in a Google+ Hangout? Do you want to join the hangout?'))
         if not confirm:
@@ -739,7 +663,7 @@ class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
         return False
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+        return bool(super(FloobitsPromptHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
 class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
@@ -774,22 +698,16 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         G.STALKER_MODE = True
         # TODO: go to most recent highlight
 
-    def is_visible(self):
-        return bool(self.is_enabled())
-
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and not G.STALKER_MODE)
+        return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
 
 
 class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = False
 
-    def is_visible(self):
-        return bool(self.is_enabled())
-
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.STALKER_MODE)
+        return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
 
 
 class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
@@ -797,11 +715,20 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
         url = G.AGENT.workspace_url + '/settings'
         webbrowser.open(url, new=2, autoraise=True)
 
-    def is_visible(self):
-        return bool(self.is_enabled())
+    def is_enabled(self):
+        return bool(super(FloobitsOpenWorkspaceSettingsCommand, self).is_enabled() and G.PERMS and 'kick' in G.PERMS)
+
+
+class RequestPermissionCommand(FloobitsBaseCommand):
+    def run(self, perms, *args, **kwargs):
+        G.AGENT.put('request_perms', {'perms': perms})
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.PERMS and 'kick' in G.PERMS)
+        if not super(RequestPermissionCommand, self).is_enabled():
+            return False
+        if 'patch' in G.PERMS:
+            return False
+        return True
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
@@ -867,7 +794,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         for sel in selections:
             self.view.sel().add(sel)
 
-    def _run(self, edit, selections, r, data):
+    def _run(self, edit, selections, r, data, view=None):
         global ignore_modified_timeout
 
         if not getattr(self, 'view', None):
