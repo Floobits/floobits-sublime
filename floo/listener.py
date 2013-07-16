@@ -504,13 +504,15 @@ class Listener(sublime_plugin.EventListener):
                 f()
 
     def on_pre_save(self, view):
+        if not G.AGENT or not G.AGENT.is_ready():
+            return
         p = view.name()
         if view.file_name():
             p = utils.to_rel_path(view.file_name())
         self.between_save_events[view.buffer_id()] = p
 
     def on_post_save(self, view):
-        if not G.AGENT:
+        if not G.AGENT or not G.AGENT.is_ready():
             return
 
         def cleanup():
