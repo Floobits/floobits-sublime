@@ -173,6 +173,7 @@ def get_active_window(cb):
 
 
 def create_or_link_account():
+    agent = None
     account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. '
                                        'If you have an account, click "Open browser". '
                                        'You can create an account any time.', 'Open browser')
@@ -181,8 +182,11 @@ def create_or_link_account():
         agent = RequestCredentialsConnection(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
         agent = CreateAccountConnection()
+
     if not agent:
+        print('Not attempting to make account or link it. Maybe disable_account_creation is set.')
         return
+
     try:
         Listener.reset()
         G.AGENT = agent
