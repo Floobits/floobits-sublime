@@ -597,7 +597,8 @@ class RequestCredentialsConnection(BaseAgentConnection):
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'wb') as fd:
-                    fd.write('Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host))
+                    msg = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
+                    fd.write(msg.encode('utf-8'))
                 sublime.active_window().open_file(p)
             self.stop()
 
@@ -626,13 +627,14 @@ class CreateAccountConnection(BaseAgentConnection):
                 with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                     floorc_fd.write(floorc.encode('utf-8'))
                 utils.reload_settings()
-                if not G.USERNAME or not G.SECRET:
-                    sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
-                    api.send_error({'message': 'No username or secret2'})
+                if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
+                    sublime.message_dialog('Something went wrong. You will need to sign up for an account to use Floobits.')
+                    api.send_error({'message': 'No username or secret'})
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'wb') as fd:
-                        fd.write('Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host))
+                        msg = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
+                        fd.write(msg.encode('utf-8'))
                     sublime.active_window().open_file(p)
             except Exception as e:
                 msg.error(e)
