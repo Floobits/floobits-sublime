@@ -1,3 +1,6 @@
+# This code was taken from Python's lib/ssl.py. All code in this file is under
+# the PSF License, which is included in this directory as the file LICENSE.
+
 # Wrapper module for _ssl, providing some additional facilities
 # implemented in Python.  Written by Bill Janssen.
 
