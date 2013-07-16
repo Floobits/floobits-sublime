@@ -224,12 +224,16 @@ class FloobitsBaseCommand(sublime_plugin.WindowCommand):
         return bool(G.AGENT and G.AGENT.is_ready())
 
 
-class FloobitsShareDirCommand(sublime_plugin.WindowCommand):
-    def is_visible(self):
-        return bool(self.is_enabled())
+class FloobitsOpenSettingsCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        window = sublime.active_window()
+        if window:
+            window.open_file(G.FLOORC_PATH)
 
+
+class FloobitsShareDirCommand(FloobitsBaseCommand):
     def is_enabled(self):
-        return not bool(G.AGENT and G.AGENT.is_ready())
+        return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share='', paths=None, current_file=False):
         utils.reload_settings()
@@ -519,36 +523,6 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
             sublime.error_message('You have left the workspace.')
         else:
             sublime.error_message('You are not joined to any workspace.')
-
-
-class FloobitsRejoinWorkspaceCommand(FloobitsBaseCommand):
-
-    def run(self):
-        if G.AGENT:
-            workspace_url = utils.to_workspace_url({
-                'host': G.AGENT.host,
-                'owner': G.AGENT.owner,
-                'port': G.AGENT.port,
-                'workspace': G.AGENT.workspace,
-                'secure': G.AGENT.secure,
-            })
-            G.AGENT.stop()
-            G.AGENT = None
-        else:
-            try:
-                workspace_url = utils.get_persistent_data()['recent_workspaces'][0]['url']
-            except Exception:
-                sublime.error_message('No recent workspace to rejoin.')
-                return
-        self.window.run_command('floobits_join_workspace', {
-            'workspace_url': workspace_url,
-        })
-
-    def is_visible(self):
-        return bool(self.is_enabled())
-
-    def is_enabled(self):
-        return True
 
 
 class FloobitsPromptMsgCommand(FloobitsBaseCommand):

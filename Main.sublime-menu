@@ -77,19 +77,10 @@
     "id": "package-settings",
     "children":[{
       "caption": "Floobits",
-      "children": [{
-        "command": "open_file",
-        "args": {
-          "file": "${packages}/Floobits/Floobits.sublime-settings"
-        },
-        "caption": "Settings – Default"
-      },
+      "children": [
       {
-        "command": "open_file",
-        "args": {
-          "file": "${packages}/User/Floobits.sublime-settings"
-        },
-        "caption": "Settings – User"
+        "command": "floobits_open_settings",
+        "caption": "Settings (~/.floorc)"
       },
       {
         "caption": "-"
