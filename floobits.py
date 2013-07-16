@@ -177,9 +177,9 @@ def create_or_link_account():
         'If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
     if account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-        agent = RequestCredentialsConnection(token, host='staging.floobits.com', secure=True)
+        agent = RequestCredentialsConnection(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
-        agent = CreateAccountConnection(host='staging.floobits.com', secure=True)
+        agent = CreateAccountConnection()
     if not agent:
         return
     try:
@@ -504,8 +504,8 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
         secret = floorc.get('SECRET')
         print(username, secret)
         if not (username and secret):
-            return sublime.error_message("You don't appear to have a floobits account of any sort")
-        webbrowser.open('https://staging.floobits.com/u/%s/pinocchio/%s/' % (username, secret))
+            return sublime.error_message("You don't seem to have a Floobits account of any sort")
+        webbrowser.open('https://%s/u/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):

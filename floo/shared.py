@@ -13,8 +13,8 @@ BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 COLAB_DIR = ''
 
 PROJECT_PATH = ''
-DEFAULT_HOST = ''
-DEFAULT_PORT = ''
+DEFAULT_HOST = 'floobits.com'
+DEFAULT_PORT = 3448
 SECURE = True
 
 USERNAME = ''

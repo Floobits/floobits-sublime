@@ -52,8 +52,8 @@ def reload_settings(should_reconnect=True):
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host') or 'floobits.com'
-    G.DEFAULT_PORT = settings.get('port') or 3448
+    G.DEFAULT_HOST = settings.get('host') or G.DEFAULT_HOST
+    G.DEFAULT_PORT = settings.get('port') or G.DEFAULT_PORT
     G.SECURE = settings.get('secure')
     if G.SECURE is None:
         G.SECURE = True

@@ -564,7 +564,7 @@ class RequestCredentialsConnection(BaseAgentConnection):
     def __init__(self, token, **kwargs):
         super(RequestCredentialsConnection, self).__init__(**kwargs)
         self.token = token
-        webbrowser.open('https://staging.floobits.com/dash/link_editor/%s/' % token)
+        webbrowser.open('https://%s/dash/link_editor/%s/' % (self.host, token))
 
     def on_connect(self):
         self.put({
@@ -582,12 +582,12 @@ class RequestCredentialsConnection(BaseAgentConnection):
                 floorc_fd.write(floorc.encode('utf-8'))
             utils.reload_settings()  # This only works because G.CONNECTED is False
             if not G.USERNAME or not G.SECRET:
-                sublime.message_dialog('Something went wrong. See https://floobits.com/help/floorc/ to complete the installation.')
+                sublime.message_dialog('Something went wrong. See https://%s/help/floorc/ to complete the installation.' % self.host)
                 api.send_error({'message': 'No username or secret'})
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'wb') as fd:
-                    fd.write('Welcome %s!\n\nYou\'re all set to collaborate.  You may want to check out our docs at https://floobits.com/help/plugins/#sublime-usage' % G.USERNAME)
+                    fd.write('Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host))
                 sublime.active_window().open_file(p)
             self.stop()
 
@@ -622,7 +622,7 @@ class CreateAccountConnection(BaseAgentConnection):
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'wb') as fd:
-                        fd.write('Welcome %s!\n\nYou\'re all set to collaborate.  You may want to check out our docs at https://floobits.com/help/plugins/#sublime-usage' % G.USERNAME)
+                        fd.write('Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host))
                     sublime.active_window().open_file(p)
             except Exception as e:
                 msg.error(e)
