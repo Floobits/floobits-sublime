@@ -283,7 +283,7 @@ class AgentConnection(BaseAgentConnection):
         return G.JOINED_WORKSPACE
 
     def reload_settings(self):
-        utils.reload_settings(False)
+        utils.reload_settings()
         self.username = G.USERNAME
         self.secret = G.SECRET
         self.api_key = G.API_KEY
