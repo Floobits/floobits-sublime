@@ -1,10 +1,7 @@
 [
   {
-    "caption": "Floobits Settings – User",
-    "command": "open_file",
-    "args": {
-      "file": "${packages}/User/Floobits.sublime-settings"
-    }
+    "caption": "Floobits - Settings (~/.floorc)",
+    "command": "floobits_open_settings"
   },
   {
     "caption": "Floobits - Share Directory (Create Workspace)",
@@ -66,7 +63,7 @@
     "command": "floobits_leave_workspace"
   },
   {
-    "caption": "Floobits - Signup",
+    "caption": "Floobits - Sign Up",
     "command": "floobits_pinocchio"
   },
   {
