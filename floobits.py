@@ -177,9 +177,9 @@ def get_active_window(cb):
 
 def create_or_link_account():
     agent = None
-    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. '
-                                       'If you have an account, click "Open browser". '
-                                       'You can create an account any time.', 'Open browser')
+    account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
+                                       'Click "Open browser" if you have one or click "cancel" and we\'ll make it for you.',
+                                       'Open browser')
     if account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsConnection(token)
@@ -202,7 +202,7 @@ def create_or_link_account():
 
 can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
 if not can_auth:
-    create_or_link_account()
+    utils.set_timeout(create_or_link_account, 50)
 
 
 def global_tick():

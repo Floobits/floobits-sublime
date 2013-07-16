@@ -597,10 +597,14 @@ class RequestCredentialsConnection(BaseAgentConnection):
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'wb') as fd:
-                    msg = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
-                    fd.write(msg.encode('utf-8'))
+                    text = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
+                    fd.write(text.encode('utf-8'))
                 sublime.active_window().open_file(p)
             self.stop()
+
+
+welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage.  \
+You must run \'Floobits - Complete Sign Up\' in the command palette before you can login to floobits.com.'
 
 
 class CreateAccountConnection(BaseAgentConnection):
@@ -633,8 +637,8 @@ class CreateAccountConnection(BaseAgentConnection):
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'wb') as fd:
-                        msg = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
-                        fd.write(msg.encode('utf-8'))
+                        text = welcome_text % (G.USERNAME, self.host)
+                        fd.write(text.encode('utf-8'))
                     d = utils.get_persistent_data()
                     d['auto_generated_account'] = True
                     utils.update_persistent_data(d)
