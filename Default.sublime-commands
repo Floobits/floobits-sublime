@@ -39,6 +39,13 @@
     "command": "floobits_open_web_editor"
   },
   {
+    "caption": "Floobits - Request Edit Permission",
+    "command": "floobits_request_permision",
+    "args": {
+      "perms": ["edit"]
+    }
+  },
+  {
     "caption": "Floobits - Stalk Workspace (Follow Changes)",
     "command": "floobits_enable_stalker_mode"
   },

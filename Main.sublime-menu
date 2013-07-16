@@ -5,7 +5,15 @@
   "children": [{
     "id": "floobitsmenu",
     "caption": "Floobits",
-    "children": [{
+    "children": [
+      {
+        "caption": "Request Edit Permission",
+        "command": "floobits_request_permision",
+        "args": {
+          "perms": ["edit"]
+        }
+      },
+      {
         "id": "floobits_share_dir",
         "caption": "Share Directory (Create Workspace)",
         "command": "floobits_share_dir"

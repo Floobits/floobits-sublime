@@ -661,7 +661,7 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
         webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s' % (owner, workspace))
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+        return bool(super(FloobitsCreateHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
 class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
@@ -675,7 +675,7 @@ class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
         return False
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.AGENT.owner and G.AGENT.workspace)
+        return bool(super(FloobitsPromptHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
 class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
@@ -714,7 +714,7 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and not G.STALKER_MODE)
+        return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
 
 
 class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
@@ -725,7 +725,7 @@ class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.STALKER_MODE)
+        return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
 
 
 class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
@@ -737,7 +737,22 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
         return bool(self.is_enabled())
 
     def is_enabled(self):
-        return bool(G.AGENT and G.AGENT.is_ready() and G.PERMS and 'kick' in G.PERMS)
+        return bool(super(FloobitsOpenWorkspaceSettingsCommand, self).is_enabled() and G.PERMS and 'kick' in G.PERMS)
+
+
+class RequestPermissionCommand(FloobitsBaseCommand):
+    def run(self, perms, *args, **kwargs):
+        G.AGENT.put('request_perms', {'perms': perms})
+
+    def is_visible(self):
+        return bool(self.is_enabled())
+
+    def is_enabled(self):
+        if not super(RequestPermissionCommand, self).is_enabled():
+            return False
+        if 'patch' in G.PERMS:
+            return False
+        return True
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
