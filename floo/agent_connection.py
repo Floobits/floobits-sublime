@@ -635,6 +635,10 @@ class CreateAccountConnection(BaseAgentConnection):
                     with open(p, 'wb') as fd:
                         msg = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
                         fd.write(msg.encode('utf-8'))
+                    d = utils.get_persistent_data()
+                    d['auto_generated_account'] = True
+                    utils.update_persistent_data(d)
+                    G.AUTO_GENERATED_ACCOUNT = True
                     sublime.active_window().open_file(p)
             except Exception as e:
                 msg.error(e)

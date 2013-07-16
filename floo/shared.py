@@ -8,6 +8,7 @@ DEBUG = False
 PLUGIN_PATH = None
 
 JOINED_WORKSPACE = False
+AUTO_GENERATED_ACCOUNT = False
 
 BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 COLAB_DIR = ''

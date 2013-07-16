@@ -164,6 +164,9 @@ def migrate_symlinks():
 
 migrate_symlinks()
 
+d = utils.get_persistent_data()
+G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account')
+
 
 def get_active_window(cb):
     win = sublime.active_window()
@@ -507,6 +510,12 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
+    def is_visible(self):
+        return self.is_enabled()
+
+    def is_enabled(self):
+        return G.AUTO_GENERATED_ACCOUNT
+
     def run(self):
         floorc = utils.load_floorc()
         username = floorc.get('USERNAME')
