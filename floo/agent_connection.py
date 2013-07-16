@@ -8,8 +8,9 @@ import select
 import collections
 import base64
 import errno
-
+import getpass
 import sublime
+import webbrowser
 
 try:
     import ssl
@@ -18,9 +19,10 @@ except ImportError:
     ssl = False
 
 try:
-    from . import cert, listener, msg, shared as G, utils
-    assert cert and G and listener and msg and utils
+    from . import api, cert, listener, msg, shared as G, utils
+    assert api and cert and G and listener and msg and utils
 except (ImportError, ValueError):
+    import api
     import cert
     import shared as G
     import utils
@@ -41,37 +43,34 @@ except Exception:
     iscon_errno = errno.EISCONN
 
 
-class AgentConnection(object):
+class BaseAgentConnection(object):
     ''' Simple chat server using select '''
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    def __init__(self, owner, workspace, host=None, port=None, secure=True, on_connect=None):
+    def __init__(self, host=None, port=None, secure=True):
         self.sock = None
         self.buf = bytes()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.retries = self.MAX_RETRIES
         self.reconnect_timeout = None
-        self.username = G.USERNAME
-        self.secret = G.SECRET
+
         self.host = host or G.DEFAULT_HOST
         self.port = port or G.DEFAULT_PORT
         self.secure = secure
-        self.owner = owner
-        self.workspace = workspace
 
-        self.on_connect = on_connect
-        self.chat_deck = collections.deque(maxlen=10)
         self.empty_selects = 0
-        self.workspace_info = {}
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
 
     @property
-    def workspace_url(self):
-        protocol = self.secure and 'https' or 'http'
-        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+    def client(self):
+        if sys.version_info < (3, 0):
+            sublime_version = 2
+        else:
+            sublime_version = 3
+        return 'SublimeText-%s' % sublime_version
 
     def cleanup(self):
         try:
@@ -82,27 +81,21 @@ class AgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-        G.CONNECTED = False
+        G.JOINED_WORKSPACE = False
         self.call_select = False
         self.handshaken = False
-        self.workspace_info = {}
         self.buf = bytes()
         self.sock = None
 
     def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
         self.retries = -1
         utils.cancel_timeout(self.reconnect_timeout)
         self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
 
-    def send_msg(self, msg):
-        self.put({'name': 'msg', 'data': msg})
-        self.chat(self.username, time.time(), msg, True)
-
     def is_ready(self):
-        return G.CONNECTED
+        return False
 
     @staticmethod
     def put(item):
@@ -148,7 +141,8 @@ class AgentConnection(object):
                 return self.reconnect()
         if self.secure:
             self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
-        self.auth()
+
+        self.on_connect()
         self.call_select = True
         self.select()
 
@@ -173,50 +167,6 @@ class AgentConnection(object):
         msg.log('Connecting to %s:%s' % (self.host, self.port))
         self._connect()
 
-    def auth(self):
-        SOCKET_Q.clear()
-        if sys.version_info < (3, 0):
-            sublime_version = 2
-        else:
-            sublime_version = 3
-        self.put({
-            'username': self.username,
-            'secret': self.secret,
-            'room': self.workspace,
-            'room_owner': self.owner,
-            'client': 'SublimeText-%s' % sublime_version,
-            'platform': sys.platform,
-            'supported_encodings': ['utf8', 'base64'],
-            'version': G.__VERSION__
-        })
-
-    def get_patches(self):
-        try:
-            while True:
-                yield SOCKET_Q.popleft()
-        except IndexError:
-            raise StopIteration()
-
-    def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(message, timestamp, username)
-        if not self_msg:
-            self.chat_deck.appendleft(envelope)
-        envelope.display()
-
-    def on_msg(self, data):
-        message = data.get('data')
-        self.chat(data['username'], data['time'], message)
-        window = G.WORKSPACE_WINDOW
-
-        def cb(selected):
-            if selected == -1:
-                return
-            envelope = self.chat_deck[selected]
-            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
-
-        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
-            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
-
     def protocol(self, req):
         self.buf += req
         while True:
@@ -231,237 +181,27 @@ class AgentConnection(object):
                 msg.error('Data: %s' % before)
                 raise e
             name = data.get('name')
-            if name == 'patch':
-                Listener.apply_patch(data)
-            elif name == 'get_buf':
-                buf_id = data['id']
-                buf = listener.BUFS.get(buf_id)
-                if not buf:
-                    return msg.warn("no buf found: %s.  Hopefully you didn't need that" % data)
-                timeout_id = buf.get('timeout_id')
-                if timeout_id:
-                    utils.cancel_timeout(timeout_id)
-
-                if data['encoding'] == 'base64':
-                    data['buf'] = base64.b64decode(data['buf'])
-                # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
-                listener.BUFS[buf_id] = data
-                view = listener.get_view(buf_id)
-                if view:
-                    Listener.update_view(data, view)
+            try:
+                if name == 'error':
+                    message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
+                    msg.error(message)
+                elif name == 'disconnect':
+                    message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
+                    msg.error(message)
+                    sublime.error_message(message)
+                    self.stop()
                 else:
-                    listener.save_buf(data)
-            elif name == 'create_buf':
-                if data['encoding'] == 'base64':
-                    data['buf'] = base64.b64decode(data['buf'])
-                listener.BUFS[data['id']] = data
-                listener.PATHS_TO_IDS[data['path']] = data['id']
-                listener.save_buf(data)
-            elif name == 'rename_buf':
-                del listener.PATHS_TO_IDS[data['old_path']]
-                listener.PATHS_TO_IDS[data['path']] = data['id']
-                new = utils.get_full_path(data['path'])
-                old = utils.get_full_path(data['old_path'])
-                new_dir = os.path.split(new)[0]
-                if new_dir:
-                    utils.mkdir(new_dir)
-                os.rename(old, new)
-                view = listener.get_view(data['id'])
-                if view:
-                    view.retarget(new)
-            elif name == 'delete_buf':
-                path = utils.get_full_path(data['path'])
-                try:
-                    utils.rm(path)
-                except Exception:
-                    pass
-                listener.delete_buf(data['id'])
-            elif name == 'room_info':
-                Listener.reset()
-                G.CONNECTED = True
-                # Success! Reset counter
-                self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
-                self.retries = self.MAX_RETRIES
-
-                self.workspace_info = data
-                G.PERMS = data['perms']
-
-                if 'patch' not in data['perms']:
-                    msg.log('We don\'t have patch permission. Setting buffers to read-only')
-
-                project_json = {
-                    'folders': [
-                        {'path': G.PROJECT_PATH}
-                    ]
-                }
-
-                utils.mkdir(G.PROJECT_PATH)
-                with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
-                    project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
-
-                floo_json = {
-                    'url': utils.to_workspace_url({
-                        'host': self.host,
-                        'owner': self.owner,
-                        'port': self.port,
-                        'workspace': self.workspace,
-                        'secure': self.secure,
-                    })
-                }
-                with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
-                    floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
-
-                for buf_id, buf in data['bufs'].items():
-                    buf_id = int(buf_id)  # json keys must be strings
-                    buf_path = utils.get_full_path(buf['path'])
-                    new_dir = os.path.dirname(buf_path)
-                    utils.mkdir(new_dir)
-                    listener.BUFS[buf_id] = buf
-                    listener.PATHS_TO_IDS[buf['path']] = buf_id
-                    view = listener.get_view(buf_id)
-                    if view and not view.is_loading() and buf['encoding'] == 'utf8':
-                        view_text = listener.get_text(view)
-                        view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
-                        if view_md5 == buf['md5']:
-                            msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
-                            buf['buf'] = view_text
-                            G.VIEW_TO_HASH[view.buffer_id()] = view_md5
-                        else:
-                            Listener.get_buf(buf_id)
-                    else:
-                        try:
-                            buf_fd = open(buf_path, 'rb')
-                            buf_buf = buf_fd.read()
-                            md5 = hashlib.md5(buf_buf).hexdigest()
-                            if md5 == buf['md5']:
-                                msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
-                                if buf['encoding'] == 'utf8':
-                                    buf_buf = buf_buf.decode('utf-8')
-                                buf['buf'] = buf_buf
-                            else:
-                                Listener.get_buf(buf_id)
-                        except Exception as e:
-                            msg.debug('Error calculating md5:', e)
-                            Listener.get_buf(buf_id)
-
-                msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
-
-                temp_data = data.get('temp_data', {})
-                hangout = temp_data.get('hangout', {})
-                hangout_url = hangout.get('url')
-                if hangout_url:
-                    self.prompt_join_hangout(hangout_url)
-
-                if self.on_connect:
-                    self.on_connect()
-                    self.on_connect = None
-            elif name == 'user_info':
-                user_id = str(data['user_id'])
-                user_info = data['user_info']
-                self.workspace_info['users'][user_id] = user_info
-                if user_id == str(self.workspace_info['user_id']):
-                    G.PERMS = user_info['perms']
-            elif name == 'join':
-                msg.log('%s joined the workspace' % data['username'])
-                user_id = str(data['user_id'])
-                self.workspace_info['users'][user_id] = data
-            elif name == 'part':
-                msg.log('%s left the workspace' % data['username'])
-                user_id = str(data['user_id'])
-                try:
-                    del self.workspace_info['users'][user_id]
-                except Exception as e:
-                    print('Unable to delete user %s from user list' % (data))
-                region_key = 'floobits-highlight-%s' % (user_id)
-                for window in sublime.windows():
-                    for view in window.views():
-                        view.erase_regions(region_key)
-            elif name == 'highlight':
-                region_key = 'floobits-highlight-%s' % (data['user_id'])
-                Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
-            elif name == 'error':
-                message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
-                msg.error(message)
-            elif name == 'disconnect':
-                message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
-                msg.error(message)
-                sublime.error_message(message)
-                self.stop()
-            elif name == 'msg':
-                self.on_msg(data)
-            elif name == 'set_temp_data':
-                hangout_data = data.get('data', {})
-                hangout = hangout_data.get('hangout', {})
-                hangout_url = hangout.get('url')
-                if hangout_url:
-                    self.prompt_join_hangout(hangout_url)
-            elif name == 'saved':
-                try:
-                    username = self.workspace_info['users'][data['user_id']]['username']
-                    buf = listener.BUFS[data['id']]
-                    msg.log('%s saved buffer %s' % (username, buf['path']))
-                except Exception as e:
-                    msg.error(str(e))
-            elif name == 'request_perms':
-                print(data)
-                user_id = str(data.get('user_id'))
-                try:
-                    username = self.workspace_info['users'][user_id]['username']
-                except Exception:
-                    msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
-                    return
-                perm_mapping = {
-                    'edit_room': 'edit',
-                    'admin_room': 'admin',
-                }
-                perms = data.get('perms')
-                perms_str = ''.join([perm_mapping.get(p) for p in perms])
-                prompt = 'User %s is requesting %s permission for this room.' % (username, perms_str)
-                message = data.get('message')
-                if message:
-                    prompt += '\n\n%s says: %s' % (username, message)
-                prompt += '\n\nDo you want to grant them permission?'
-                confirm = bool(sublime.ok_cancel_dialog(prompt))
-                if confirm:
-                    action = 'add'
-                else:
-                    action = 'reject'
-                self.put({
-                    'name': 'perms',
-                    'action': action,
-                    'user_id': user_id,
-                    'perms': perms
-                })
-            elif name == 'perms':
-                action = data['action']
-                user_id = str(data['user_id'])
-                user = self.workspace_info['users'].get(user_id)
-                if user is None:
-                    msg.log('No user for id %s. Not handling perms event' % user_id)
-                    return
-                perms = set(user['perms'])
-                if action == 'add':
-                    perms += data['perms']
-                elif action == 'remove':
-                    perms -= data['perms']
-                else:
-                    return
-                user['perms'] = list(perms)
-                if user_id == self.workspace_info['user_id']:
-                    G.PERMS = perms
-            else:
-                msg.debug('unknown name!', name, 'data:', data)
+                    self.handler(name, data)
+            except Exception as e:
+                msg.error('Error handling %s event with data %s: %s' % (name, data, e))
             self.buf = after
 
-    def prompt_join_hangout(self, hangout_url):
-        hangout_client = None
-        users = self.workspace_info.get('users')
-        for user_id, user in users.items():
-            if user['username'] == G.USERNAME and 'hangout' in user['client']:
-                hangout_client = user
-                break
-        if not hangout_client:
-            G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+    def get_patches(self):
+        while True:
+            try:
+                yield SOCKET_Q.popleft()
+            except IndexError:
+                raise StopIteration()
 
     def select(self):
         if not self.call_select:
@@ -521,3 +261,394 @@ class AgentConnection(object):
                 if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
+
+
+class AgentConnection(BaseAgentConnection):
+    def __init__(self, owner, workspace, on_room_info, **kwargs):
+        super(AgentConnection, self).__init__(**kwargs)
+
+        self.owner = owner
+        self.workspace = workspace
+        self.on_room_info = on_room_info
+        self.chat_deck = collections.deque(maxlen=10)
+        self.workspace_info = {}
+        self.reload_settings()
+
+    @property
+    def workspace_url(self):
+        protocol = self.secure and 'https' or 'http'
+        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+
+    def is_ready(self):
+        return G.JOINED_WORKSPACE
+
+    def reload_settings(self):
+        utils.reload_settings()
+        self.username = G.USERNAME
+        self.secret = G.SECRET
+        self.api_key = G.API_KEY
+
+    def on_connect(self):
+        SOCKET_Q.clear()
+
+        self.reload_settings()
+
+        req = {
+            'username': self.username,
+            'secret': self.secret,
+            'room': self.workspace,
+            'room_owner': self.owner,
+            'client': self.client,
+            'platform': sys.platform,
+            'supported_encodings': ['utf8', 'base64'],
+            'version': G.__VERSION__
+        }
+
+        if self.api_key:
+            req['api_key'] = self.api_key
+        self.put(req)
+
+    def stop(self):
+        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        super(AgentConnection, self).stop()
+
+    def cleanup(self, *args, **kwargs):
+        super(AgentConnection, self).cleanup(*args, **kwargs)
+        self.workspace_info = {}
+
+    def send_msg(self, msg):
+        self.put({'name': 'msg', 'data': msg})
+        self.chat(self.username, time.time(), msg, True)
+
+    def chat(self, username, timestamp, message, self_msg=False):
+        envelope = msg.MSG(message, timestamp, username)
+        if not self_msg:
+            self.chat_deck.appendleft(envelope)
+        envelope.display()
+
+    def get_username_by_id(self, user_id):
+        try:
+            return self.workspace_info['users'][user_id]['username']
+        except Exception:
+            return ""
+
+    def handler(self, name, data):
+        if name == 'patch':
+            Listener.apply_patch(data)
+        elif name == 'get_buf':
+            buf_id = data['id']
+            buf = listener.BUFS.get(buf_id)
+            if not buf:
+                return msg.warn("no buf found: %s.  Hopefully you didn't need that" % data)
+            timeout_id = buf.get('timeout_id')
+            if timeout_id:
+                utils.cancel_timeout(timeout_id)
+
+            if data['encoding'] == 'base64':
+                data['buf'] = base64.b64decode(data['buf'])
+            # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
+            listener.BUFS[buf_id] = data
+            view = listener.get_view(buf_id)
+            if view:
+                Listener.update_view(data, view)
+            else:
+                listener.save_buf(data)
+        elif name == 'create_buf':
+            if data['encoding'] == 'base64':
+                data['buf'] = base64.b64decode(data['buf'])
+            listener.BUFS[data['id']] = data
+            listener.PATHS_TO_IDS[data['path']] = data['id']
+            listener.save_buf(data)
+        elif name == 'rename_buf':
+            del listener.PATHS_TO_IDS[data['old_path']]
+            listener.PATHS_TO_IDS[data['path']] = data['id']
+            new = utils.get_full_path(data['path'])
+            old = utils.get_full_path(data['old_path'])
+            new_dir = os.path.split(new)[0]
+            if new_dir:
+                utils.mkdir(new_dir)
+            os.rename(old, new)
+            view = listener.get_view(data['id'])
+            if view:
+                view.retarget(new)
+        elif name == 'delete_buf':
+            path = utils.get_full_path(data['path'])
+            try:
+                utils.rm(path)
+            except Exception:
+                pass
+            listener.delete_buf(data['id'])
+        elif name == 'room_info':
+            Listener.reset()
+            G.JOINED_WORKSPACE = True
+            # Success! Reset counter
+            self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
+            self.retries = self.MAX_RETRIES
+
+            self.workspace_info = data
+            G.PERMS = data['perms']
+
+            if 'patch' not in data['perms']:
+                msg.log('We don\'t have patch permission. Setting buffers to read-only')
+
+            project_json = {
+                'folders': [
+                    {'path': G.PROJECT_PATH}
+                ]
+            }
+
+            utils.mkdir(G.PROJECT_PATH)
+            with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
+                project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
+
+            floo_json = {
+                'url': utils.to_workspace_url({
+                    'host': self.host,
+                    'owner': self.owner,
+                    'port': self.port,
+                    'workspace': self.workspace,
+                    'secure': self.secure,
+                })
+            }
+            with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
+                floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+
+            for buf_id, buf in data['bufs'].items():
+                buf_id = int(buf_id)  # json keys must be strings
+                buf_path = utils.get_full_path(buf['path'])
+                new_dir = os.path.dirname(buf_path)
+                utils.mkdir(new_dir)
+                listener.BUFS[buf_id] = buf
+                listener.PATHS_TO_IDS[buf['path']] = buf_id
+                view = listener.get_view(buf_id)
+                if view and not view.is_loading() and buf['encoding'] == 'utf8':
+                    view_text = listener.get_text(view)
+                    view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                    if view_md5 == buf['md5']:
+                        msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
+                        buf['buf'] = view_text
+                        G.VIEW_TO_HASH[view.buffer_id()] = view_md5
+                    else:
+                        Listener.get_buf(buf_id)
+                else:
+                    try:
+                        buf_fd = open(buf_path, 'rb')
+                        buf_buf = buf_fd.read()
+                        md5 = hashlib.md5(buf_buf).hexdigest()
+                        if md5 == buf['md5']:
+                            msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                            if buf['encoding'] == 'utf8':
+                                buf_buf = buf_buf.decode('utf-8')
+                            buf['buf'] = buf_buf
+                        else:
+                            Listener.get_buf(buf_id)
+                    except Exception as e:
+                        msg.debug('Error calculating md5:', e)
+                        Listener.get_buf(buf_id)
+
+            msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
+
+            temp_data = data.get('temp_data', {})
+            hangout = temp_data.get('hangout', {})
+            hangout_url = hangout.get('url')
+            if hangout_url:
+                self.prompt_join_hangout(hangout_url)
+
+            if self.on_room_info:
+                self.on_room_info()
+                self.on_room_info = None
+        elif name == 'user_info':
+            user_id = str(data['user_id'])
+            user_info = data['user_info']
+            self.workspace_info['users'][user_id] = user_info
+            if user_id == str(self.workspace_info['user_id']):
+                G.PERMS = user_info['perms']
+        elif name == 'join':
+            msg.log('%s joined the workspace' % data['username'])
+            user_id = str(data['user_id'])
+            self.workspace_info['users'][user_id] = data
+        elif name == 'part':
+            msg.log('%s left the workspace' % data['username'])
+            user_id = str(data['user_id'])
+            try:
+                del self.workspace_info['users'][user_id]
+            except Exception as e:
+                print('Unable to delete user %s from user list' % (data))
+            region_key = 'floobits-highlight-%s' % (user_id)
+            for window in sublime.windows():
+                for view in window.views():
+                    view.erase_regions(region_key)
+        elif name == 'highlight':
+            region_key = 'floobits-highlight-%s' % (data['user_id'])
+            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
+        elif name == 'set_temp_data':
+            hangout_data = data.get('data', {})
+            hangout = hangout_data.get('hangout', {})
+            hangout_url = hangout.get('url')
+            if hangout_url:
+                self.prompt_join_hangout(hangout_url)
+        elif name == 'saved':
+            try:
+                buf = listener.BUFS[data['id']]
+                username = self.get_username_by_id(data['user_id'])
+                msg.log('%s saved buffer %s' % (username, buf['path']))
+            except Exception as e:
+                msg.error(str(e))
+        elif name == 'request_perms':
+            print(data)
+            user_id = str(data.get('user_id'))
+            username = self.get_username_by_id(user_id)
+            if not username:
+                return msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            perm_mapping = {
+                'edit_room': 'edit',
+                'admin_room': 'admin',
+            }
+            perms = data.get('perms')
+            perms_str = ''.join([perm_mapping.get(p) for p in perms])
+            prompt = 'User %s is requesting %s permission for this room.' % (username, perms_str)
+            message = data.get('message')
+            if message:
+                prompt += '\n\n%s says: %s' % (username, message)
+            prompt += '\n\nDo you want to grant them permission?'
+            confirm = bool(sublime.ok_cancel_dialog(prompt))
+            if confirm:
+                action = 'add'
+            else:
+                action = 'reject'
+            self.put({
+                'name': 'perms',
+                'action': action,
+                'user_id': user_id,
+                'perms': perms
+            })
+        elif name == 'perms':
+            action = data['action']
+            user_id = str(data['user_id'])
+            user = self.workspace_info['users'].get(user_id)
+            if user is None:
+                msg.log('No user for id %s. Not handling perms event' % user_id)
+                return
+            perms = set(user['perms'])
+            if action == 'add':
+                perms += data['perms']
+            elif action == 'remove':
+                perms -= data['perms']
+            else:
+                return
+            user['perms'] = list(perms)
+            if user_id == self.workspace_info['user_id']:
+                G.PERMS = perms
+        elif name == 'msg':
+            self.on_msg(data)
+        else:
+            msg.debug('unknown name!', name, 'data:', data)
+
+    def prompt_join_hangout(self, hangout_url):
+        hangout_client = None
+        users = self.workspace_info.get('users')
+        for user_id, user in users.items():
+            if user['username'] == G.USERNAME and 'hangout' in user['client']:
+                hangout_client = user
+                break
+        if not hangout_client:
+            G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
+
+    def on_msg(self, data):
+        message = data.get('data')
+        self.chat(data['username'], data['time'], message)
+        window = G.WORKSPACE_WINDOW
+
+        def cb(selected):
+            if selected == -1:
+                return
+            envelope = self.chat_deck[selected]
+            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
+
+        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
+            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
+
+
+class RequestCredentialsConnection(BaseAgentConnection):
+
+    def __init__(self, token, **kwargs):
+        super(RequestCredentialsConnection, self).__init__(**kwargs)
+        self.token = token
+        webbrowser.open('https://%s/dash/link_editor/%s/' % (self.host, token))
+
+    def on_connect(self):
+        self.put({
+            'name': 'request_credentials',
+            'client': self.client,
+            'platform': sys.platform,
+            'token': self.token,
+            'version': G.__VERSION__
+        })
+
+    def handler(self, name, data):
+        if name == 'credentials':
+            with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
+                floorc_fd.write(floorc.encode('utf-8'))
+            utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
+            if not G.USERNAME or not G.SECRET:
+                sublime.message_dialog('Something went wrong. See https://%s/help/floorc/ to complete the installation.' % self.host)
+                api.send_error({'message': 'No username or secret'})
+            else:
+                p = os.path.join(G.BASE_DIR, 'welcome.md')
+                with open(p, 'wb') as fd:
+                    text = 'Welcome %s!\n\nYou\'re all set to collaborate. You may want to check out our docs at https://%s/help/plugins/#sublime-usage' % (G.USERNAME, self.host)
+                    fd.write(text.encode('utf-8'))
+                sublime.active_window().open_file(p)
+            self.stop()
+
+
+welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage.  \
+You must run \'Floobits - Complete Sign Up\' in the command palette before you can login to floobits.com.'
+
+
+class CreateAccountConnection(BaseAgentConnection):
+
+    def on_connect(self):
+        try:
+            username = getpass.getuser()
+        except:
+            username = ""
+
+        self.put({
+            'name': 'create_user',
+            'username': username,
+            'client': self.client,
+            'platform': sys.platform,
+            'version': G.__VERSION__
+        })
+
+    def handler(self, name, data):
+        if name == 'create_user':
+            del data['name']
+            try:
+                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
+                with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+                    floorc_fd.write(floorc.encode('utf-8'))
+                utils.reload_settings()
+                if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
+                    sublime.message_dialog('Something went wrong. You will need to sign up for an account to use Floobits.')
+                    api.send_error({'message': 'No username or secret'})
+                else:
+                    p = os.path.join(G.BASE_DIR, 'welcome.md')
+                    with open(p, 'wb') as fd:
+                        text = welcome_text % (G.USERNAME, self.host)
+                        fd.write(text.encode('utf-8'))
+                    d = utils.get_persistent_data()
+                    d['auto_generated_account'] = True
+                    utils.update_persistent_data(d)
+                    G.AUTO_GENERATED_ACCOUNT = True
+                    sublime.active_window().open_file(p)
+            except Exception as e:
+                msg.error(e)
+            try:
+                d = utils.get_persistent_data()
+                d['disable_account_creation'] = True
+                utils.update_persistent_data(d)
+            finally:
+                self.stop()

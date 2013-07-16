@@ -48,3 +48,13 @@ def get_workspace(owner, workspace):
     r = Request(url)
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     return urlopen(r, timeout=5)
+
+
+def send_error(data):
+    try:
+        url = 'https://%s/api/error/' % (G.DEFAULT_HOST)
+        r = Request(url, data=urlencode(data).encode('utf-8'))
+        return urlopen(r, timeout=5)
+    except Exception as e:
+        print(e)
+    return None
