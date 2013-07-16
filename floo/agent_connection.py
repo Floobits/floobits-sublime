@@ -95,7 +95,7 @@ class BaseAgentConnection(object):
         msg.log('Disconnected.')
 
     def is_ready(self):
-        return G.JOINED_WORKSPACE
+        return False
 
     @staticmethod
     def put(item):
@@ -279,6 +279,9 @@ class AgentConnection(BaseAgentConnection):
         protocol = self.secure and 'https' or 'http'
         return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
+    def is_ready(self):
+        return G.JOINED_WORKSPACE
+
     def reload_settings(self):
         utils.reload_settings(False)
         self.username = G.USERNAME
@@ -290,9 +293,8 @@ class AgentConnection(BaseAgentConnection):
 
         self.reload_settings()
 
-        self.put({
+        req = {
             'username': self.username,
-            'api_key': self.api_key,
             'secret': self.secret,
             'room': self.workspace,
             'room_owner': self.owner,
@@ -300,7 +302,11 @@ class AgentConnection(BaseAgentConnection):
             'platform': sys.platform,
             'supported_encodings': ['utf8', 'base64'],
             'version': G.__VERSION__
-        })
+        }
+
+        if self.api_key:
+            req['api_key'] = self.api_key
+        self.put(req)
 
     def stop(self):
         msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
@@ -319,6 +325,12 @@ class AgentConnection(BaseAgentConnection):
         if not self_msg:
             self.chat_deck.appendleft(envelope)
         envelope.display()
+
+    def get_username_by_id(self, user_id):
+        try:
+            return self.workspace_info['users'][user_id]['username']
+        except Exception:
+            return ""
 
     def handler(self, name, data):
         if name == 'patch':
@@ -477,19 +489,17 @@ class AgentConnection(BaseAgentConnection):
                 self.prompt_join_hangout(hangout_url)
         elif name == 'saved':
             try:
-                username = self.workspace_info['users'][data['user_id']]['username']
                 buf = listener.BUFS[data['id']]
+                username = self.get_username_by_id(data['user_id'])
                 msg.log('%s saved buffer %s' % (username, buf['path']))
             except Exception as e:
                 msg.error(str(e))
         elif name == 'request_perms':
             print(data)
             user_id = str(data.get('user_id'))
-            try:
-                username = self.workspace_info['users'][user_id]['username']
-            except Exception:
-                msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
-                return
+            username = self.get_username_by_id(user_id)
+            if not username:
+                return msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
             perm_mapping = {
                 'edit_room': 'edit',
                 'admin_room': 'admin',
