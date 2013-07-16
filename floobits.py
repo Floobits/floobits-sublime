@@ -173,8 +173,9 @@ def get_active_window(cb):
 
 
 def create_or_link_account():
-    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account.'
-        'If you have an account, click "Open browser". You can create an account any time.', 'Open browser')
+    account = sublime.ok_cancel_dialog('Welcome to Floobits!\n\nSome features require a Floobits account. '
+                                       'If you have an account, click "Open browser". '
+                                       'You can create an account any time.', 'Open browser')
     if account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsConnection(token)
@@ -205,7 +206,7 @@ def global_tick():
 
 
 def disconnect_dialog():
-    if G.AGENT and G.CONNECTED:
+    if G.AGENT and G.JOINED_WORKSPACE:
         disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave workspace %s.' % G.AGENT.workspace)
         if disconnect:
             msg.debug('Stopping agent.')

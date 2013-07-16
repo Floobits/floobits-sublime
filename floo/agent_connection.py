@@ -81,7 +81,7 @@ class BaseAgentConnection(object):
             self.sock.close()
         except Exception:
             pass
-        G.CONNECTED = False
+        G.JOINED_WORKSPACE = False
         self.call_select = False
         self.handshaken = False
         self.buf = bytes()
@@ -95,7 +95,7 @@ class BaseAgentConnection(object):
         msg.log('Disconnected.')
 
     def is_ready(self):
-        return G.CONNECTED
+        return G.JOINED_WORKSPACE
 
     @staticmethod
     def put(item):
@@ -368,7 +368,7 @@ class AgentConnection(BaseAgentConnection):
             listener.delete_buf(data['id'])
         elif name == 'room_info':
             Listener.reset()
-            G.CONNECTED = True
+            G.JOINED_WORKSPACE = True
             # Success! Reset counter
             self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
             self.retries = self.MAX_RETRIES
@@ -580,7 +580,7 @@ class RequestCredentialsConnection(BaseAgentConnection):
             with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                 floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc.encode('utf-8'))
-            utils.reload_settings()  # This only works because G.CONNECTED is False
+            utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
             if not G.USERNAME or not G.SECRET:
                 sublime.message_dialog('Something went wrong. See https://%s/help/floorc/ to complete the installation.' % self.host)
                 api.send_error({'message': 'No username or secret'})
@@ -615,7 +615,7 @@ class CreateAccountConnection(BaseAgentConnection):
                 floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                     floorc_fd.write(floorc.encode('utf-8'))
-                utils.reload_settings()  # This only works because G.CONNECTED is False
+                utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
                 if not G.USERNAME or not G.SECRET:
                     sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
                     api.send_error({'message': 'No username or secret2'})

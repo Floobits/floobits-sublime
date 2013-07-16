@@ -73,7 +73,7 @@ def is_view_loaded(view):
     """returns a buf if the view is loaded in sublime and
     the buf is populated by us"""
 
-    if not G.CONNECTED or view.is_loading():
+    if not G.JOINED_WORKSPACE or view.is_loading():
         return
 
     buf = get_buf(view)
@@ -183,7 +183,7 @@ class Listener(sublime_plugin.EventListener):
         reported = set()
         while Listener.views_changed:
             view, buf = Listener.views_changed.pop()
-            if not G.CONNECTED:
+            if not G.JOINED_WORKSPACE:
                 msg.debug('Not connected. Discarding view change.')
                 continue
             if view.is_loading():
@@ -209,7 +209,7 @@ class Listener(sublime_plugin.EventListener):
         while Listener.selection_changed:
             view, buf, summon = Listener.selection_changed.pop()
 
-            if not G.CONNECTED:
+            if not G.JOINED_WORKSPACE:
                 msg.debug('Not connected. Discarding selection change.')
                 continue
             # consume highlight events to avoid leak

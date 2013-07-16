@@ -194,7 +194,7 @@ def to_scheme(secure):
 
 
 def is_shared(p):
-    if not G.CONNECTED:
+    if not G.JOINED_WORKSPACE:
         return False
     p = unfuck_path(p)
     if to_rel_path(p).find("../") == 0:
