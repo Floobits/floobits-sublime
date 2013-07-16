@@ -14,6 +14,7 @@ import binascii
 import subprocess
 import traceback
 import webbrowser
+import threading
 from collections import defaultdict
 
 import sublime_plugin
@@ -202,7 +203,7 @@ def create_or_link_account():
 
 can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
 if not can_auth:
-    utils.set_timeout(create_or_link_account, 50)
+    threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
 
 
 def global_tick():
