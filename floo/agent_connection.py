@@ -625,7 +625,7 @@ class CreateAccountConnection(BaseAgentConnection):
                 floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                     floorc_fd.write(floorc.encode('utf-8'))
-                utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
+                utils.reload_settings()
                 if not G.USERNAME or not G.SECRET:
                     sublime.message_dialog('Something went wrong. You will need to sign up for an account to use floobits.')
                     api.send_error({'message': 'No username or secret2'})

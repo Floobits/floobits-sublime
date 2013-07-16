@@ -19,7 +19,7 @@ SECURE = True
 
 USERNAME = ''
 SECRET = ''
-API_KEY = ""
+API_KEY = ''
 
 ALERT_ON_MSG = True
 
