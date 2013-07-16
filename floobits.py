@@ -202,7 +202,7 @@ def create_or_link_account():
 
 can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
 if not can_auth:
-    create_or_link_account()
+    utils.set_timeout(create_or_link_account, 50)
 
 
 def global_tick():
