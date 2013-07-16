@@ -639,7 +639,7 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
         return bool(super(FloobitsCreateHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
-class FloobitsPromptHangoutCommand(sublime_plugin.WindowCommand):
+class FloobitsPromptHangoutCommand(FloobitsBaseCommand):
     def run(self, hangout_url):
         confirm = bool(sublime.ok_cancel_dialog('This workspace is being edited in a Google+ Hangout? Do you want to join the hangout?'))
         if not confirm:
@@ -685,9 +685,6 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         G.STALKER_MODE = True
         # TODO: go to most recent highlight
 
-    def is_visible(self):
-        return bool(self.is_enabled())
-
     def is_enabled(self):
         return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
 
@@ -695,9 +692,6 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
 class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = False
-
-    def is_visible(self):
-        return bool(self.is_enabled())
 
     def is_enabled(self):
         return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
@@ -708,9 +702,6 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
         url = G.AGENT.workspace_url + '/settings'
         webbrowser.open(url, new=2, autoraise=True)
 
-    def is_visible(self):
-        return bool(self.is_enabled())
-
     def is_enabled(self):
         return bool(super(FloobitsOpenWorkspaceSettingsCommand, self).is_enabled() and G.PERMS and 'kick' in G.PERMS)
 
@@ -718,9 +709,6 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
 class RequestPermissionCommand(FloobitsBaseCommand):
     def run(self, perms, *args, **kwargs):
         G.AGENT.put('request_perms', {'perms': perms})
-
-    def is_visible(self):
-        return bool(self.is_enabled())
 
     def is_enabled(self):
         if not super(RequestPermissionCommand, self).is_enabled():
