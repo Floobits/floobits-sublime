@@ -166,7 +166,7 @@ def migrate_symlinks():
 migrate_symlinks()
 
 d = utils.get_persistent_data()
-G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account')
+G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
 
 def get_active_window(cb):
