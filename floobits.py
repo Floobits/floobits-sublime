@@ -224,6 +224,15 @@ def disconnect_dialog():
     return True
 
 
+def on_room_info_msg():
+    who = 'Your friends'
+    anon_perms = G.AGENT.workspace_info.get('anon_perms')
+    if 'get_buf' in anon_perms:
+        who = 'Anyone'
+    _msg = "You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser." % (G.AGENT.workspace_url, who)
+    sublime.message_dialog(_msg)
+
+
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
         return bool(self.is_enabled())
@@ -304,14 +313,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     print('found workspace url', workspace_url)
                     break
 
-        def on_room_info_msg():
-            who = 'Your friends'
-            anon_perms = G.AGENT.workspace_info.get('anon_perms')
-            if 'get_buf' in anon_perms:
-                who = 'Anyone'
-            _msg = "You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser." % (workspace_url, who)
-            sublime.message_dialog(_msg)
-
         if workspace_url:
             try:
                 api.get_workspace_by_url(workspace_url)
@@ -320,7 +321,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             else:
                 on_room_info_waterfall.add(on_room_info_msg)
                 on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
-                # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
@@ -381,10 +381,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
         add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
 
-        _msg = "You just created the new workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-        on_room_info_waterfall.add(sublime.message_dialog, _msg)
+        on_room_info_waterfall.add(on_room_info_msg)
 
-        # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
         })
