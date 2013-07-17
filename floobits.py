@@ -304,14 +304,21 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     print('found workspace url', workspace_url)
                     break
 
+        def on_room_info_msg():
+            who = 'Your friends'
+            anon_perms = G.AGENT.workspace_info.get('anon_perms')
+            if 'get_buf' in anon_perms:
+                who = 'Anyone'
+            _msg = "You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser." % (workspace_url, who)
+            sublime.message_dialog(_msg)
+
         if workspace_url:
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
                 pass
             else:
-                _msg = "You just joined the workspace: \n\n{url}\n\nYour friends can join this workspace in Floobits or by visiting it in a browser.".format(url=workspace_url)
-                on_room_info_waterfall.add(sublime.message_dialog, _msg)
+                on_room_info_waterfall.add(on_room_info_msg)
                 on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
                 # webbrowser.open(workspace_url + '/settings', new=2, autoraise=True)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
