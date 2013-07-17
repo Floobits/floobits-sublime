@@ -359,6 +359,10 @@ class AgentConnection(BaseAgentConnection):
             listener.BUFS[data['id']] = data
             listener.PATHS_TO_IDS[data['path']] = data['id']
             listener.save_buf(data)
+            cb = listener.CREATE_BUF_CBS.get(data['path'])
+            if cb:
+                cb(data['id'])
+                del listener.CREATE_BUF_CBS[data['path']]
         elif name == 'rename_buf':
             del listener.PATHS_TO_IDS[data['old_path']]
             listener.PATHS_TO_IDS[data['path']] = data['id']
