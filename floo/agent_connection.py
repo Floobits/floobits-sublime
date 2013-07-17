@@ -398,7 +398,7 @@ class AgentConnection(BaseAgentConnection):
             if 'patch' not in data['perms']:
                 msg.log('No patch permission. Setting buffers to read-only')
                 if sublime.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
-                    self.put('request_perms', {'perms': ['edit_room']})
+                    self.put({'name': 'request_perms', 'perms': ['edit_room']})
 
             project_json = {
                 'folders': [
@@ -540,9 +540,9 @@ class AgentConnection(BaseAgentConnection):
                 return
             perms = set(user['perms'])
             if action == 'add':
-                perms += data['perms']
+                perms |= set(data['perms'])
             elif action == 'remove':
-                perms -= data['perms']
+                perms -= set(data['perms'])
             else:
                 return
             user['perms'] = list(perms)

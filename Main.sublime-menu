@@ -8,9 +8,9 @@
     "children": [
       {
         "caption": "Request Edit Permission",
-        "command": "floobits_request_permision",
+        "command": "floobits_request_permission",
         "args": {
-          "perms": ["edit"]
+          "perms": ["edit_room"]
         }
       },
       {

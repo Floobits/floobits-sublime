@@ -729,7 +729,10 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
 
 class RequestPermissionCommand(FloobitsBaseCommand):
     def run(self, perms, *args, **kwargs):
-        G.AGENT.put('request_perms', {'perms': perms})
+        G.AGENT.put({
+            'name': 'request_perms',
+            'perms': perms
+        })
 
     def is_enabled(self):
         if not super(RequestPermissionCommand, self).is_enabled():
