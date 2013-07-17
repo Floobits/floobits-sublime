@@ -361,8 +361,11 @@ class AgentConnection(BaseAgentConnection):
             listener.save_buf(data)
             cb = listener.CREATE_BUF_CBS.get(data['path'])
             if cb:
-                cb(data['id'])
                 del listener.CREATE_BUF_CBS[data['path']]
+                try:
+                    cb(data['id'])
+                except Exception as e:
+                    print(e)
         elif name == 'rename_buf':
             del listener.PATHS_TO_IDS[data['old_path']]
             listener.PATHS_TO_IDS[data['path']] = data['id']

@@ -617,9 +617,12 @@ class Listener(sublime_plugin.EventListener):
             msg.debug('summoning selection in view %s, buf id %s' % (buf['path'], buf['id']))
             Listener.selection_changed.append((view, buf, True))
         else:
+            path = view.file_name()
+            if not utils.is_shared(path):
+                sublime.error_message('Can\'t summon because %s is not in shared path %s.' % (path, G.PROJECT_PATH))
+                return
             share = sublime.ok_cancel_dialog('This file isn\'t shared. Would you like to share it?', 'Share')
             if share:
-                path = view.file_name()
                 sel = [[x.a, x.b] for x in view.sel()]
                 CREATE_BUF_CBS[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
                 Listener.create_buf(path, True)
