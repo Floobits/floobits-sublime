@@ -359,6 +359,13 @@ class AgentConnection(BaseAgentConnection):
             listener.BUFS[data['id']] = data
             listener.PATHS_TO_IDS[data['path']] = data['id']
             listener.save_buf(data)
+            cb = listener.CREATE_BUF_CBS.get(data['path'])
+            if cb:
+                del listener.CREATE_BUF_CBS[data['path']]
+                try:
+                    cb(data['id'])
+                except Exception as e:
+                    print(e)
         elif name == 'rename_buf':
             del listener.PATHS_TO_IDS[data['old_path']]
             listener.PATHS_TO_IDS[data['path']] = data['id']
@@ -389,7 +396,9 @@ class AgentConnection(BaseAgentConnection):
             G.PERMS = data['perms']
 
             if 'patch' not in data['perms']:
-                msg.log('We don\'t have patch permission. Setting buffers to read-only')
+                msg.log('No patch permission. Setting buffers to read-only')
+                if sublime.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
+                    self.put({'name': 'request_perms', 'perms': ['edit_room']})
 
             project_json = {
                 'folders': [
@@ -531,9 +540,9 @@ class AgentConnection(BaseAgentConnection):
                 return
             perms = set(user['perms'])
             if action == 'add':
-                perms += data['perms']
+                perms |= set(data['perms'])
             elif action == 'remove':
-                perms -= data['perms']
+                perms -= set(data['perms'])
             else:
                 return
             user['perms'] = list(perms)

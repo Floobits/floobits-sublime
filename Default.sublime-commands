@@ -39,7 +39,7 @@
     "caption": "Floobits - Request Edit Permission",
     "command": "floobits_request_permision",
     "args": {
-      "perms": ["edit"]
+      "perms": ["edit_room"]
     }
   },
   {

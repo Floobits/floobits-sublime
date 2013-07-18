@@ -23,6 +23,7 @@ except ImportError:
 
 
 BUFS = {}
+CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
 DMP = dmp.diff_match_patch()
 ON_LOAD = {}
@@ -120,6 +121,18 @@ def disable_stalker_mode(timeout):
         disable_stalker_mode_timeout = utils.set_timeout(reenable_stalker_mode, timeout)
 
 
+def send_summon(buf_id, sel):
+    highlight_json = {
+        'id': buf_id,
+        'name': 'highlight',
+        'ranges': sel,
+        'ping': True,
+        'summon': True,
+    }
+    if G.AGENT and G.AGENT.is_ready():
+        G.AGENT.put(highlight_json)
+
+
 class FlooPatch(object):
 
     def __init__(self, view, buf):
@@ -172,8 +185,9 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def reset():
-        global BUFS, PATHS_TO_IDS
+        global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS
         BUFS = {}
+        CREATE_BUF_CBS = {}
         PATHS_TO_IDS = {}
         Listener.views_changed = []
         Listener.selection_changed = []
@@ -602,6 +616,16 @@ class Listener(sublime_plugin.EventListener):
         if buf:
             msg.debug('summoning selection in view %s, buf id %s' % (buf['path'], buf['id']))
             Listener.selection_changed.append((view, buf, True))
+        else:
+            path = view.file_name()
+            if not utils.is_shared(path):
+                sublime.error_message('Can\'t summon because %s is not in shared path %s.' % (path, G.PROJECT_PATH))
+                return
+            share = sublime.ok_cancel_dialog('This file isn\'t shared. Would you like to share it?', 'Share')
+            if share:
+                sel = [[x.a, x.b] for x in view.sel()]
+                CREATE_BUF_CBS[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
+                Listener.create_buf(path, True)
 
     def on_activated(self, view):
         buf = get_buf(view)
