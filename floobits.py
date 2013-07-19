@@ -6,6 +6,7 @@ except NameError:
 
 import sys
 import os
+import re
 import hashlib
 import imp
 import json
@@ -348,7 +349,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
-        if workspace_name and dir_to_share:
+        if workspace_name and dir_to_share and prompt == 'Workspace name:':
             return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
@@ -369,7 +370,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 'workspace_name': workspace_name,
             }
             if e.code == 400:
-                workspace_name = ''.join(workspace_name.split())
+                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
                 kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
             else:
                 kwargs['prompt'] = 'Workspace %s already exists. Choose another name:' % workspace_name
