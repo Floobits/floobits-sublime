@@ -6,12 +6,12 @@
 			"description": "Real-time collaboration plugin for Sublime Text 2/3",
 			"author": "Floobits",
 			"homepage": "https://github.com/Floobits/floobits-sublime/",
-			"last_modified": "2013-07-19 01:56:45",
+			"last_modified": "2013-07-19 23:38:28",
 			"platforms": {
 				"*": [
 					{
-						"version": "0.17.6",
-						"url": "http://github.com/Floobits/floobits-sublime/archive/0.17.6.zip"
+						"version": "0.17.7",
+						"url": "http://github.com/Floobits/floobits-sublime/archive/0.17.7.zip"
 					}
 				]
 			}
