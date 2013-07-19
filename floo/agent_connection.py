@@ -42,6 +42,17 @@ except Exception:
     connect_errno = (errno.EINPROGRESS, errno.EALREADY)
     iscon_errno = errno.EISCONN
 
+BASE_FLOORC = '''
+# Floobits config
+
+# Logs messages to Sublime Text console instead of a special view
+#log_to_console 1
+
+# Enables debug mode
+#debug 1
+
+'''
+
 
 class BaseAgentConnection(object):
     ''' Simple chat server using select '''
@@ -597,7 +608,7 @@ class RequestCredentialsConnection(BaseAgentConnection):
     def handler(self, name, data):
         if name == 'credentials':
             with open(G.FLOORC_PATH, 'wb') as floorc_fd:
-                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
+                floorc = BASE_FLOORC + '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc.encode('utf-8'))
             utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
             if not G.USERNAME or not G.SECRET:
@@ -636,7 +647,7 @@ class CreateAccountConnection(BaseAgentConnection):
         if name == 'create_user':
             del data['name']
             try:
-                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
+                floorc = BASE_FLOORC + '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                     floorc_fd.write(floorc.encode('utf-8'))
                 utils.reload_settings()
