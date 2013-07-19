@@ -365,6 +365,10 @@ class Listener(sublime_plugin.EventListener):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+        if os.path.islink(path):
+            msg.error('Skipping adding %s because it is a symlink.' % path)
+            return
+        # TODO: obey git ignore unless always_add is true
         if os.path.isdir(path):
             if os.path.exists(os.path.join(path, '.git')):
                 command = 'git ls-files %s' % path
