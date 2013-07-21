@@ -196,6 +196,8 @@ class BaseAgentConnection(object):
                 if name == 'error':
                     message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                     msg.error(message)
+                    if data.get('flash'):
+                        sublime.error_message('Floobits: %s' % str(data.get('msg')))
                 elif name == 'disconnect':
                     message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
                     msg.error(message)
