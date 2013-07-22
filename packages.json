@@ -1,20 +1,20 @@
 {
-	"schema_version": "1.2",
-	"packages": [
-		{
-			"name": "Floobits",
-			"description": "Real-time collaboration plugin for Sublime Text 2/3",
-			"author": "Floobits",
-			"homepage": "https://github.com/Floobits/floobits-sublime/",
-			"last_modified": "2013-07-19 23:38:28",
-			"platforms": {
-				"*": [
-					{
-						"version": "0.17.7",
-						"url": "http://github.com/Floobits/floobits-sublime/archive/0.17.7.zip"
-					}
-				]
-			}
-		}
-	]
+    "packages": [
+        {
+            "author": "Floobits",
+            "description": "Real-time collaboration plugin for Sublime Text 2/3",
+            "homepage": "https://github.com/Floobits/floobits-sublime/",
+            "last_modified": "2013-07-21 17:47:18",
+            "name": "Floobits",
+            "platforms": {
+                "*": [
+                    {
+                        "url": "http://github.com/Floobits/floobits-sublime/archive/0.17.9.zip",
+                        "version": "0.17.9"
+                    }
+                ]
+            }
+        }
+    ],
+    "schema_version": "1.2"
 }
