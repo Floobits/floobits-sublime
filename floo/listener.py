@@ -373,7 +373,12 @@ class Listener(sublime_plugin.EventListener):
             msg.log('Not creating buf for ignored file %s' % path)
             return
         if os.path.isdir(path):
-            ig = ig or ignore.build_ignores(path)
+            if ig is None:
+                try:
+                    ig = ignore.build_ignores(path)
+                except Exception as e:
+                    msg.error('Error adding %s: %s' % (path, str(e)))
+                    return
 
             for p in os.listdir(path):
                 p_path = os.path.join(path, p)
