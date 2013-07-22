@@ -102,7 +102,7 @@ def delete_buf(buf_id):
             del PATHS_TO_IDS[buf['path']]
             del BUFS[buf_id]
     except KeyError:
-        msg.debug("KeyError deleting buf id %s" % buf_id)
+        msg.debug('KeyError deleting buf id %s' % buf_id)
 
 
 def reenable_stalker_mode():
@@ -314,7 +314,7 @@ class Listener(sublime_plugin.EventListener):
             utils.cancel_timeout(timeout_id)
 
         if not clean_patch:
-            msg.log("Couldn't patch %s cleanly." % buf['path'])
+            msg.log('Couldn\'t patch %s cleanly.' % buf['path'])
             return Listener.get_buf(buf_id, view)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
@@ -385,7 +385,7 @@ class Listener(sublime_plugin.EventListener):
                             utils.set_timeout(Listener.create_buf, 0, add_path)
                         return
                 except Exception as e:
-                    msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
+                    msg.debug('Couldn\'t run %s. This is probably OK. Error: %s' % (command, str(e)))
 
             for dirpath, dirnames, filenames in os.walk(path):
                 # Don't care about hidden stuff
