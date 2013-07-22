@@ -362,7 +362,7 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(req)
 
     @staticmethod
-    def create_buf(path, always_add=False, ig=None):
+    def create_buf(path, ig=None):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
@@ -377,6 +377,9 @@ class Listener(sublime_plugin.EventListener):
 
             for p in os.listdir(path):
                 p_path = os.path.join(path, p)
+                if p[0] == '.':
+                    msg.log('Not creating buf for hidden path %s' % p_path)
+                    continue
                 if ig.is_ignored(p_path):
                     msg.log('Not creating buf for ignored path %s' % p_path)
                     continue
@@ -619,7 +622,7 @@ class Listener(sublime_plugin.EventListener):
             if share:
                 sel = [[x.a, x.b] for x in view.sel()]
                 CREATE_BUF_CBS[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
-                Listener.create_buf(path, True)
+                Listener.create_buf(path)
 
     def on_activated(self, view):
         buf = get_buf(view)
