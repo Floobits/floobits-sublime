@@ -369,7 +369,9 @@ class Listener(sublime_plugin.EventListener):
         if os.path.islink(path):
             msg.error('Skipping adding %s because it is a symlink.' % path)
             return
-        # TODO: obey git ignore unless always_add is true
+        if ig and ig.is_ignored(path):
+            msg.log('Not creating buf for ignored file %s' % path)
+            return
         if os.path.isdir(path):
             ig = ig or ignore.build_ignores(path)
 
@@ -384,9 +386,6 @@ class Listener(sublime_plugin.EventListener):
                     utils.set_timeout(Listener.create_buf, 0, p_path, child_ig)
                 elif stat.S_ISREG(s.st_mode):
                     utils.set_timeout(Listener.create_buf, 0, p_path, ig)
-            return
-        if ig and ig.is_ignored(path):
-            msg.log('Not creating buf for ignored file %s' % path)
             return
         try:
             buf_fd = open(path, 'rb')
