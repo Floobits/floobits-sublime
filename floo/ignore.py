@@ -19,7 +19,7 @@ class Ignore(object):
         self.parent = parent
         self.ignores = []
         self.path = path
-        msg.log('Initializing ignores for %s' % path)
+        msg.debug('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
@@ -36,16 +36,21 @@ class Ignore(object):
                 continue
             if ignore[0] == '#':
                 continue
-            msg.log('Adding %s to ignore patterns' % ignore)
+            msg.debug('Adding %s to ignore patterns' % ignore)
             self.ignores.append(ignore)
 
     def is_ignored(self, path):
         rel_path = os.path.relpath(path, self.path)
         for pattern in self.ignores:
-            if fnmatch.fnmatch(os.path.split(rel_path)[1], pattern):
-                return True
-            if fnmatch.fnmatch(rel_path, pattern):
-                return True
+            base_path, file_name = os.path.split(rel_path)
+            if pattern[0] == '/':
+                if os.path.samefile(base_path, self.path) and fnmatch.fnmatch(file_name, pattern[1:]):
+                    return True
+            else:
+                if fnmatch.fnmatch(file_name, pattern):
+                    return True
+                if fnmatch.fnmatch(rel_path, pattern):
+                    return True
         if self.parent:
             return self.parent.is_ignored(path)
         return False
