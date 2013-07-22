@@ -10,7 +10,7 @@ except ImportError:
 
 
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore']
-#root_ignores = Ignore(None, G.PROJECT_PATH)
+# TODO: grab global git ignores:
 # gitconfig_file = popen("git config -z --get core.excludesfile", "r");
 
 
