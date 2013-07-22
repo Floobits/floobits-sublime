@@ -23,6 +23,8 @@ pkg_json['packages'][0]['platforms']['*'][0]['url'] = 'http://github.com/Floobit
 with open('packages.json', 'w') as fd:
     fd.write(json.dumps(pkg_json, indent=4, separators=(',', ': '), sort_keys=True))
 
+os.system('git add packages.json')
+os.system('git commit -m "Tag new release: %s"' % version)
 os.system('git tag %s' % version)
 os.system('git push --tags')
 os.system('git push')
