@@ -383,8 +383,9 @@ class Listener(sublime_plugin.EventListener):
             for p in os.listdir(path):
                 p_path = os.path.join(path, p)
                 if p[0] == '.':
-                    msg.log('Not creating buf for hidden path %s' % p_path)
-                    continue
+                    if p not in ignore.HIDDEN_WHITELIST:
+                        msg.log('Not creating buf for hidden path %s' % p_path)
+                        continue
                 if ig.is_ignored(p_path):
                     msg.log('Not creating buf for ignored path %s' % p_path)
                     continue

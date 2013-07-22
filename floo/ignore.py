@@ -10,6 +10,8 @@ except ImportError:
 
 
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore']
+# TODO: make this configurable
+HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 # TODO: grab global git ignores:
 # gitconfig_file = popen("git config -z --get core.excludesfile", "r");
 
