@@ -1,8 +1,8 @@
 import os
 import hashlib
 from datetime import datetime
-import subprocess
 import base64
+import stat
 
 import sublime
 import sublime_plugin
@@ -11,11 +11,12 @@ try:
     from . import dmp_monkey
     dmp_monkey.monkey_patch()
     from .lib import diff_match_patch as dmp
-    from . import msg, shared as G, utils
-    assert dmp and G and msg and utils
+    from . import ignore, msg, shared as G, utils
+    assert dmp and ignore and G and msg and utils
 except ImportError:
     import dmp_monkey
     dmp_monkey.monkey_patch()
+    import ignore
     from lib import diff_match_patch as dmp
     import msg
     import shared as G
@@ -102,7 +103,7 @@ def delete_buf(buf_id):
             del PATHS_TO_IDS[buf['path']]
             del BUFS[buf_id]
     except KeyError:
-        msg.debug("KeyError deleting buf id %s" % buf_id)
+        msg.debug('KeyError deleting buf id %s' % buf_id)
 
 
 def reenable_stalker_mode():
@@ -314,7 +315,7 @@ class Listener(sublime_plugin.EventListener):
             utils.cancel_timeout(timeout_id)
 
         if not clean_patch:
-            msg.log("Couldn't patch %s cleanly." % buf['path'])
+            msg.log('Couldn\'t patch %s cleanly.' % buf['path'])
             return Listener.get_buf(buf_id, view)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
@@ -361,37 +362,39 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(req)
 
     @staticmethod
-    def create_buf(path, always_add=False):
+    def create_buf(path, ig=None):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
+        if os.path.islink(path):
+            msg.error('Skipping adding %s because it is a symlink.' % path)
+            return
+        if ig and ig.is_ignored(path):
+            msg.log('Not creating buf for ignored file %s' % path)
+            return
         if os.path.isdir(path):
-            if os.path.exists(os.path.join(path, '.git')):
-                command = 'git ls-files %s' % path
+            if ig is None:
                 try:
-                    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=path)
-                    stdoutdata, stderrdata = p.communicate()
-                    if p.returncode == 0:
-                        for git_path in stdoutdata.split('\n'):
-                            git_path = git_path.strip()
-                            if not git_path:
-                                continue
-                            add_path = os.path.join(path, git_path)
-                            msg.debug('adding %s' % add_path)
-                            utils.set_timeout(Listener.create_buf, 0, add_path)
-                        return
+                    ig = ignore.build_ignores(path)
                 except Exception as e:
-                    msg.debug("Couldn't run %s. This is probably OK. Error: %s" % (command, str(e)))
+                    msg.error('Error adding %s: %s' % (path, str(e)))
+                    return
 
-            for dirpath, dirnames, filenames in os.walk(path):
-                # Don't care about hidden stuff
-                dirnames[:] = [d for d in dirnames if d[0] != '.']
-                for f in filenames:
-                    f_path = os.path.join(dirpath, f)
-                    if f[0] == '.':
-                        msg.log('Not creating buf for hidden file %s' % f_path)
-                    else:
-                        utils.set_timeout(Listener.create_buf, 0, f_path)
+            for p in os.listdir(path):
+                p_path = os.path.join(path, p)
+                if p[0] == '.':
+                    if p not in ignore.HIDDEN_WHITELIST:
+                        msg.log('Not creating buf for hidden path %s' % p_path)
+                        continue
+                if ig.is_ignored(p_path):
+                    msg.log('Not creating buf for ignored path %s' % p_path)
+                    continue
+                s = os.lstat(p_path)
+                if stat.S_ISDIR(s.st_mode):
+                    child_ig = ignore.Ignore(ig, p_path)
+                    utils.set_timeout(Listener.create_buf, 0, p_path, child_ig)
+                elif stat.S_ISREG(s.st_mode):
+                    utils.set_timeout(Listener.create_buf, 0, p_path, ig)
             return
         try:
             buf_fd = open(path, 'rb')
@@ -625,7 +628,7 @@ class Listener(sublime_plugin.EventListener):
             if share:
                 sel = [[x.a, x.b] for x in view.sel()]
                 CREATE_BUF_CBS[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
-                Listener.create_buf(path, True)
+                Listener.create_buf(path)
 
     def on_activated(self, view):
         buf = get_buf(view)

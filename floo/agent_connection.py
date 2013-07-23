@@ -42,6 +42,17 @@ except Exception:
     connect_errno = (errno.EINPROGRESS, errno.EALREADY)
     iscon_errno = errno.EISCONN
 
+BASE_FLOORC = '''
+# Floobits config
+
+# Logs messages to Sublime Text console instead of a special view
+#log_to_console 1
+
+# Enables debug mode
+#debug 1
+
+'''
+
 
 class BaseAgentConnection(object):
     ''' Simple chat server using select '''
@@ -185,6 +196,8 @@ class BaseAgentConnection(object):
                 if name == 'error':
                     message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
                     msg.error(message)
+                    if data.get('flash'):
+                        sublime.error_message('Floobits: %s' % str(data.get('msg')))
                 elif name == 'disconnect':
                     message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
                     msg.error(message)
@@ -228,7 +241,7 @@ class BaseAgentConnection(object):
                 except ssl.SSLError as e:
                     return
                 except Exception as e:
-                    msg.error("Error in SSL handshake:", e)
+                    msg.error('Error in SSL handshake:', e)
                     return self.reconnect()
                 else:
                     self.handshaken = True
@@ -277,7 +290,7 @@ class AgentConnection(BaseAgentConnection):
     @property
     def workspace_url(self):
         protocol = self.secure and 'https' or 'http'
-        return "{protocol}://{host}/r/{owner}/{name}".format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
     def is_ready(self):
         return G.JOINED_WORKSPACE
@@ -330,7 +343,7 @@ class AgentConnection(BaseAgentConnection):
         try:
             return self.workspace_info['users'][user_id]['username']
         except Exception:
-            return ""
+            return ''
 
     def handler(self, name, data):
         if name == 'patch':
@@ -339,7 +352,7 @@ class AgentConnection(BaseAgentConnection):
             buf_id = data['id']
             buf = listener.BUFS.get(buf_id)
             if not buf:
-                return msg.warn("no buf found: %s.  Hopefully you didn't need that" % data)
+                return msg.warn('no buf found: %s.  Hopefully you didn\'t need that' % data)
             timeout_id = buf.get('timeout_id')
             if timeout_id:
                 utils.cancel_timeout(timeout_id)
@@ -597,7 +610,7 @@ class RequestCredentialsConnection(BaseAgentConnection):
     def handler(self, name, data):
         if name == 'credentials':
             with open(G.FLOORC_PATH, 'wb') as floorc_fd:
-                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data['credentials'].items()]) + '\n'
+                floorc = BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc.encode('utf-8'))
             utils.reload_settings()  # This only works because G.JOINED_WORKSPACE is False
             if not G.USERNAME or not G.SECRET:
@@ -622,7 +635,7 @@ class CreateAccountConnection(BaseAgentConnection):
         try:
             username = getpass.getuser()
         except:
-            username = ""
+            username = ''
 
         self.put({
             'name': 'create_user',
@@ -636,7 +649,7 @@ class CreateAccountConnection(BaseAgentConnection):
         if name == 'create_user':
             del data['name']
             try:
-                floorc = '\n'.join(["%s %s" % (k, v) for k, v in data.items()]) + '\n'
+                floorc = BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'wb') as floorc_fd:
                     floorc_fd.write(floorc.encode('utf-8'))
                 utils.reload_settings()

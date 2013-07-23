@@ -6,6 +6,7 @@ except NameError:
 
 import sys
 import os
+import re
 import hashlib
 import imp
 import json
@@ -37,8 +38,8 @@ if ssl is False and sublime.platform() == 'linux':
     ssl_path = os.path.join(plugin_path, 'lib', 'linux')
     lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
     if not PY2:
-        ssl_path += "-py3"
-        lib_path += "-py3"
+        ssl_path += '-py3'
+        lib_path += '-py3'
     for version in ssl_versions:
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
@@ -54,14 +55,14 @@ if ssl is False and sublime.platform() == 'linux':
         print('Hooray! %s is a winner!' % so_path)
         filename, path, desc = imp.find_module('ssl', [ssl_path])
         if filename is None:
-            print("Couldn't find ssl module at %s" % ssl_path)
+            print('Couldn\'t find ssl module at %s' % ssl_path)
         else:
             try:
                 ssl = imp.load_module('ssl', filename, path, desc)
             except ImportError as e:
                 print('Failed loading ssl module at: %s' % unicode(e))
     else:
-        print("Couldn't find an _ssl shared lib that's compatible with your version of linux. Sorry :(")
+        print('Couldn\'t find an _ssl shared lib that\'s compatible with your version of linux. Sorry :(')
 
 
 try:
@@ -110,7 +111,7 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     workspaces = d['workspaces']
     if owner not in workspaces:
         workspaces[owner] = {}
-    workspaces[owner][name] = {'url': url, "path": path}
+    workspaces[owner][name] = {'url': url, 'path': path}
     utils.update_persistent_data(d)
 
 
@@ -137,7 +138,7 @@ def get_legacy_projects():
                 fd.close()
             except Exception:
                 url = utils.to_workspace_url({
-                    'port': 3448, 'secure': True, 'host': "floobits.com", 'owner': owner, 'workspace': workspace
+                    'port': 3448, 'secure': True, 'host': 'floobits.com', 'owner': owner, 'workspace': workspace
                 })
             floorc_json[owner][workspace] = {
                 'path': workspace_path,
@@ -229,7 +230,7 @@ def on_room_info_msg():
     anon_perms = G.AGENT.workspace_info.get('anon_perms')
     if 'get_buf' in anon_perms:
         who = 'Anyone'
-    _msg = "You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser." % (G.AGENT.workspace_url, who)
+    _msg = 'You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser.' % (G.AGENT.workspace_url, who)
     sublime.message_dialog(_msg)
 
 
@@ -277,7 +278,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             try:
                 utils.mkdir(dir_to_share)
             except Exception:
-                return sublime.error_message("The directory %s doesn't exist and I can't make it." % dir_to_share)
+                return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
 
             floo_file = os.path.join(dir_to_share, '.floo')
 
@@ -288,7 +289,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             except (IOError, OSError):
                 pass
             except Exception:
-                print("Couldn't read the floo_info file: %s" % floo_file)
+                print('Couldn\'t read the floo_info file: %s' % floo_file)
 
             workspace_url = info.get('url')
             try:
@@ -348,7 +349,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
-        if workspace_name and dir_to_share:
+        if workspace_name and dir_to_share and prompt == 'Workspace name:':
             return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
@@ -369,7 +370,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 'workspace_name': workspace_name,
             }
             if e.code == 400:
-                workspace_name = ''.join(workspace_name.split())
+                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
                 kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
             else:
                 kwargs['prompt'] = 'Workspace %s already exists. Choose another name:' % workspace_name
@@ -485,7 +486,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 try:
                     utils.mkdir(d)
                 except Exception as e:
-                    return sublime.error_message("Could not create directory %s: %s" % (d, str(e)))
+                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
 
             G.PROJECT_PATH = d
             add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
@@ -504,7 +505,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         try:
             G.PROJECT_PATH = d['workspaces'][result['owner']][result['workspace']]['path']
         except Exception as e:
-            G.PROJECT_PATH = ""
+            G.PROJECT_PATH = ''
 
         print('Project path is %s' % G.PROJECT_PATH)
 
@@ -528,7 +529,7 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
         secret = floorc.get('SECRET')
         print(username, secret)
         if not (username and secret):
-            return sublime.error_message("You don't seem to have a Floobits account of any sort")
+            return sublime.error_message('You don\'t seem to have a Floobits account of any sort')
         webbrowser.open('https://%s/u/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 

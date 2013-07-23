@@ -59,7 +59,7 @@ class MSG(object):
 
         if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
             try:
-                fd = open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), "a+")
+                fd = open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a+')
                 fd.write(unicode(self))
                 fd.close()
             except Exception as e:
