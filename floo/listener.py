@@ -1,3 +1,8 @@
+try:
+    unicode()
+except NameError:
+    unicode = str
+
 import os
 import hashlib
 from datetime import datetime
@@ -378,12 +383,12 @@ class Listener(sublime_plugin.EventListener):
                 try:
                     ig = ignore.build_ignores(path)
                 except Exception as e:
-                    msg.error('Error adding %s: %s' % (path, str(e)))
+                    msg.error('Error adding %s: %s' % (path, unicode(e)))
                     return
             try:
                 paths = os.listdir(path)
             except Exception as e:
-                msg.error('Error listing path %s: %s' % (path, str(e)))
+                msg.error('Error listing path %s: %s' % (path, unicode(e)))
                 return
             for p in paths:
                 p_path = os.path.join(path, p)
@@ -397,7 +402,7 @@ class Listener(sublime_plugin.EventListener):
                 try:
                     s = os.lstat(p_path)
                 except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (path, str(e)))
+                    msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
                     continue
                 if stat.S_ISDIR(s.st_mode):
                     child_ig = ignore.Ignore(ig, p_path)
@@ -430,7 +435,7 @@ class Listener(sublime_plugin.EventListener):
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
-            msg.error('Failed to create buffer %s: %s' % (path, str(e)))
+            msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
 
     @staticmethod
     def delete_buf(path):
