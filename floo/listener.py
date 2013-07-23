@@ -1,3 +1,8 @@
+try:
+    unicode()
+except NameError:
+    unicode = str
+
 import os
 import hashlib
 from datetime import datetime
@@ -372,15 +377,20 @@ class Listener(sublime_plugin.EventListener):
         if ig and ig.is_ignored(path):
             msg.log('Not creating buf for ignored file %s' % path)
             return
+        msg.debug('create_buf: path is %s' % path)
         if os.path.isdir(path):
             if ig is None:
                 try:
                     ig = ignore.build_ignores(path)
                 except Exception as e:
-                    msg.error('Error adding %s: %s' % (path, str(e)))
+                    msg.error('Error adding %s: %s' % (path, unicode(e)))
                     return
-
-            for p in os.listdir(path):
+            try:
+                paths = os.listdir(path)
+            except Exception as e:
+                msg.error('Error listing path %s: %s' % (path, unicode(e)))
+                return
+            for p in paths:
                 p_path = os.path.join(path, p)
                 if p[0] == '.':
                     if p not in ignore.HIDDEN_WHITELIST:
@@ -389,7 +399,11 @@ class Listener(sublime_plugin.EventListener):
                 if ig.is_ignored(p_path):
                     msg.log('Not creating buf for ignored path %s' % p_path)
                     continue
-                s = os.lstat(p_path)
+                try:
+                    s = os.lstat(p_path)
+                except Exception as e:
+                    msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
+                    continue
                 if stat.S_ISDIR(s.st_mode):
                     child_ig = ignore.Ignore(ig, p_path)
                     utils.set_timeout(Listener.create_buf, 0, p_path, child_ig)
@@ -403,7 +417,7 @@ class Listener(sublime_plugin.EventListener):
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
             if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
-                msg.debug('%s already exists and has the same md5. Skipping creating.')
+                msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
                 return
             try:
                 buf = buf.decode('utf-8')
@@ -421,7 +435,7 @@ class Listener(sublime_plugin.EventListener):
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
-            msg.error('Failed to create buffer %s: %s' % (path, str(e)))
+            msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
 
     @staticmethod
     def delete_buf(path):
