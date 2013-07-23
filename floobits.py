@@ -370,9 +370,10 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
-            msg.error('Unable to create workspace: %s' % unicode(e.message))
+            err_body = e.read()
+            msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
             if e.code not in [400, 409]:
-                return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+                return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
             kwargs = {
                 'dir_to_share': self.dir_to_share,
                 'workspace_name': workspace_name,
