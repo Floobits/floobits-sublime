@@ -20,7 +20,7 @@ class Ignore(object):
     def __init__(self, parent, path):
         self.parent = parent
         self.ignores = []
-        self.path = path
+        self.path = utils.unfuck_path(path)
         msg.debug('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
@@ -46,7 +46,7 @@ class Ignore(object):
         for pattern in self.ignores:
             base_path, file_name = os.path.split(rel_path)
             if pattern[0] == '/':
-                if os.path.samefile(base_path, self.path) and fnmatch.fnmatch(file_name, pattern[1:]):
+                if utils.unfuck_path(base_path) == self.path and fnmatch.fnmatch(file_name, pattern[1:]):
                     return True
             else:
                 if fnmatch.fnmatch(file_name, pattern):

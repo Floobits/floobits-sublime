@@ -253,7 +253,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
     def is_enabled(self):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
-    def run(self, dir_to_share='', paths=None, current_file=False):
+    def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
+        self.api_args = api_args
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
             return create_or_link_account()
@@ -261,6 +262,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             if len(paths) != 1:
                 return sublime.error_message('Only one folder at a time, please. :(')
             return self.on_input(paths[0])
+        if dir_to_share is None:
+            dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
@@ -329,6 +332,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
             'dir_to_share': dir_to_share,
+            'api_args': self.api_args
         })
 
 
@@ -339,7 +343,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
         return True
 
-    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:'):
+    # TODO: throw workspace_name in api_args
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None):
         if not disconnect_dialog():
             return
         if ssl is False:
@@ -349,6 +354,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         self.owner = G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
+        self.api_args = api_args or {}
         if workspace_name and dir_to_share and prompt == 'Workspace name:':
             return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
@@ -359,15 +365,19 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         if workspace_name == '':
             return self.run(dir_to_share=self.dir_to_share)
         try:
-            api.create_workspace(workspace_name)
+            self.api_args['name'] = workspace_name
+            api.create_workspace(self.api_args)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
+            err_body = e.read()
+            msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
             if e.code not in [400, 409]:
-                return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+                return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
             kwargs = {
                 'dir_to_share': self.dir_to_share,
                 'workspace_name': workspace_name,
+                'api_args': self.api_args
             }
             if e.code == 400:
                 kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)

@@ -1,4 +1,7 @@
+import sys
 import base64
+
+import sublime
 
 try:
     from urllib.parse import urlencode
@@ -18,43 +21,43 @@ except ImportError:
 
 
 def get_basic_auth():
+    # TODO: use api_key if it exists
     basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
 
-# TODO: let people create org workspaces
-def create_workspace(workspace_name):
-    url = 'https://%s/api/workspace/' % G.DEFAULT_HOST
-    # TODO: let user specify permissions
-    post_data = {
-        'name': workspace_name
-    }
-    r = Request(url, data=urlencode(post_data).encode('utf-8'))
+# TODO: include version of plugin in user agent
+def api_request(url, data=None):
+    if data:
+        data = urlencode(data).encode('utf-8')
+    r = Request(url, data=data)
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
+    r.add_header('User-Agent', 'Floobits Sublime Plugin %s py-%s.%s' % (sublime.platform(), sys.version_info[0], sys.version_info[1]))
     return urlopen(r, timeout=5)
+
+
+# TODO: let people create org workspaces
+def create_workspace(post_data):
+    url = 'https://%s/api/workspace/' % G.DEFAULT_HOST
+    return api_request(url, post_data)
 
 
 def get_workspace_by_url(url):
     result = utils.parse_url(url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
-    r = Request(api_url)
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth())
-    return urlopen(r, timeout=5)
+    return api_request(api_url)
 
 
 def get_workspace(owner, workspace):
-    url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
-    r = Request(url)
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth())
-    return urlopen(r, timeout=5)
+    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
+    return api_request(api_url)
 
 
 def send_error(data):
     try:
-        url = 'https://%s/api/error/' % (G.DEFAULT_HOST)
-        r = Request(url, data=urlencode(data).encode('utf-8'))
-        return urlopen(r, timeout=5)
+        api_url = 'https://%s/api/error/' % (G.DEFAULT_HOST)
+        return api_request(api_url, data)
     except Exception as e:
         print(e)
     return None
