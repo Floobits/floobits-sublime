@@ -254,6 +254,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
+        global on_room_info_waterfall
         self.api_args = api_args
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
@@ -264,6 +265,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             return self.on_input(paths[0])
         if dir_to_share is None:
             dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
+        on_room_info_waterfall = utils.Waterfall()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
