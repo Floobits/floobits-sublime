@@ -52,6 +52,12 @@ BASE_FLOORC = '''
 #debug 1
 
 '''
+NEWLINE = '\n'.encode('utf-8')
+
+
+def sock_debug(*args, **kwargs):
+    if G.SOCK_DEBUG:
+        msg.log(*args, **kwargs)
 
 
 class BaseAgentConnection(object):
@@ -151,6 +157,7 @@ class BaseAgentConnection(object):
                 msg.error('Error connecting:', e)
                 return self.reconnect()
         if self.secure:
+            sock_debug('SSL-wrapping socket')
             self.sock = ssl.wrap_socket(self.sock, ca_certs=self.cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
 
         self.on_connect()
@@ -181,7 +188,7 @@ class BaseAgentConnection(object):
     def protocol(self, req):
         self.buf += req
         while True:
-            before, sep, after = self.buf.partition('\n'.encode('utf-8'))
+            before, sep, after = self.buf.partition(NEWLINE)
             if not sep:
                 break
             try:
@@ -235,25 +242,32 @@ class BaseAgentConnection(object):
             return self.reconnect()
 
         if _out:
+            sock_debug('Socket is writeable')
             if self.secure and not self.handshaken:
                 try:
+                    sock_debug('Doing SSL handshake')
                     self.sock.do_handshake()
                 except ssl.SSLError as e:
+                    sock_debug('ssl.SSLError. This is expected sometimes.')
                     return
                 except Exception as e:
                     msg.error('Error in SSL handshake:', e)
                     return self.reconnect()
                 else:
                     self.handshaken = True
+                    sock_debug('Successful handshake')
 
             for p in self.get_patches():
+                sock_debug('sending patch')
                 try:
                     self.sock.sendall(p.encode('utf-8'))
                 except Exception as e:
                     msg.error('Couldn\'t write to socket: %s' % str(e))
                     return self.reconnect()
+            sock_debug('Done writing for now')
 
         if _in:
+            sock_debug('Socket is readable')
             buf = ''.encode('utf-8')
             while True:
                 try:
@@ -268,12 +282,15 @@ class BaseAgentConnection(object):
 
             if buf:
                 self.empty_selects = 0
+                sock_debug('read data')
                 self.protocol(buf)
             else:
+                sock_debug('empty select')
                 self.empty_selects += 1
                 if self.empty_selects > (2000 / G.TICK_TIME):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
+            sock_debug('Done reading for now')
 
 
 class AgentConnection(BaseAgentConnection):
