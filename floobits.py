@@ -67,12 +67,12 @@ if ssl is False and sublime.platform() == 'linux':
 
 try:
     from urllib.error import HTTPError
-    from .floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, shared as G, utils
+    from .floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, ignore, listener, msg, shared as G, utils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and listener and msg and utils
+    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils
 except (ImportError, ValueError):
     from urllib2 import HTTPError
-    from floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, msg, utils
+    from floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, ignore, listener, msg, utils
     from floo.listener import Listener
     from floo import shared as G
 
@@ -254,6 +254,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
+        global on_room_info_waterfall
         self.api_args = api_args
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
@@ -264,6 +265,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             return self.on_input(paths[0])
         if dir_to_share is None:
             dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
+        on_room_info_waterfall = utils.Waterfall()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
@@ -324,10 +326,12 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 pass
             else:
                 on_room_info_waterfall.add(on_room_info_msg)
+                on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
                 on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
                 return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
+        on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
         on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
         self.window.run_command('floobits_create_workspace', {
             'workspace_name': workspace_name,
@@ -470,6 +474,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 open_workspace_window3(cb)
 
         def run_agent(owner, workspace, host, port, secure):
+            global on_room_info_waterfall
             if G.AGENT:
                 msg.debug('Stopping agent.')
                 G.AGENT.stop()
@@ -479,6 +484,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
             try:
                 G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_room_info=on_room_info_waterfall.call)
+                on_room_info_waterfall = utils.Waterfall()
                 Listener.reset()
                 G.AGENT.connect()
             except Exception as e:

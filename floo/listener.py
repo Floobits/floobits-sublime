@@ -374,8 +374,9 @@ class Listener(sublime_plugin.EventListener):
         if os.path.islink(path):
             msg.error('Skipping adding %s because it is a symlink.' % path)
             return
-        if ig and ig.is_ignored(path):
-            msg.log('Not creating buf for ignored file %s' % path)
+        ignored = ig and ig.is_ignored(path)
+        if ignored:
+            msg.log('Not creating buf: %s' % (ignored))
             return
         msg.debug('create_buf: path is %s' % path)
         if os.path.isdir(path):
@@ -396,8 +397,9 @@ class Listener(sublime_plugin.EventListener):
                     if p not in ignore.HIDDEN_WHITELIST:
                         msg.log('Not creating buf for hidden path %s' % p_path)
                         continue
-                if ig.is_ignored(p_path):
-                    msg.log('Not creating buf for ignored path %s' % p_path)
+                ignored = ig.is_ignored(p_path)
+                if ignored:
+                    msg.log('Not creating buf: %s' % (ignored))
                     continue
                 try:
                     s = os.lstat(p_path)

@@ -89,10 +89,10 @@ def msg_format(message, *args, **kwargs):
 
 
 def _log(message, level, *args, **kwargs):
-    MSG(msg_format(message, *args, **kwargs), level=level).display()
+    if level >= LOG_LEVEL:
+        MSG(msg_format(message, *args, **kwargs), level=level).display()
 
 
-# TODO: use introspection?
 def debug(message, *args, **kwargs):
     _log(message, LOG_LEVELS['DEBUG'], *args, **kwargs)
 
