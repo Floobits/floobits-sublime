@@ -14,7 +14,6 @@ SOCK_DEBUG = False
 
 ALERT_ON_MSG = True
 LOG_TO_CONSOLE = False
-OBEY_DEFAULT_IGNORES = True
 
 BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 
