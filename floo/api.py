@@ -37,7 +37,6 @@ def api_request(url, data=None):
     return urlopen(r, timeout=5)
 
 
-# TODO: let people create org workspaces
 def create_workspace(post_data):
     url = 'https://%s/api/workspace/' % G.DEFAULT_HOST
     return api_request(url, post_data)
@@ -51,6 +50,16 @@ def get_workspace_by_url(url):
 
 def get_workspace(owner, workspace):
     api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
+    return api_request(api_url)
+
+
+def get_workspaces(owner, workspace):
+    api_url = 'https://%s/api/workspace/can/view/' % (G.DEFAULT_HOST)
+    return api_request(api_url)
+
+
+def get_orgs():
+    api_url = 'https://%s/api/orgs/can/admin/' % (G.DEFAULT_HOST)
     return api_request(api_url)
 
 
