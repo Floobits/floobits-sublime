@@ -19,6 +19,14 @@
         "command": "floobits_share_dir"
       },
       {
+        "id": "floobits_share_dir_private",
+        "caption": "Share Directory (Create Workspace)",
+        "command": "floobits_share_dir",
+        "args": {
+          "api_args": {"AnonymousUser": []}
+        }
+      },
+      {
         "id": "floobits_create_hangout",
         "caption": "Open Workspace in a Google+ Hangout",
         "command": "floobits_create_hangout"

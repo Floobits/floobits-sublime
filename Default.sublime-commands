@@ -8,6 +8,14 @@
     "command": "floobits_share_dir"
   },
   {
+    "id": "floobits_share_dir_private",
+    "caption": "Floobits - Share Directory (Create Private Workspace)",
+    "command": "floobits_share_dir",
+    "args": {
+      "api_args": {"AnonymousUser": []}
+    }
+  },
+  {
     "caption": "Floobits - Join Recent Workspace",
     "command": "floobits_join_recent_workspace"
   },
