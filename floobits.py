@@ -273,8 +273,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
-        floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
-        print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
+        print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
