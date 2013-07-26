@@ -338,17 +338,17 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'workspace_name': workspace_name,
                 'dir_to_share': dir_to_share,
                 'api_args': self.api_args,
-                'owner': owner,
+                'owner': owner[0],
             })
 
         orgs = api.get_orgs_can_admin()
         orgs = json.loads(orgs.read())
         if len(orgs) == 0:
-            return on_done(G.USERNAME)
+            return on_done([G.USERNAME])
 
-        orgs = [org['name'] for org in orgs]
-        orgs.insert(0, G.USERNAME)
-        self.window.show_quick_panel(orgs, lambda index: on_done(orgs[index]))
+        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in orgs]
+        orgs.insert(0, [G.USERNAME, 'Create workspace under %s' % G.USERNAME])
+        self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
 
 class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
@@ -389,7 +389,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         except HTTPError as e:
             err_body = e.read()
             msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            if e.code not in [400, 409]:
+            if e.code not in [400, 402, 409]:
                 return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
             kwargs = {
                 'dir_to_share': self.dir_to_share,
@@ -400,8 +400,15 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             if e.code == 400:
                 kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
                 kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+            elif e.code == 402:
+                try:
+                    err_body = json.loads(err_body)
+                    err_body = err_body['detail']
+                except Exception:
+                    pass
+                return sublime.error_message('%s' % err_body)
             else:
-                kwargs['prompt'] = 'Workspace %s already exists. Choose another name:' % workspace_name
+                kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
 
             return self.window.run_command('floobits_create_workspace', kwargs)
 
