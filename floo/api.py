@@ -27,13 +27,12 @@ def get_basic_auth():
     return basic_auth.decode('ascii').replace('\n', '')
 
 
-# TODO: include version of plugin in user agent
 def api_request(url, data=None):
     if data:
         data = urlencode(data).encode('utf-8')
     r = Request(url, data=data)
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
-    r.add_header('User-Agent', 'Floobits Sublime Plugin %s py-%s.%s' % (sublime.platform(), sys.version_info[0], sys.version_info[1]))
+    r.add_header('User-Agent', 'Floobits Sublime Plugin %s %s py-%s.%s' % (G.__PLUGIN_VERSION__, sublime.platform(), sys.version_info[0], sys.version_info[1]))
     return urlopen(r, timeout=5)
 
 
@@ -53,12 +52,17 @@ def get_workspace(owner, workspace):
     return api_request(api_url)
 
 
-def get_workspaces(owner, workspace):
+def get_workspaces():
     api_url = 'https://%s/api/workspace/can/view/' % (G.DEFAULT_HOST)
     return api_request(api_url)
 
 
 def get_orgs():
+    api_url = 'https://%s/api/orgs/' % (G.DEFAULT_HOST)
+    return api_request(api_url)
+
+
+def get_orgs_can_admin():
     api_url = 'https://%s/api/orgs/can/admin/' % (G.DEFAULT_HOST)
     return api_request(api_url)
 
