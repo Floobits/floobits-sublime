@@ -43,12 +43,12 @@ def create_workspace(post_data):
 
 def get_workspace_by_url(url):
     result = utils.parse_url(url)
-    api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
+    api_url = 'https://%s/api/workspace/%s/%s/' % (result['host'], result['owner'], result['workspace'])
     return api_request(api_url)
 
 
 def get_workspace(owner, workspace):
-    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
+    api_url = 'https://%s/api/workspace/%s/%s/' % (G.DEFAULT_HOST, owner, workspace)
     return api_request(api_url)
 
 
