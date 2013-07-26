@@ -332,11 +332,23 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
         on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
-        self.window.run_command('floobits_create_workspace', {
-            'workspace_name': workspace_name,
-            'dir_to_share': dir_to_share,
-            'api_args': self.api_args
-        })
+
+        def on_done(owner):
+            self.window.run_command('floobits_create_workspace', {
+                'workspace_name': workspace_name,
+                'dir_to_share': dir_to_share,
+                'api_args': self.api_args,
+                'owner': owner,
+            })
+
+        orgs = api.get_orgs_can_admin()
+        orgs = json.loads(orgs.read())
+        if len(orgs) == 0:
+            return on_done(G.USERNAME)
+
+        orgs = [org['name'] for org in orgs]
+        orgs.insert(0, G.USERNAME)
+        self.window.show_quick_panel(orgs, lambda index: on_done(orgs[index]))
 
 
 class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
@@ -347,14 +359,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
-    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None):
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
             return
         if ssl is False:
             return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
                                          'This is a known issue on Linux and Windows builds of Sublime Text 2. '
                                          'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
-        self.owner = G.USERNAME
+        self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
         self.api_args = api_args or {}
@@ -369,8 +381,10 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             return self.run(dir_to_share=self.dir_to_share)
         try:
             self.api_args['name'] = workspace_name
+            self.api_args['owner'] = self.owner
+            msg.debug(str(self.api_args))
             api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
+            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             err_body = e.read()
@@ -380,7 +394,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             kwargs = {
                 'dir_to_share': self.dir_to_share,
                 'workspace_name': workspace_name,
-                'api_args': self.api_args
+                'api_args': self.api_args,
+                'owner': self.owner,
             }
             if e.code == 400:
                 kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
@@ -393,7 +408,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         except Exception as e:
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
+        add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
 
         on_room_info_waterfall.add(on_room_info_msg)
 
