@@ -1,4 +1,4 @@
-from .lib.diff_match_patch import diff_match_patch as dmp
+from .diff_match_patch import diff_match_patch as dmp
 
 
 def patch_apply(self, patches, text):
