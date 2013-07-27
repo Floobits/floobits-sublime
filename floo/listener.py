@@ -13,25 +13,17 @@ import sublime
 import sublime_plugin
 
 try:
-    from . import dmp_monkey
-    dmp_monkey.monkey_patch()
-    from .lib import diff_match_patch as dmp
-    from . import ignore, msg, shared as G, utils
-    assert dmp and ignore and G and msg and utils
+    from .common import ignore, msg, shared as G, utils
+    from .common.lib import DMP
+    assert DMP and ignore and G and msg and utils
 except ImportError:
-    import dmp_monkey
-    dmp_monkey.monkey_patch()
-    import ignore
-    from lib import diff_match_patch as dmp
-    import msg
-    import shared as G
-    import utils
+    from common import ignore, msg, shared as G, utils
+    from common.lib import DMP
 
 
 BUFS = {}
 CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
-DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
