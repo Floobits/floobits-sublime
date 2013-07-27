@@ -342,7 +342,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             })
 
         orgs = api.get_orgs_can_admin()
-        orgs = json.loads(orgs.read())
+        orgs = json.loads(orgs.read().decode('utf-8'))
         if len(orgs) == 0:
             return on_done([G.USERNAME])
 
