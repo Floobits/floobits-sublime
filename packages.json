@@ -4,13 +4,13 @@
             "author": "Floobits",
             "description": "Real-time collaboration plugin for Sublime Text 2/3",
             "homepage": "https://github.com/Floobits/floobits-sublime/",
-            "last_modified": "2013-07-25 15:59:55",
+            "last_modified": "2013-07-26 17:57:38",
             "name": "Floobits",
             "platforms": {
                 "*": [
                     {
-                        "url": "http://github.com/Floobits/floobits-sublime/archive/0.18.3.zip",
-                        "version": "0.18.3"
+                        "url": "http://github.com/Floobits/floobits-sublime/archive/0.19.zip",
+                        "version": "0.19"
                     }
                 ]
             }
