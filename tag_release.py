@@ -32,11 +32,11 @@ def main():
     with open('floo/version.py', 'w') as fd:
         fd.write(('\n'.join(version_py)).encode('utf-8'))
 
-    # os.system('git add packages.json floo/version.py')
-    # os.system('git commit -m "Tag new release: %s"' % version)
-    # os.system('git tag %s' % version)
-    # os.system('git push --tags')
-    # os.system('git push')
+    os.system('git add packages.json floo/version.py')
+    os.system('git commit -m "Tag new release: %s"' % version)
+    os.system('git tag %s' % version)
+    os.system('git push --tags')
+    os.system('git push')
 
 
 if __name__ == "__main__":
