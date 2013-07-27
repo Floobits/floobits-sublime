@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import hashlib
 
 try:
     from urllib.parse import urlparse
@@ -12,13 +13,54 @@ import sublime
 
 try:
     from . import shared as G
-    assert G
+    from .lib import DMP
+    assert G and DMP
 except ImportError:
     import shared as G
+    from lib import DMP
 
 top_timeout_id = 0
 cancelled_timeouts = set()
 timeouts = set()
+
+
+class FlooPatch(object):
+    def __init__(self, current, buf):
+        self.buf = buf
+        self.current = current
+        self.previous = buf['buf']
+        if buf['encoding'] == 'base64':
+            self.md5_before = hashlib.md5(self.previous).hexdigest()
+        else:
+            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+
+    def __str__(self):
+        return '%s - %s' % (self.buf['id'], self.buf['path'])
+
+    def patches(self):
+        return DMP.patch_make(self.previous, self.current)
+
+    def to_json(self):
+        patches = self.patches()
+        if len(patches) == 0:
+            return None
+        patch_str = ''
+        for patch in patches:
+            patch_str += str(patch)
+
+        if self.buf['encoding'] == 'base64':
+            md5_after = hashlib.md5(self.current).hexdigest()
+        else:
+            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+
+        return {
+            'id': self.buf['id'],
+            'md5_after': md5_after,
+            'md5_before': self.md5_before,
+            'path': self.buf['path'],
+            'patch': patch_str,
+            'name': 'patch'
+        }
 
 
 class Waterfall(object):
