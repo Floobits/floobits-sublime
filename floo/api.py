@@ -29,10 +29,11 @@ def get_basic_auth():
 
 def api_request(url, data=None):
     if data:
-        data = urlencode(data).encode('utf-8')
+        data = json.dumps(data).encode('utf-8')
     r = Request(url, data=data)
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     r.add_header('Accept', 'application/json')
+    r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', 'Floobits Sublime Plugin %s %s py-%s.%s' % (G.__PLUGIN_VERSION__, sublime.platform(), sys.version_info[0], sys.version_info[1]))
     return urlopen(r, timeout=5)
 
