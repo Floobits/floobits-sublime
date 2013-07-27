@@ -1,2 +1,6 @@
 
-__all__ = ['api', 'cert', 'shared', 'utils', 'ignore']
+__all__ = ['api',
+		   'cert',
+		   'ignore',
+		   'shared',
+		   'utils']
