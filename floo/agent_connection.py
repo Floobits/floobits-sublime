@@ -20,7 +20,7 @@ except ImportError:
 
 try:
     from .common import api, cert, msg, shared as G, utils
-    from . import listener, msg
+    from . import listener
     assert api and cert and G and listener and msg and utils
 except (ImportError, ValueError):
     from common import api, cert, msg, shared as G, utils
