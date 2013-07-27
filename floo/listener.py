@@ -131,48 +131,6 @@ def send_summon(buf_id, sel):
         G.AGENT.put(highlight_json)
 
 
-class FlooPatch(object):
-
-    def __init__(self, view, buf):
-        self.buf = buf
-        self.view = view
-        self.current = get_text(view)
-        self.previous = buf['buf']
-        if buf['encoding'] == 'base64':
-            self.md5_before = hashlib.md5(self.previous).hexdigest()
-        else:
-            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
-
-    def __str__(self):
-        return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
-
-    def patches(self):
-        return DMP.patch_make(self.previous, self.current)
-
-    def to_json(self):
-        patches = self.patches()
-        if len(patches) == 0:
-            return None
-        msg.debug('sending %s patches' % len(patches))
-        patch_str = ''
-        for patch in patches:
-            patch_str += str(patch)
-
-        if self.buf['encoding'] == 'base64':
-            md5_after = hashlib.md5(self.current).hexdigest()
-        else:
-            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
-
-        return {
-            'id': self.buf['id'],
-            'md5_after': md5_after,
-            'md5_before': self.md5_before,
-            'path': self.buf['path'],
-            'patch': patch_str,
-            'name': 'patch'
-        }
-
-
 class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
@@ -211,7 +169,7 @@ class Listener(sublime_plugin.EventListener):
                 continue
 
             reported.add(vb_id)
-            patch = FlooPatch(view, buf)
+            patch = utils.FlooPatch(get_text(view), buf)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
@@ -271,7 +229,7 @@ class Listener(sublime_plugin.EventListener):
             if old_text == view_text:
                 buf['forced_patch'] = False
             elif not buf.get('forced_patch'):
-                patch = FlooPatch(view, buf)
+                patch = utils.FlooPatch(get_text(view), buf)
                 # Update the current copy of the buffer
                 buf['buf'] = patch.current
                 buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
