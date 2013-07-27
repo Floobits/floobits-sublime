@@ -1,7 +1,6 @@
 #!/usr/bin/python2.4
 
 
-
 """Diff Match and Patch
 
 Copyright 2006 Google Inc.
@@ -104,7 +103,7 @@ class diff_match_patch:
       Array of changes.
     """
     # Set a deadline by which time the diff must be complete.
-    if deadline == None:
+    if deadline is None:
       # Unlike in most languages, Python counts time in seconds.
       if self.Diff_Timeout <= 0:
         deadline = sys.maxsize
@@ -112,7 +111,7 @@ class diff_match_patch:
         deadline = time.time() + self.Diff_Timeout
 
     # Check for null inputs.
-    if text1 == None or text2 == None:
+    if text1 is None or text2 is None:
       raise ValueError("Null inputs. (diff_main)")
 
     # Check for equality (speedup).
@@ -251,7 +250,7 @@ class diff_match_patch:
         if count_delete >= 1 and count_insert >= 1:
           # Delete the offending records and add the merged ones.
           a = self.diff_main(text_delete, text_insert, False, deadline)
-          diffs[pointer - count_delete - count_insert : pointer] = a
+          diffs[(pointer - count_delete - count_insert):pointer] = a
           pointer = pointer - count_delete - count_insert + len(a)
         count_insert = 0
         count_delete = 0
@@ -305,14 +304,12 @@ class diff_match_patch:
       # Walk the front path one step.
       for k1 in range(-d + k1start, d + 1 - k1end, 2):
         k1_offset = v_offset + k1
-        if k1 == -d or (k1 != d and
-            v1[k1_offset - 1] < v1[k1_offset + 1]):
+        if k1 == -d or (k1 != d and v1[k1_offset - 1] < v1[k1_offset + 1]):
           x1 = v1[k1_offset + 1]
         else:
           x1 = v1[k1_offset - 1] + 1
         y1 = x1 - k1
-        while (x1 < text1_length and y1 < text2_length and
-               text1[x1] == text2[y1]):
+        while (x1 < text1_length and y1 < text2_length and text1[x1] == text2[y1]):
           x1 += 1
           y1 += 1
         v1[k1_offset] = x1
@@ -334,14 +331,12 @@ class diff_match_patch:
       # Walk the reverse path one step.
       for k2 in range(-d + k2start, d + 1 - k2end, 2):
         k2_offset = v_offset + k2
-        if k2 == -d or (k2 != d and
-            v2[k2_offset - 1] < v2[k2_offset + 1]):
+        if k2 == -d or (k2 != d and v2[k2_offset - 1] < v2[k2_offset + 1]):
           x2 = v2[k2_offset + 1]
         else:
           x2 = v2[k2_offset - 1] + 1
         y2 = x2 - k2
-        while (x2 < text1_length and y2 < text2_length and
-               text1[-x2 - 1] == text2[-y2 - 1]):
+        while (x2 < text1_length and y2 < text2_length and text1[-x2 - 1] == text2[-y2 - 1]):
           x2 += 1
           y2 += 1
         v2[k2_offset] = x2
@@ -509,8 +504,7 @@ class diff_match_patch:
     pointermid = pointermax
     pointerend = 0
     while pointermin < pointermid:
-      if (text1[-pointermid:len(text1) - pointerend] ==
-          text2[-pointermid:len(text2) - pointerend]):
+      if text1[-pointermid:len(text1) - pointerend] == text2[-pointermid:len(text2) - pointerend]:
         pointermin = pointermid
         pointerend = pointermin
       else:
@@ -606,8 +600,7 @@ class diff_match_patch:
         prefixLength = self.diff_commonPrefix(longtext[i:], shorttext[j:])
         suffixLength = self.diff_commonSuffix(longtext[:i], shorttext[:j])
         if len(best_common) < suffixLength + prefixLength:
-          best_common = (shorttext[j - suffixLength:j] +
-              shorttext[j:j + prefixLength])
+          best_common = (shorttext[j - suffixLength:j] + shorttext[j:j + prefixLength])
           best_longtext_a = longtext[:i - suffixLength]
           best_longtext_b = longtext[i + prefixLength:]
           best_shorttext_a = shorttext[:j - suffixLength]
@@ -678,8 +671,7 @@ class diff_match_patch:
           # Duplicate record.
           diffs.insert(equalities[-1], (self.DIFF_DELETE, lastequality))
           # Change second copy to insert.
-          diffs[equalities[-1] + 1] = (self.DIFF_INSERT,
-              diffs[equalities[-1] + 1][1])
+          diffs[equalities[-1] + 1] = (self.DIFF_INSERT, diffs[equalities[-1] + 1][1])
           # Throw away the equality we just deleted.
           equalities.pop()
           # Throw away the previous equality (it needs to be reevaluated).
