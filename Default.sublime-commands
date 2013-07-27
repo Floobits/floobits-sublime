@@ -12,7 +12,7 @@
     "caption": "Floobits - Share Directory (Create Private Workspace)",
     "command": "floobits_share_dir",
     "args": {
-      "api_args": {"AnonymousUser": []}
+      "api_args": {"perms": {"AnonymousUser": []}}
     }
   },
   {
