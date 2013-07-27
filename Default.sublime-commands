@@ -4,12 +4,12 @@
     "command": "floobits_open_settings"
   },
   {
-    "caption": "Floobits - Share Directory (Create Workspace)",
+    "caption": "Floobits - Share Directory (Public)",
     "command": "floobits_share_dir"
   },
   {
     "id": "floobits_share_dir_private",
-    "caption": "Floobits - Share Directory (Create Private Workspace)",
+    "caption": "Floobits - Share Directory (Private)",
     "command": "floobits_share_dir",
     "args": {
       "api_args": {"perms": {"AnonymousUser": []}}
