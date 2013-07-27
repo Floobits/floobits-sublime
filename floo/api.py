@@ -1,14 +1,13 @@
 import sys
 import base64
+import json
 
 import sublime
 
 try:
-    from urllib.parse import urlencode
     from urllib.request import Request, urlopen
-    assert Request and urlencode and urlopen
+    assert Request and urlopen
 except ImportError:
-    from urllib import urlencode
     from urllib2 import Request, urlopen
 
 
