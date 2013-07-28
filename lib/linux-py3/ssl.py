@@ -62,41 +62,11 @@ import re
 
 import _ssl             # if we can't import it, let the error propagate
 
-from _ssl import OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_INFO, OPENSSL_VERSION
 from _ssl import _SSLContext
-from _ssl import (
-    SSLError, SSLZeroReturnError, SSLWantReadError, SSLWantWriteError,
-    SSLSyscallError, SSLEOFError,
-    )
-from _ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
-from _ssl import (
-    OP_ALL, OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_TLSv1,
-    OP_CIPHER_SERVER_PREFERENCE, OP_SINGLE_DH_USE
-    )
-try:
-    from _ssl import OP_NO_COMPRESSION
-except ImportError:
-    pass
-try:
-    from _ssl import OP_SINGLE_ECDH_USE
-except ImportError:
-    pass
-from _ssl import RAND_status, RAND_egd, RAND_add, RAND_bytes, RAND_pseudo_bytes
-from _ssl import (
-    SSL_ERROR_ZERO_RETURN,
-    SSL_ERROR_WANT_READ,
-    SSL_ERROR_WANT_WRITE,
-    SSL_ERROR_WANT_X509_LOOKUP,
-    SSL_ERROR_SYSCALL,
-    SSL_ERROR_SSL,
-    SSL_ERROR_WANT_CONNECT,
-    SSL_ERROR_EOF,
-    SSL_ERROR_INVALID_ERROR_CODE,
-    )
-from _ssl import HAS_SNI, HAS_ECDH, HAS_NPN
-from _ssl import (PROTOCOL_SSLv3, PROTOCOL_SSLv23,
-                  PROTOCOL_TLSv1)
-from _ssl import _OPENSSL_API_VERSION
+from _ssl import SSLError
+from _ssl import CERT_NONE, CERT_REQUIRED
+from _ssl import SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_EOF
+from _ssl import PROTOCOL_SSLv3, PROTOCOL_SSLv23, PROTOCOL_TLSv1
 
 _PROTOCOL_NAMES = {
     PROTOCOL_TLSv1: "TLSv1",
@@ -111,11 +81,9 @@ except ImportError:
 else:
     _PROTOCOL_NAMES[PROTOCOL_SSLv2] = "SSLv2"
 
-from socket import getnameinfo as _getnameinfo
 from socket import error as socket_error
 from socket import socket, AF_INET, SOCK_STREAM, create_connection
 import base64        # for DER-to-PEM translation
-import traceback
 import errno
 
 if _ssl.HAS_TLS_UNIQUE:
@@ -176,15 +144,14 @@ def match_hostname(cert, hostname):
                     dnsnames.append(value)
     if len(dnsnames) > 1:
         raise CertificateError("hostname %r "
-            "doesn't match either of %s"
-            % (hostname, ', '.join(map(repr, dnsnames))))
+                               "doesn't match either of %s"
+                               % (hostname, ', '.join(map(repr, dnsnames))))
     elif len(dnsnames) == 1:
         raise CertificateError("hostname %r "
-            "doesn't match %r"
-            % (hostname, dnsnames[0]))
+                               "doesn't match %r"
+                               % (hostname, dnsnames[0]))
     else:
-        raise CertificateError("no appropriate commonName or "
-            "subjectAltName fields were found")
+        raise CertificateError("no appropriate commonName or subjectAltName fields were found")
 
 
 class SSLContext(_SSLContext):
@@ -450,9 +417,8 @@ class SSLSocket(socket):
             nbytes = 1024
         if self._sslobj:
             if flags != 0:
-                raise ValueError(
-                  "non-zero flags not allowed in calls to recv_into() on %s" %
-                  self.__class__)
+                raise ValueError("non-zero flags not allowed in calls to recv_into() on %s" %
+                                 self.__class__)
             return self.read(nbytes, buffer)
         else:
             return socket.recv_into(self, buffer, nbytes, flags)
@@ -557,9 +523,9 @@ class SSLSocket(socket):
 
         newsock, addr = socket.accept(self)
         newsock = self.context.wrap_socket(newsock,
-                    do_handshake_on_connect=self.do_handshake_on_connect,
-                    suppress_ragged_eofs=self.suppress_ragged_eofs,
-                    server_side=True)
+                                           do_handshake_on_connect=self.do_handshake_on_connect,
+                                           suppress_ragged_eofs=self.suppress_ragged_eofs,
+                                           server_side=True)
         return newsock, addr
 
     def get_channel_binding(self, cb_type="tls-unique"):
@@ -570,9 +536,7 @@ class SSLSocket(socket):
         if cb_type not in CHANNEL_BINDING_TYPES:
             raise ValueError("Unsupported channel binding type")
         if cb_type != "tls-unique":
-            raise NotImplementedError(
-                            "{0} channel binding type not implemented"
-                            .format(cb_type))
+            raise NotImplementedError("{0} channel binding type not implemented".format(cb_type))
         if self._sslobj is None:
             return None
         return self._sslobj.tls_unique_cb()
@@ -592,8 +556,8 @@ def wrap_socket(sock, keyfile=None, certfile=None,
                      suppress_ragged_eofs=suppress_ragged_eofs,
                      ciphers=ciphers)
 
-# some utility functions
 
+# some utility functions
 def cert_time_to_seconds(cert_time):
     """Takes a date-time string in standard ASN1_print form
     ("MON DAY 24HOUR:MINUTE:SEC YEAR TIMEZONE") and return
@@ -602,8 +566,10 @@ def cert_time_to_seconds(cert_time):
     import time
     return time.mktime(time.strptime(cert_time, "%b %d %H:%M:%S %Y GMT"))
 
+
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
+
 
 def DER_cert_to_PEM_cert(der_cert_bytes):
     """Takes a certificate in binary DER format and returns the
@@ -613,6 +579,7 @@ def DER_cert_to_PEM_cert(der_cert_bytes):
     return (PEM_HEADER + '\n' +
             textwrap.fill(f, 64) + '\n' +
             PEM_FOOTER + '\n')
+
 
 def PEM_cert_to_DER_cert(pem_cert_string):
     """Takes a certificate in ASCII PEM format and returns the
@@ -626,6 +593,7 @@ def PEM_cert_to_DER_cert(pem_cert_string):
                          % PEM_FOOTER)
     d = pem_cert_string.strip()[len(PEM_HEADER):-len(PEM_FOOTER)]
     return base64.decodebytes(d.encode('ASCII', 'strict'))
+
 
 def get_server_certificate(addr, ssl_version=PROTOCOL_SSLv3, ca_certs=None):
     """Retrieve the certificate from the server at the specified address,
@@ -644,6 +612,7 @@ def get_server_certificate(addr, ssl_version=PROTOCOL_SSLv3, ca_certs=None):
     dercert = s.getpeercert(True)
     s.close()
     return DER_cert_to_PEM_cert(dercert)
+
 
 def get_protocol_name(protocol_code):
     return _PROTOCOL_NAMES.get(protocol_code, '<unknown>')
