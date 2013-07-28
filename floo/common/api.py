@@ -2,7 +2,10 @@ import sys
 import base64
 import json
 
-import sublime
+try:
+    import sublime
+except ImportError:
+    from .. import sublime
 
 try:
     from urllib.request import Request, urlopen
