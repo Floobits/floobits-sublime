@@ -407,11 +407,14 @@ class AgentConnection(BaseAgentConnection):
                 view.retarget(new)
         elif name == 'delete_buf':
             path = utils.get_full_path(data['path'])
+            listener.delete_buf(data['id'])
             try:
                 utils.rm(path)
             except Exception:
                 pass
-            listener.delete_buf(data['id'])
+            user_id = data.get('user_id')
+            username = self.get_username_by_id(user_id)
+            msg.log('%s deleted %s' % (username, path))
         elif name == 'room_info':
             Listener.reset()
             G.JOINED_WORKSPACE = True

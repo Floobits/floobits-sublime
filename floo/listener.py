@@ -34,7 +34,9 @@ def get_text(view):
 
 
 def get_view(buf_id):
-    buf = BUFS[buf_id]
+    buf = BUFS.get(buf_id)
+    if buf is None:
+        return None
     for view in G.WORKSPACE_WINDOW.views():
         if not view.file_name():
             continue
@@ -93,7 +95,15 @@ def save_buf(buf):
 
 
 def delete_buf(buf_id):
-    # TODO: somehow tell the user about this. maybe delete on disk too?
+    # TODO: somehow tell the user about this
+    view = get_view(buf_id)
+    try:
+        if view:
+            view.set_scratch(True)
+            G.WORKSPACE_WINDOW.focus_view(view)
+            G.WORKSPACE_WINDOW.run_command("close_file")
+    except Exception as e:
+        msg.debug('Error closing view: %s' % unicode(e))
     try:
         buf = BUFS.get(buf_id)
         if buf:
