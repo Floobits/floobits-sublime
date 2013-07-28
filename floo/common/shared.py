@@ -1,8 +1,7 @@
 import os
 
-
-# Protocol version
-__VERSION__ = '0.03'
+__VERSION__ = ''
+__PLUGIN_VERSION__ = ''
 
 # Config settings
 USERNAME = ''
@@ -24,6 +23,7 @@ DEFAULT_PORT = 3448
 SECURE = True
 
 
+SHARE_DIR = None
 COLAB_DIR = ''
 PROJECT_PATH = ''
 JOINED_WORKSPACE = False

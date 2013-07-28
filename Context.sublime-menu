@@ -23,11 +23,6 @@
         "command": "floobits_prompt_msg"
       },
       {
-        "id": "floobits_share_dir",
-        "caption": "Share Directory (Create Workspace)",
-        "command": "floobits_share_dir"
-      },
-      {
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
       },

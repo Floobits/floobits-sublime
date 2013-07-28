@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import hashlib
 
 try:
     from urllib.parse import urlparse
@@ -8,17 +9,61 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-import sublime
+try:
+    import sublime
+except ImportError:
+    from .. import sublime
 
 try:
     from . import shared as G
-    assert G
+    from .lib import DMP
+    assert G and DMP
 except ImportError:
     import shared as G
+    from lib import DMP
 
 top_timeout_id = 0
 cancelled_timeouts = set()
 timeouts = set()
+
+
+class FlooPatch(object):
+    def __init__(self, current, buf):
+        self.buf = buf
+        self.current = current
+        self.previous = buf['buf']
+        if buf['encoding'] == 'base64':
+            self.md5_before = hashlib.md5(self.previous).hexdigest()
+        else:
+            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+
+    def __str__(self):
+        return '%s - %s' % (self.buf['id'], self.buf['path'])
+
+    def patches(self):
+        return DMP.patch_make(self.previous, self.current)
+
+    def to_json(self):
+        patches = self.patches()
+        if len(patches) == 0:
+            return None
+        patch_str = ''
+        for patch in patches:
+            patch_str += str(patch)
+
+        if self.buf['encoding'] == 'base64':
+            md5_after = hashlib.md5(self.current).hexdigest()
+        else:
+            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+
+        return {
+            'id': self.buf['id'],
+            'md5_after': md5_after,
+            'md5_before': self.md5_before,
+            'path': self.buf['path'],
+            'patch': patch_str,
+            'name': 'patch'
+        }
 
 
 class Waterfall(object):
@@ -36,32 +81,13 @@ class Waterfall(object):
 
 def reload_settings():
     print('Reloading settings...')
-    # TODO: settings doesn't seem to load most settings.
-    # Also, settings.get('key', 'default_value') returns None
-    settings = sublime.load_settings('Floobits.sublime-settings')
-    G.ALERT_ON_MSG = settings.get('alert_on_msg')
-    if G.ALERT_ON_MSG is None:
-        G.ALERT_ON_MSG = True
-    G.LOG_TO_CONSOLE = settings.get('log_to_console')
-    if G.LOG_TO_CONSOLE is None:
-        G.LOG_TO_CONSOLE = False
-    G.DEBUG = settings.get('debug')
-    if G.DEBUG is None:
-        G.DEBUG = False
-    G.COLAB_DIR = settings.get('share_dir') or os.path.join(G.BASE_DIR, 'share')
-    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
-    G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    mkdir(G.COLAB_DIR)
-    G.DEFAULT_HOST = settings.get('host') or G.DEFAULT_HOST
-    G.DEFAULT_PORT = settings.get('port') or G.DEFAULT_PORT
-    G.SECURE = settings.get('secure')
-    if G.SECURE is None:
-        G.SECURE = True
-    G.USERNAME = settings.get('username')
-    G.SECRET = settings.get('secret')
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
+    G.COLAB_DIR = G.SHARE_DIR or os.path.join(G.BASE_DIR, 'share')
+    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
+    G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
+    mkdir(G.COLAB_DIR)
     print('Floobits debug is %s' % G.DEBUG)
 
 
@@ -151,24 +177,6 @@ def to_workspace_url(r):
         port = ':%s' % port
     workspace_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['workspace'])
     return workspace_url
-
-
-def get_workspace_window():
-    workspace_window = None
-    for w in sublime.windows():
-        for f in w.folders():
-            if f == G.PROJECT_PATH:
-                workspace_window = w
-                break
-    return workspace_window
-
-
-def set_workspace_window(cb):
-    workspace_window = get_workspace_window()
-    if workspace_window is None:
-        return set_timeout(set_workspace_window, 50, cb)
-    G.WORKSPACE_WINDOW = workspace_window
-    cb()
 
 
 def get_full_path(p):

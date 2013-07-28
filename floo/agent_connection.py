@@ -19,15 +19,12 @@ except ImportError:
     ssl = False
 
 try:
-    from . import api, cert, listener, msg, shared as G, utils
+    from .common import api, cert, msg, shared as G, utils
+    from . import listener
     assert api and cert and G and listener and msg and utils
 except (ImportError, ValueError):
-    import api
-    import cert
-    import shared as G
-    import utils
+    from common import api, cert, msg, shared as G, utils
     import listener
-    import msg
 
 Listener = listener.Listener
 
@@ -358,7 +355,7 @@ class AgentConnection(BaseAgentConnection):
 
     def get_username_by_id(self, user_id):
         try:
-            return self.workspace_info['users'][user_id]['username']
+            return self.workspace_info['users'][str(user_id)]['username']
         except Exception:
             return ''
 
@@ -410,11 +407,14 @@ class AgentConnection(BaseAgentConnection):
                 view.retarget(new)
         elif name == 'delete_buf':
             path = utils.get_full_path(data['path'])
+            listener.delete_buf(data['id'])
             try:
                 utils.rm(path)
             except Exception:
                 pass
-            listener.delete_buf(data['id'])
+            user_id = data.get('user_id')
+            username = self.get_username_by_id(user_id)
+            msg.log('%s deleted %s' % (username, path))
         elif name == 'room_info':
             Listener.reset()
             G.JOINED_WORKSPACE = True

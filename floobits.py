@@ -67,15 +67,19 @@ if ssl is False and sublime.platform() == 'linux':
 
 try:
     from urllib.error import HTTPError
-    from .floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, ignore, listener, msg, shared as G, utils
+    from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
+    from .floo.common import api, ignore, msg, shared as G, utils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils
+    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils and version
 except (ImportError, ValueError):
     from urllib2 import HTTPError
-    from floo import api, AgentConnection, CreateAccountConnection, RequestCredentialsConnection, ignore, listener, msg, utils
+    from floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
+    from floo.common import api, ignore, msg, shared as G, utils
     from floo.listener import Listener
-    from floo import shared as G
+    assert version
 
+
+sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
 utils.reload_settings()
 
@@ -234,6 +238,30 @@ def on_room_info_msg():
     sublime.message_dialog(_msg)
 
 
+def get_or_create_chat(cb=None):
+    if G.DEBUG:
+        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
+
+    def return_view():
+        G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
+        G.CHAT_VIEW.set_read_only(True)
+        if cb:
+            return cb(G.CHAT_VIEW)
+
+    def open_view():
+        if not G.CHAT_VIEW:
+            p = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
+            G.CHAT_VIEW = G.WORKSPACE_WINDOW.open_file(p)
+        utils.set_timeout(return_view, 0)
+
+    # Can't call open_file outside main thread
+    if G.LOG_TO_CONSOLE:
+        if cb:
+            return cb(None)
+    else:
+        utils.set_timeout(open_view, 0)
+
+
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
         return bool(self.is_enabled())
@@ -273,8 +301,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
-        floo_workspace_dir = os.path.join(G.COLAB_DIR, G.USERNAME, workspace_name)
-        print(G.COLAB_DIR, G.USERNAME, workspace_name, floo_workspace_dir)
+        print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
@@ -333,11 +360,23 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
         on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
-        self.window.run_command('floobits_create_workspace', {
-            'workspace_name': workspace_name,
-            'dir_to_share': dir_to_share,
-            'api_args': self.api_args
-        })
+
+        def on_done(owner):
+            self.window.run_command('floobits_create_workspace', {
+                'workspace_name': workspace_name,
+                'dir_to_share': dir_to_share,
+                'api_args': self.api_args,
+                'owner': owner[0],
+            })
+
+        orgs = api.get_orgs_can_admin()
+        orgs = json.loads(orgs.read().decode('utf-8'))
+        if len(orgs) == 0:
+            return on_done([G.USERNAME])
+
+        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in orgs]
+        orgs.insert(0, [G.USERNAME, 'Create workspace under %s' % G.USERNAME])
+        self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
 
 class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
@@ -348,14 +387,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
-    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None):
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
             return
         if ssl is False:
             return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
                                          'This is a known issue on Linux and Windows builds of Sublime Text 2. '
                                          'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
-        self.owner = G.USERNAME
+        self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
         self.api_args = api_args or {}
@@ -370,31 +409,41 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             return self.run(dir_to_share=self.dir_to_share)
         try:
             self.api_args['name'] = workspace_name
+            self.api_args['owner'] = self.owner
+            msg.debug(str(self.api_args))
             api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, G.USERNAME, workspace_name)
+            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             err_body = e.read()
             msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            if e.code not in [400, 409]:
+            if e.code not in [400, 402, 409]:
                 return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
             kwargs = {
                 'dir_to_share': self.dir_to_share,
                 'workspace_name': workspace_name,
-                'api_args': self.api_args
+                'api_args': self.api_args,
+                'owner': self.owner,
             }
             if e.code == 400:
                 kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
                 kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+            elif e.code == 402:
+                try:
+                    err_body = json.loads(err_body)
+                    err_body = err_body['detail']
+                except Exception:
+                    pass
+                return sublime.error_message('%s' % err_body)
             else:
-                kwargs['prompt'] = 'Workspace %s already exists. Choose another name:' % workspace_name
+                kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
 
             return self.window.run_command('floobits_create_workspace', kwargs)
 
         except Exception as e:
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        add_workspace_to_persistent_json(G.USERNAME, workspace_name, workspace_url, self.dir_to_share)
+        add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
 
         on_room_info_waterfall.add(on_room_info_msg)
 
@@ -419,6 +468,22 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace_url):
 
+        def get_workspace_window():
+            workspace_window = None
+            for w in sublime.windows():
+                for f in w.folders():
+                    if f == G.PROJECT_PATH:
+                        workspace_window = w
+                        break
+            return workspace_window
+
+        def set_workspace_window(cb):
+            workspace_window = get_workspace_window()
+            if workspace_window is None:
+                return utils.set_timeout(set_workspace_window, 50, cb)
+            G.WORKSPACE_WINDOW = workspace_window
+            cb()
+
         def truncate_chat_view(chat_view, cb):
             if chat_view:
                 chat_view.set_read_only(False)
@@ -429,7 +494,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
         def create_chat_view(cb):
             with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
                 msgs_fd.write('')
-            msg.get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
 
         def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
@@ -446,7 +511,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
             command = [subl]
-            if utils.get_workspace_window() is None:
+            if get_workspace_window() is None:
                 command.append('--new-window')
             command.append('--add')
             command.append(G.PROJECT_PATH)
@@ -457,10 +522,10 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             poll_result = p.poll()
             print('poll:', poll_result)
 
-            utils.set_workspace_window(lambda: create_chat_view(cb))
+            set_workspace_window(lambda: create_chat_view(cb))
 
         def open_workspace_window3(cb):
-            G.WORKSPACE_WINDOW = utils.get_workspace_window()
+            G.WORKSPACE_WINDOW = get_workspace_window()
             if not G.WORKSPACE_WINDOW:
                 G.WORKSPACE_WINDOW = sublime.active_window()
             msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
@@ -625,7 +690,7 @@ class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
             if not G.AGENT:
                 msg.log('Not joined to a workspace.')
 
-        msg.get_or_create_chat(print_msg)
+        get_or_create_chat(print_msg)
 
     def description(self):
         return 'Open the floobits messages view.'
