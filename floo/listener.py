@@ -13,25 +13,17 @@ import sublime
 import sublime_plugin
 
 try:
-    from . import dmp_monkey
-    dmp_monkey.monkey_patch()
-    from .lib import diff_match_patch as dmp
-    from . import ignore, msg, shared as G, utils
-    assert dmp and ignore and G and msg and utils
+    from .common import ignore, msg, shared as G, utils
+    from .common.lib import DMP
+    assert DMP and ignore and G and msg and utils
 except ImportError:
-    import dmp_monkey
-    dmp_monkey.monkey_patch()
-    import ignore
-    from lib import diff_match_patch as dmp
-    import msg
-    import shared as G
-    import utils
+    from common import ignore, msg, shared as G, utils
+    from common.lib import DMP
 
 
 BUFS = {}
 CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
-DMP = dmp.diff_match_patch()
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
@@ -139,48 +131,6 @@ def send_summon(buf_id, sel):
         G.AGENT.put(highlight_json)
 
 
-class FlooPatch(object):
-
-    def __init__(self, view, buf):
-        self.buf = buf
-        self.view = view
-        self.current = get_text(view)
-        self.previous = buf['buf']
-        if buf['encoding'] == 'base64':
-            self.md5_before = hashlib.md5(self.previous).hexdigest()
-        else:
-            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
-
-    def __str__(self):
-        return '%s - %s - %s' % (self.buf['id'], self.buf['path'], self.view.buffer_id())
-
-    def patches(self):
-        return DMP.patch_make(self.previous, self.current)
-
-    def to_json(self):
-        patches = self.patches()
-        if len(patches) == 0:
-            return None
-        msg.debug('sending %s patches' % len(patches))
-        patch_str = ''
-        for patch in patches:
-            patch_str += str(patch)
-
-        if self.buf['encoding'] == 'base64':
-            md5_after = hashlib.md5(self.current).hexdigest()
-        else:
-            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
-
-        return {
-            'id': self.buf['id'],
-            'md5_after': md5_after,
-            'md5_before': self.md5_before,
-            'path': self.buf['path'],
-            'patch': patch_str,
-            'name': 'patch'
-        }
-
-
 class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
@@ -219,7 +169,7 @@ class Listener(sublime_plugin.EventListener):
                 continue
 
             reported.add(vb_id)
-            patch = FlooPatch(view, buf)
+            patch = utils.FlooPatch(get_text(view), buf)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
             buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
@@ -279,7 +229,7 @@ class Listener(sublime_plugin.EventListener):
             if old_text == view_text:
                 buf['forced_patch'] = False
             elif not buf.get('forced_patch'):
-                patch = FlooPatch(view, buf)
+                patch = utils.FlooPatch(get_text(view), buf)
                 # Update the current copy of the buffer
                 buf['buf'] = patch.current
                 buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
