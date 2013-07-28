@@ -10,7 +10,6 @@ except ImportError:
     python2 = True
     import shared as G
 
-import sublime
 
 LOG_LEVELS = {
     'DEBUG': 1,
@@ -28,6 +27,11 @@ try:
     fd.close()
 except Exception as e:
     pass
+
+
+# Overridden by each editor
+def editor_log(msg):
+    print(msg)
 
 
 class MSG(object):
@@ -51,7 +55,7 @@ class MSG(object):
                 print(unicode(e))
             print(unicode(self))
         else:
-            sublime.log(unicode(self))
+            editor_log(unicode(self))
 
     def __str__(self):
         if python2:

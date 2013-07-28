@@ -62,12 +62,10 @@ def patch_apply(self, patches, text):
                 text2 = text[start_loc: end_loc + self.Match_MaxBits]
             if text1 == text2:
                 # Perfect match, just shove the replacement text in.
-                print("perfect match")
                 replacement_str = self.diff_text2(patch.diffs)
                 text = (text[:start_loc] + replacement_str + text[start_loc + len(text1):])
                 position = [start_loc, len(text1), replacement_str]
             else:
-                print("imperfect match")
                 # Imperfect match.
                 # Run a diff to get a framework of equivalent indices.
                 diffs = self.diff_main(text1, text2, False)
@@ -92,7 +90,6 @@ def patch_apply(self, patches, text):
                             delete_len += (diff_index - index2)
                         if op != self.DIFF_DELETE:
                             index1 += len(data)
-                    print("cleaned up sematic lossless")
                     position = [start_loc, delete_len, inserted_text]
         text_len = len(text)
         if position[0] < np_len:
@@ -107,10 +104,8 @@ def patch_apply(self, patches, text):
             position[2] = position[2][:-too_close]
 
         positions.append(position)
-        print("pos", position)
     # Strip the padding off.
     text = text[np_len:-1 * np_len]
-    print("returning patches. null padding is", np_len)
     return (text, results, positions)
 
 
