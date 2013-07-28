@@ -9,7 +9,10 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-import sublime
+try:
+    import sublime
+except ImportError:
+    from .. import sublime
 
 try:
     from . import shared as G
