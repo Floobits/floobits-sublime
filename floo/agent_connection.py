@@ -19,15 +19,12 @@ except ImportError:
     ssl = False
 
 try:
-    from . import api, cert, listener, msg, shared as G, utils
+    from .common import api, cert, msg, shared as G, utils
+    from . import listener
     assert api and cert and G and listener and msg and utils
 except (ImportError, ValueError):
-    import api
-    import cert
-    import shared as G
-    import utils
+    from common import api, cert, msg, shared as G, utils
     import listener
-    import msg
 
 Listener = listener.Listener
 

@@ -24,15 +24,15 @@ def main():
     with open('packages.json', 'w') as fd:
         fd.write(json.dumps(pkg_json, indent=4, separators=(',', ': '), sort_keys=True))
 
-    with open('floo/shared.py', 'r') as fd:
-        shared_py = fd.read().decode('utf-8').split('\n')
+    with open('floo/version.py', 'r') as fd:
+        version_py = fd.read().decode('utf-8').split('\n')
 
-    shared_py[0] = "__PLUGIN_VERSION__ = '%s'" % version
+    version_py[0] = "PLUGIN_VERSION = '%s'" % version
 
-    with open('floo/shared.py', 'w') as fd:
-        fd.write(('\n'.join(shared_py)).encode('utf-8'))
+    with open('floo/version.py', 'w') as fd:
+        fd.write(('\n'.join(version_py)).encode('utf-8'))
 
-    os.system('git add packages.json floo/shared.py')
+    os.system('git add packages.json floo/version.py')
     os.system('git commit -m "Tag new release: %s"' % version)
     os.system('git tag %s' % version)
     os.system('git push --tags')

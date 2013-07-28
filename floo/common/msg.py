@@ -2,14 +2,14 @@ import os
 import time
 
 try:
-    from . import shared as G, utils
-    assert G and utils
+    from . import shared as G
+    assert G
     unicode = str
     python2 = False
 except ImportError:
     python2 = True
     import shared as G
-    import utils
+
 
 LOG_LEVELS = {
     'DEBUG': 1,
@@ -19,31 +19,19 @@ LOG_LEVELS = {
 }
 
 LOG_LEVEL = LOG_LEVELS['MSG']
+LOG_FILE = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
 
 
-def get_or_create_chat(cb=None):
-    global LOG_LEVEL
-    if G.DEBUG:
-        LOG_LEVEL = LOG_LEVELS['DEBUG']
+try:
+    fd = open(LOG_FILE, 'w')
+    fd.close()
+except Exception as e:
+    pass
 
-    def return_view():
-        G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
-        G.CHAT_VIEW.set_read_only(True)
-        if cb:
-            return cb(G.CHAT_VIEW)
 
-    def open_view():
-        if not G.CHAT_VIEW:
-            p = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
-            G.CHAT_VIEW = G.WORKSPACE_WINDOW.open_file(p)
-        utils.set_timeout(return_view, 0)
-
-    # Can't call open_file outside main thread
-    if G.LOG_TO_CONSOLE:
-        if cb:
-            return cb(None)
-    else:
-        utils.set_timeout(open_view, 0)
+# Overridden by each editor
+def editor_log(msg):
+    print(msg)
 
 
 class MSG(object):
@@ -58,15 +46,16 @@ class MSG(object):
             return
 
         if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
+            # TODO: ridiculously inefficient
             try:
-                fd = open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a+')
+                fd = open(LOG_FILE, 'a+')
                 fd.write(unicode(self))
                 fd.close()
             except Exception as e:
                 print(unicode(e))
             print(unicode(self))
         else:
-            G.CHAT_VIEW.run_command('floo_view_set_msg', {'data': unicode(self)})
+            editor_log(unicode(self))
 
     def __str__(self):
         if python2:
