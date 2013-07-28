@@ -355,7 +355,7 @@ class AgentConnection(BaseAgentConnection):
 
     def get_username_by_id(self, user_id):
         try:
-            return self.workspace_info['users'][user_id]['username']
+            return self.workspace_info['users'][str(user_id)]['username']
         except Exception:
             return ''
 
