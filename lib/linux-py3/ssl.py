@@ -62,11 +62,61 @@ import re
 
 import _ssl             # if we can't import it, let the error propagate
 
+from _ssl import OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_INFO, OPENSSL_VERSION
+assert OPENSSL_VERSION_NUMBER and OPENSSL_VERSION_INFO and OPENSSL_VERSION
 from _ssl import _SSLContext
-from _ssl import SSLError
-from _ssl import CERT_NONE, CERT_REQUIRED
-from _ssl import SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_EOF
-from _ssl import PROTOCOL_SSLv3, PROTOCOL_SSLv23, PROTOCOL_TLSv1
+from _ssl import (
+    SSLError, SSLZeroReturnError, SSLWantReadError, SSLWantWriteError,
+    SSLSyscallError, SSLEOFError,
+)
+assert SSLZeroReturnError and SSLWantReadError and SSLWantWriteError and SSLSyscallError and SSLEOFError
+
+from _ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+assert CERT_OPTIONAL
+from _ssl import (
+    OP_ALL, OP_NO_SSLv2, OP_NO_SSLv3, OP_NO_TLSv1,
+    OP_CIPHER_SERVER_PREFERENCE, OP_SINGLE_DH_USE
+)
+assert OP_ALL and OP_NO_SSLv2 and OP_NO_SSLv3 and OP_NO_TLSv1 and OP_CIPHER_SERVER_PREFERENCE and OP_SINGLE_DH_USE
+
+try:
+    from _ssl import OP_NO_COMPRESSION
+    assert OP_NO_COMPRESSION
+except ImportError:
+    pass
+try:
+    from _ssl import OP_SINGLE_ECDH_USE
+    assert OP_SINGLE_ECDH_USE
+except ImportError:
+    pass
+from _ssl import RAND_status, RAND_egd, RAND_add, RAND_bytes, RAND_pseudo_bytes
+assert RAND_pseudo_bytes and RAND_add and RAND_bytes and RAND_egd and RAND_status
+
+from _ssl import (
+    SSL_ERROR_ZERO_RETURN,
+    SSL_ERROR_WANT_READ,
+    SSL_ERROR_WANT_WRITE,
+    SSL_ERROR_WANT_X509_LOOKUP,
+    SSL_ERROR_SYSCALL,
+    SSL_ERROR_SSL,
+    SSL_ERROR_WANT_CONNECT,
+    SSL_ERROR_EOF,
+    SSL_ERROR_INVALID_ERROR_CODE,
+)
+assert SSL_ERROR_ZERO_RETURN
+assert SSL_ERROR_WANT_X509_LOOKUP
+assert SSL_ERROR_SYSCALL
+assert SSL_ERROR_SSL
+assert SSL_ERROR_WANT_CONNECT
+assert SSL_ERROR_INVALID_ERROR_CODE
+
+from _ssl import HAS_SNI, HAS_ECDH, HAS_NPN
+assert HAS_SNI and HAS_ECDH and HAS_NPN
+
+from _ssl import (PROTOCOL_SSLv3, PROTOCOL_SSLv23,
+                  PROTOCOL_TLSv1)
+from _ssl import _OPENSSL_API_VERSION
+assert _OPENSSL_API_VERSION
 
 _PROTOCOL_NAMES = {
     PROTOCOL_TLSv1: "TLSv1",
@@ -81,9 +131,13 @@ except ImportError:
 else:
     _PROTOCOL_NAMES[PROTOCOL_SSLv2] = "SSLv2"
 
+from socket import getnameinfo as _getnameinfo
+assert _getnameinfo
 from socket import error as socket_error
 from socket import socket, AF_INET, SOCK_STREAM, create_connection
 import base64        # for DER-to-PEM translation
+import traceback
+assert traceback
 import errno
 
 if _ssl.HAS_TLS_UNIQUE:
@@ -143,15 +197,14 @@ def match_hostname(cert, hostname):
                         return
                     dnsnames.append(value)
     if len(dnsnames) > 1:
-        raise CertificateError("hostname %r "
-                               "doesn't match either of %s"
+        raise CertificateError("hostname %r doesn't match either of %s"
                                % (hostname, ', '.join(map(repr, dnsnames))))
     elif len(dnsnames) == 1:
-        raise CertificateError("hostname %r "
-                               "doesn't match %r"
+        raise CertificateError("hostname %r doesn't match %r"
                                % (hostname, dnsnames[0]))
     else:
-        raise CertificateError("no appropriate commonName or subjectAltName fields were found")
+        raise CertificateError("no appropriate commonName or "
+                               "subjectAltName fields were found")
 
 
 class SSLContext(_SSLContext):
@@ -272,7 +325,9 @@ class SSLSocket(socket):
                     timeout = self.gettimeout()
                     if timeout == 0.0:
                         # non-blocking
-                        raise ValueError("do_handshake_on_connect should not be specified for non-blocking sockets")
+                        raise ValueError("do_handshake_on_connect should not "
+                                         "be specified for non-blocking "
+                                         "sockets")
                     self.do_handshake()
 
             except socket_error as x:
@@ -417,8 +472,10 @@ class SSLSocket(socket):
             nbytes = 1024
         if self._sslobj:
             if flags != 0:
-                raise ValueError("non-zero flags not allowed in calls to recv_into() on %s" %
-                                 self.__class__)
+                raise ValueError(
+                    "non-zero flags not allowed in calls to recv_into() "
+                    "on %s" %
+                    self.__class__)
             return self.read(nbytes, buffer)
         else:
             return socket.recv_into(self, buffer, nbytes, flags)
@@ -490,7 +547,8 @@ class SSLSocket(socket):
         # connected at the time of the call.  We connect it, then wrap it.
         if self._connected:
             raise ValueError("attempt to connect already-connected SSLSocket!")
-        self._sslobj = self.context._wrap_socket(self, False, self.server_hostname)
+        self._sslobj = self.context._wrap_socket(self, False,
+                                                 self.server_hostname)
         try:
             if connect_ex:
                 rc = socket.connect_ex(self, addr)
@@ -536,7 +594,9 @@ class SSLSocket(socket):
         if cb_type not in CHANNEL_BINDING_TYPES:
             raise ValueError("Unsupported channel binding type")
         if cb_type != "tls-unique":
-            raise NotImplementedError("{0} channel binding type not implemented".format(cb_type))
+            raise NotImplementedError(
+                "{0} channel binding type not implemented"
+                .format(cb_type))
         if self._sslobj is None:
             return None
         return self._sslobj.tls_unique_cb()
@@ -558,6 +618,7 @@ def wrap_socket(sock, keyfile=None, certfile=None,
 
 
 # some utility functions
+
 def cert_time_to_seconds(cert_time):
     """Takes a date-time string in standard ASN1_print form
     ("MON DAY 24HOUR:MINUTE:SEC YEAR TIMEZONE") and return
@@ -565,7 +626,6 @@ def cert_time_to_seconds(cert_time):
 
     import time
     return time.mktime(time.strptime(cert_time, "%b %d %H:%M:%S %Y GMT"))
-
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
