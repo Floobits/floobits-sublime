@@ -30,6 +30,7 @@ Listener = listener.Listener
 
 settings = sublime.load_settings('Floobits.sublime-settings')
 CHAT_VIEW = None
+PY2 = sys.version_info < (3, 0)
 SOCKET_Q = collections.deque()
 
 try:
@@ -80,7 +81,7 @@ class BaseAgentConnection(object):
 
     @property
     def client(self):
-        if sys.version_info < (3, 0):
+        if PY2:
             sublime_version = 2
         else:
             sublime_version = 3
@@ -189,12 +190,17 @@ class BaseAgentConnection(object):
             if not sep:
                 break
             try:
-                before = before.decode('utf-8')
+                # Node.js sends invalid utf8 even though we're calling write(string, "utf8")
+                # Python 2 can figure it out, but python 3 hates it and will die here with some byte sequences
+                # Instead of crashing the plugin, we drop the data. Yes, this is horrible.
+                before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
                 msg.error('Unable to parse json: %s' % str(e))
                 msg.error('Data: %s' % before)
-                raise e
+                # XXXX: THIS LOSES DATA
+                self.buf = after
+                continue
             name = data.get('name')
             try:
                 if name == 'error':
