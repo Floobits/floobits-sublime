@@ -411,6 +411,7 @@ class AgentConnection(BaseAgentConnection):
             view = listener.get_view(data['id'])
             if view:
                 view.retarget(new)
+            listener.BUFS[data['id']]['path'] = data['path']
         elif name == 'delete_buf':
             path = utils.get_full_path(data['path'])
             listener.delete_buf(data['id'])
