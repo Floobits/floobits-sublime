@@ -30,9 +30,10 @@ def create_flooignore(path):
 
 
 class Ignore(object):
-    def __init__(self, parent, path):
+    def __init__(self, parent, path, should_ignore=True):
         self.parent = parent
         self.ignores = {}
+        self.should_ignore = should_ignore
         self.path = utils.unfuck_path(path)
         msg.debug('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
@@ -58,6 +59,11 @@ class Ignore(object):
         return '%s ignored by pattern %s in %s' % (path, pattern, os.path.join(self.path, ignore_file))
 
     def is_ignored(self, path):
+        if not self.should_ignore and path == self.path:
+            if self.parent:
+                return self.parent.is_ignored()
+            return False
+
         rel_path = os.path.relpath(path, self.path)
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:

@@ -254,3 +254,13 @@ def mkdir(path):
         if e.errno != 17:
             sublime.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
             raise
+
+
+def iter_n_deque(deque, n=10):
+    i = 0
+    while i < n:
+        try:
+            yield deque.popleft()
+        except IndexError:
+            return
+        i += 1
