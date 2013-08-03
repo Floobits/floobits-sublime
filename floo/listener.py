@@ -8,6 +8,7 @@ import hashlib
 from datetime import datetime
 import base64
 import stat
+import collections
 
 import sublime
 import sublime_plugin
@@ -27,6 +28,7 @@ PATHS_TO_IDS = {}
 ON_LOAD = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
+MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
 def get_text(view):
@@ -141,9 +143,16 @@ def send_summon(buf_id, sel):
         G.AGENT.put(highlight_json)
 
 
+class CreationQueue(object):
+    def __init__(self):
+        self.dirs = []
+        self.files = []
+
+
 class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
+    creation_deque = collections.deque()
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
@@ -157,6 +166,7 @@ class Listener(sublime_plugin.EventListener):
         PATHS_TO_IDS = {}
         Listener.views_changed = []
         Listener.selection_changed = []
+        Listener.creation_deque = collections.deque()
 
     @staticmethod
     def push():
@@ -328,59 +338,97 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path, ig=None):
+        if not ig:
+            ig = ignore.Ignore(None, path, False)
+        ignores = collections.deque([ig])
+        files = collections.deque()
+        Listener._create_buf_worker(ignores, files)
+
+    @staticmethod
+    def _create_buf_worker(ignores, files):
+        quota = 10
+
+        # scan until we find a minimum of 10 files
+        while quota > 0 and ignores:
+            ig = ignores.popleft()
+            for new_stuff in Listener._scan_dir(ig):
+                if not new_stuff:
+                    continue
+                new_dir, new_file = new_stuff
+                if new_dir:
+                    ignores.append(ignore.Ignore(ig, new_dir))
+                elif new_file:
+                    files.append(new_file)
+                    quota -= 1
+
+        for f in utils.iter_n_deque(files, 10):
+            Listener.upload(f)
+
+        if ignores or files:
+            utils.set_timeout(Listener._create_buf_worker, 0, ignores, files)
+
+    @staticmethod
+    def _scan_dir(ig):
+        path = ig.path
+
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
         if os.path.islink(path):
             msg.error('Skipping adding %s because it is a symlink.' % path)
             return
-        ignored = ig and ig.is_ignored(path)
+        ignored = ig.is_ignored(path)
         if ignored:
             msg.log('Not creating buf: %s' % (ignored))
             return
+
         msg.debug('create_buf: path is %s' % path)
-        if os.path.isdir(path):
-            if ig is None:
-                try:
-                    ig = ignore.build_ignores(path)
-                except Exception as e:
-                    msg.error('Error adding %s: %s' % (path, unicode(e)))
-                    return
-            try:
-                paths = os.listdir(path)
-            except Exception as e:
-                msg.error('Error listing path %s: %s' % (path, unicode(e)))
-                return
-            for p in paths:
-                p_path = os.path.join(path, p)
-                if p[0] == '.':
-                    if p not in ignore.HIDDEN_WHITELIST:
-                        msg.log('Not creating buf for hidden path %s' % p_path)
-                        continue
-                ignored = ig.is_ignored(p_path)
-                if ignored:
-                    msg.log('Not creating buf: %s' % (ignored))
-                    continue
-                try:
-                    s = os.lstat(p_path)
-                except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
-                    continue
-                if stat.S_ISDIR(s.st_mode):
-                    child_ig = ignore.Ignore(ig, p_path)
-                    utils.set_timeout(Listener.create_buf, 0, p_path, child_ig)
-                elif stat.S_ISREG(s.st_mode):
-                    utils.set_timeout(Listener.create_buf, 0, p_path, ig)
+
+        if not os.path.isdir(path):
+            yield (None, path)
             return
+
+        try:
+            paths = os.listdir(path)
+        except Exception as e:
+            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            return
+        for p in paths:
+            p_path = os.path.join(path, p)
+            if p[0] == '.':
+                if p not in ignore.HIDDEN_WHITELIST:
+                    msg.log('Not creating buf for hidden path %s' % p_path)
+                    continue
+            ignored = ig.is_ignored(p_path)
+            if ignored:
+                msg.log('Not creating buf: %s' % (ignored))
+                continue
+            try:
+                s = os.lstat(p_path)
+            except Exception as e:
+                msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
+                continue
+
+            if stat.S_ISDIR(s.st_mode):
+                yield (p_path, None)
+            elif stat.S_ISREG(s.st_mode):
+                yield (None, p_path)
+
+    @staticmethod
+    def upload(path):
         try:
             buf_fd = open(path, 'rb')
+            st = os.fstat(buf_fd.fileno())
+            if st.st_size > (MAX_FILE_SIZE):
+                return msg.warn('File %s is too big: %s' % (path, st.st_size))
+
             buf = buf_fd.read()
-            encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
             if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
-                msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
-                return
+                return msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
+
+            encoding = 'utf8'
             try:
                 buf = buf.decode('utf-8')
             except Exception:
