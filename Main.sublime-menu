@@ -52,7 +52,7 @@
         "command": "floobits_leave_workspace"
       },
       {
-        "caption": "Floobits - Open Workspace Settings (in Browser)",
+        "caption": "Open Workspace Settings (in Browser)",
         "command": "floobits_open_workspace_settings"
       },
       {
