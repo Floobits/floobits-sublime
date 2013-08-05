@@ -1,5 +1,6 @@
 import sys
 import base64
+import imp
 import json
 
 try:
@@ -8,10 +9,18 @@ except ImportError:
     from .. import sublime
 
 try:
-    from urllib.request import Request, urlopen
+    import urllib
+    imp.reload(urllib)
+    from urllib import request
+    imp.reload(request)
+    Request = request.Request
+    urlopen = request.urlopen
     assert Request and urlopen
 except ImportError:
-    from urllib2 import Request, urlopen
+    import urllib2
+    imp.reload(urllib2)
+    Request = urllib2.Request
+    urlopen = urllib2.urlopen
 
 
 try:
