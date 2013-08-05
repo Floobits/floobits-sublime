@@ -175,7 +175,8 @@ def to_workspace_url(r):
             port = ''
     if port != '':
         port = ':%s' % port
-    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['workspace'])
+    host = r.get('host', G.DEFAULT_HOST)
+    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
 
 
@@ -234,6 +235,15 @@ def update_persistent_data(data):
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
+
+
+def add_workspace_to_persistent_json(owner, name, url, path):
+    d = get_persistent_data()
+    workspaces = d['workspaces']
+    if owner not in workspaces:
+        workspaces[owner] = {}
+    workspaces[owner][name] = {'url': url, 'path': path}
+    update_persistent_data(d)
 
 
 def rm(path):
