@@ -5,10 +5,8 @@ from collections import defaultdict
 import shared as G
 import utils
 
-utils.reload_settings()
 
-
-def reveal_floobits_dir():
+def rename_floobits_dir():
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
     if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
@@ -64,4 +62,3 @@ def migrate_symlinks():
         os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
     except Exception:
         pass
-    print('migrated')
