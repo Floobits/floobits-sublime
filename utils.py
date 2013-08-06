@@ -149,6 +149,9 @@ def parse_url(workspace_url):
         if not port:
             port = 3148
         secure = False
+    else:
+        if not port:
+            port = G.DEFAULT_PORT
     result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
     if result:
         (owner, workspace_name) = result.groups()
@@ -164,7 +167,7 @@ def parse_url(workspace_url):
 
 
 def to_workspace_url(r):
-    port = int(r['port'])
+    port = int(r.get('port', 3448))
     if r['secure']:
         proto = 'https'
         if port == 3448:
@@ -244,6 +247,14 @@ def add_workspace_to_persistent_json(owner, name, url, path):
         workspaces[owner] = {}
     workspaces[owner][name] = {'url': url, 'path': path}
     update_persistent_data(d)
+
+
+def get_workspace_by_path(path):
+    for owner, workspaces in get_persistent_data()['workspaces'].items():
+        for name, workspace in workspaces.items():
+            if workspace['path'] == path:
+                workspace_url = workspace['url']
+                return workspace_url
 
 
 def rm(path):
