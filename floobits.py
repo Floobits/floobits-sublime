@@ -66,13 +66,28 @@ if ssl is False and sublime.platform() == 'linux':
 
 
 try:
-    from urllib.error import HTTPError
+    import urllib
+    urllib = imp.reload(urllib)
+    from urllib import request
+    request = imp.reload(request)
+    Request = request.Request
+    urlopen = request.urlopen
+    HTTPError = urllib.HTTPError
+    assert Request and urlopen and HTTPError
+except ImportError:
+    import urllib2
+    urllib2 = imp.reload(urllib2)
+    Request = urllib2.Request
+    urlopen = urllib2.urlopen
+    HTTPError = urllib2.HTTPError
+
+
+try:
     from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
     from .floo.common import api, ignore, msg, shared as G, utils
     from .floo.listener import Listener
     assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils and version
 except (ImportError, ValueError):
-    from urllib2 import HTTPError
     from floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
     from floo.common import api, ignore, msg, shared as G, utils
     from floo.listener import Listener
