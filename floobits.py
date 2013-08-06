@@ -328,9 +328,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     del d['workspaces'][result['owner']][result['name']]
                     utils.update_persistent_data(d)
                 except Exception as e:
-                    msg.debug(e)
+                    msg.debug(unicode(e))
                 return False
-
             on_room_info_waterfall.add(on_room_info_msg)
             on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
             on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
