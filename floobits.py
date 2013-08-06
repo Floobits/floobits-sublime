@@ -72,7 +72,7 @@ try:
     request = imp.reload(request)
     Request = request.Request
     urlopen = request.urlopen
-    HTTPError = urllib.HTTPError
+    HTTPError = urllib.error.HTTPError
     assert Request and urlopen and HTTPError
 except ImportError:
     import urllib2
@@ -80,7 +80,6 @@ except ImportError:
     Request = urllib2.Request
     urlopen = urllib2.urlopen
     HTTPError = urllib2.HTTPError
-
 
 try:
     from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
