@@ -8,7 +8,7 @@ except ImportError:
     from .. import sublime
 
 try:
-    from urllib import Request, urlopen
+    from urllib.request import Request, urlopen
     assert Request and urlopen
 except ImportError:
     from urllib2 import Request, urlopen
