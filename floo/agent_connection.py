@@ -121,6 +121,7 @@ class BaseAgentConnection(object):
         qsize = len(SOCKET_Q)
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
+        return qsize
 
     def reconnect(self):
         if self.reconnect_timeout:
@@ -219,13 +220,6 @@ class BaseAgentConnection(object):
                 msg.error('Error handling %s event with data %s: %s' % (name, data, e))
             self.buf = after
 
-    def get_patches(self):
-        while True:
-            try:
-                yield SOCKET_Q.popleft()
-            except IndexError:
-                raise StopIteration()
-
     def select(self):
         if not self.call_select:
             return
@@ -260,14 +254,16 @@ class BaseAgentConnection(object):
                     self.handshaken = True
                     sock_debug('Successful handshake')
 
-            for p in self.get_patches():
-                sock_debug('sending patch')
-                try:
+            try:
+                while True:
+                    p = SOCKET_Q.popleft()
+                    sock_debug('sending patch')
                     self.sock.sendall(p.encode('utf-8'))
-                except Exception as e:
-                    msg.error('Couldn\'t write to socket: %s' % str(e))
-                    return self.reconnect()
-            sock_debug('Done writing for now')
+            except IndexError:
+                sock_debug('Done writing for now')
+            except Exception as e:
+                msg.error('Couldn\'t write to socket: %s' % str(e))
+                return self.reconnect()
 
         if _in:
             sock_debug('Socket is readable')
@@ -411,6 +407,7 @@ class AgentConnection(BaseAgentConnection):
             view = listener.get_view(data['id'])
             if view:
                 view.retarget(new)
+            listener.BUFS[data['id']]['path'] = data['path']
         elif name == 'delete_buf':
             path = utils.get_full_path(data['path'])
             listener.delete_buf(data['id'])

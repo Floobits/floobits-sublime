@@ -66,13 +66,27 @@ if ssl is False and sublime.platform() == 'linux':
 
 
 try:
-    from urllib.error import HTTPError
+    import urllib
+    urllib = imp.reload(urllib)
+    from urllib import request
+    request = imp.reload(request)
+    Request = request.Request
+    urlopen = request.urlopen
+    HTTPError = urllib.error.HTTPError
+    assert Request and urlopen and HTTPError
+except ImportError:
+    import urllib2
+    urllib2 = imp.reload(urllib2)
+    Request = urllib2.Request
+    urlopen = urllib2.urlopen
+    HTTPError = urllib2.HTTPError
+
+try:
     from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
     from .floo.common import api, ignore, msg, shared as G, utils
     from .floo.listener import Listener
     assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils and version
 except (ImportError, ValueError):
-    from urllib2 import HTTPError
     from floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
     from floo.common import api, ignore, msg, shared as G, utils
     from floo.listener import Listener
@@ -235,7 +249,8 @@ def on_room_info_msg():
     if 'get_buf' in anon_perms:
         who = 'Anyone'
     _msg = 'You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser.' % (G.AGENT.workspace_url, who)
-    sublime.message_dialog(_msg)
+    # Workaround for horrible Sublime Text bug
+    utils.set_timeout(sublime.message_dialog, 0, _msg)
 
 
 def get_or_create_chat(cb=None):
@@ -301,7 +316,25 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
+        workspace_url = None
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
+
+        def find_workspace(workspace_url):
+            try:
+                api.get_workspace_by_url(workspace_url)
+            except HTTPError:
+                try:
+                    result = utils.parse_url(workspace_url)
+                    d = utils.get_persistent_data()
+                    del d['workspaces'][result['owner']][result['name']]
+                    utils.update_persistent_data(d)
+                except Exception as e:
+                    msg.debug(unicode(e))
+                return False
+            on_room_info_waterfall.add(on_room_info_msg)
+            on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
+            on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
+            return True
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
@@ -328,34 +361,16 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 result = utils.parse_url(workspace_url)
             except Exception:
                 workspace_url = None
-            else:
-                workspace_name = result['workspace']
-                try:
-                    # TODO: blocking. beachballs sublime 2 if API is super slow
-                    api.get_workspace_by_url(workspace_url)
-                except HTTPError:
-                    workspace_url = None
-                    workspace_name = os.path.basename(dir_to_share)
-                else:
-                    add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+            if workspace_url and find_workspace(workspace_url):
+                add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+                return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
             for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
-                    print('found workspace url', workspace_url)
-                    break
-
-        if workspace_url:
-            try:
-                api.get_workspace_by_url(workspace_url)
-            except HTTPError:
-                pass
-            else:
-                on_room_info_waterfall.add(on_room_info_msg)
-                on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-                on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
-                return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
+                    if find_workspace(workspace_url):
+                        return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
