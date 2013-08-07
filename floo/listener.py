@@ -338,34 +338,50 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path, ig=None):
+        msg.warn('-----------creating buf for %s' % path)
         if not ig:
-            ig = ignore.Ignore(None, path, False)
+            ig = ignore.Ignore(None, path)
         ignores = collections.deque([ig])
         files = collections.deque()
-        Listener._create_buf_worker(ignores, files)
+        Listener._create_buf_worker(ignores, files, [])
 
     @staticmethod
-    def _create_buf_worker(ignores, files):
+    def _create_buf_worker(ignores, files, too_big):
         quota = 10
 
         # scan until we find a minimum of 10 files
         while quota > 0 and ignores:
             ig = ignores.popleft()
-            for new_stuff in Listener._scan_dir(ig):
-                if not new_stuff:
+            for new_path in Listener._scan_dir(ig):
+                if not new_path:
                     continue
-                new_dir, new_file = new_stuff
-                if new_dir:
-                    ignores.append(ignore.Ignore(ig, new_dir))
-                elif new_file:
-                    files.append(new_file)
+                try:
+                    s = os.lstat(new_path)
+                except Exception as e:
+                    msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
+                    continue
+                if stat.S_ISDIR(s.st_mode):
+                    ignores.append(ignore.Ignore(ig, new_path))
+                elif stat.S_ISREG(s.st_mode):
+                    if s.st_size > (MAX_FILE_SIZE):
+                        too_big.append(new_path)
+                    else:
+                        files.append(new_path)
                     quota -= 1
 
+        can_upload = False
         for f in utils.iter_n_deque(files, 10):
             Listener.upload(f)
+            can_upload = True
+
+        if can_upload and G.AGENT and G.AGENT.sock:
+            G.AGENT.select()
 
         if ignores or files:
-            utils.set_timeout(Listener._create_buf_worker, 0, ignores, files)
+            return utils.set_timeout(Listener._create_buf_worker, 25, ignores, files, too_big)
+
+        if too_big:
+            sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
 
     @staticmethod
     def _scan_dir(ig):
@@ -385,7 +401,7 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('create_buf: path is %s' % path)
 
         if not os.path.isdir(path):
-            yield (None, path)
+            yield path
             return
 
         try:
@@ -403,26 +419,14 @@ class Listener(sublime_plugin.EventListener):
             if ignored:
                 msg.log('Not creating buf: %s' % (ignored))
                 continue
-            try:
-                s = os.lstat(p_path)
-            except Exception as e:
-                msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
-                continue
 
-            if stat.S_ISDIR(s.st_mode):
-                yield (p_path, None)
-            elif stat.S_ISREG(s.st_mode):
-                yield (None, p_path)
+            yield p_path
 
     @staticmethod
     def upload(path):
         try:
-            buf_fd = open(path, 'rb')
-            st = os.fstat(buf_fd.fileno())
-            if st.st_size > (MAX_FILE_SIZE):
-                return msg.warn('File %s is too big: %s' % (path, st.st_size))
-
-            buf = buf_fd.read()
+            with open(path, 'rb') as buf_fd:
+                buf = buf_fd.read()
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
             if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
