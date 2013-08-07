@@ -249,7 +249,8 @@ def on_room_info_msg():
     if 'get_buf' in anon_perms:
         who = 'Anyone'
     _msg = 'You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser.' % (G.AGENT.workspace_url, who)
-    sublime.message_dialog(_msg)
+    # Workaround for horrible Sublime Text bug
+    utils.set_timeout(sublime.message_dialog, 0, _msg)
 
 
 def get_or_create_chat(cb=None):
