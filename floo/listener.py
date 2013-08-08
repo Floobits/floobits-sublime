@@ -382,6 +382,8 @@ class Listener(sublime_plugin.EventListener):
         if too_big:
             sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
 
+        msg.log('All done syncing')
+
     @staticmethod
     def _scan_dir(ig):
         path = ig.path
