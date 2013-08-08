@@ -248,7 +248,7 @@ def on_room_info_msg():
     anon_perms = G.AGENT.workspace_info.get('anon_perms')
     if 'get_buf' in anon_perms:
         who = 'Anyone'
-    _msg = 'You are sharing\n%s\n%s can join your workspace using the URL:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
+    _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
     # Workaround for horrible Sublime Text bug
     utils.set_timeout(sublime.message_dialog, 0, _msg)
 
