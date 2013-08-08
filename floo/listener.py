@@ -451,6 +451,7 @@ class Listener(sublime_plugin.EventListener):
                     'name': 'set_buf',
                     'id': existing_buf['id'],
                     'buf': buf,
+                    'md5': buf_md5,
                     'encoding': encoding,
                 })
                 return
