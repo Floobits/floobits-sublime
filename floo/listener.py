@@ -430,15 +430,23 @@ class Listener(sublime_plugin.EventListener):
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
             if existing_buf:
-                if existing_buf['md5'] == hashlib.md5(buf).hexdigest():
+                buf_md5 = hashlib.md5(buf).hexdigest()
+                if existing_buf['md5'] == buf_md5:
                     msg.debug('%s already exists and has the same md5. Skipping.' % path)
                     return
                 msg.log('setting buffer ', rel_path)
+
+                existing_buf['buf'] = buf
+                existing_buf['md5'] = buf_md5
+
                 try:
                     buf = buf.decode('utf-8')
                 except Exception:
                     buf = base64.b64encode(buf).decode('utf-8')
                     encoding = 'base64'
+
+                existing_buf['encoding'] = encoding
+
                 G.AGENT.put({
                     'name': 'set_buf',
                     'id': existing_buf['id'],
@@ -452,6 +460,7 @@ class Listener(sublime_plugin.EventListener):
             except Exception:
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
+
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',

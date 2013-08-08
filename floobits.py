@@ -363,14 +363,18 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 workspace_url = None
             if workspace_url and find_workspace(workspace_url):
                 add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
-                return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
+                return self.window.run_command('floobits_join_workspace', {
+                    'workspace_url': workspace_url,
+                    'agent_conn_kwargs': {'get_bufs': False}})
 
         for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
             for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
                     if find_workspace(workspace_url):
-                        return self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
+                        return self.window.run_command('floobits_join_workspace', {
+                            'workspace_url': workspace_url,
+                            'agent_conn_kwargs': {'get_bufs': False}})
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
@@ -567,6 +571,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
 
             try:
+                msg.debug("agent_conn_kwargs: %s" % str(agent_conn_kwargs))
                 G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure,
                                           on_room_info=on_room_info_waterfall.call, **agent_conn_kwargs)
                 on_room_info_waterfall = utils.Waterfall()
