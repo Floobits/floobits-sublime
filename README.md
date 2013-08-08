@@ -1,4 +1,4 @@
 plugin-common-python
 ====================
 
-Python code shared between Floobits plugins for Sublime Text, Emacs, and Vim.
+This repository contains python code shared between [Floobits](https://floobits.com/) plugins for [Sublime Text](https://github.com/Floobits/floobits-sublime), [Emacs](https://github.com/Floobits/floobits-emacs), and [Vim](https://github.com/Floobits/floobits-vim).
