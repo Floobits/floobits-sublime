@@ -13,7 +13,6 @@ try:
 except ImportError:
     from urllib2 import Request, urlopen
 
-
 try:
     from . import shared as G, utils
     assert G and utils

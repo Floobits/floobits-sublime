@@ -147,6 +147,9 @@ def parse_url(workspace_url):
         if not port:
             port = 3148
         secure = False
+    else:
+        if not port:
+            port = G.DEFAULT_PORT
     result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
     if result:
         (owner, workspace_name) = result.groups()
@@ -162,7 +165,7 @@ def parse_url(workspace_url):
 
 
 def to_workspace_url(r):
-    port = int(r['port'])
+    port = int(r.get('port', 3448))
     if r['secure']:
         proto = 'https'
         if port == 3448:
@@ -173,7 +176,8 @@ def to_workspace_url(r):
             port = ''
     if port != '':
         port = ':%s' % port
-    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, r['host'], port, r['owner'], r['workspace'])
+    host = r.get('host', G.DEFAULT_HOST)
+    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
 
 
@@ -232,6 +236,23 @@ def update_persistent_data(data):
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
+
+
+def add_workspace_to_persistent_json(owner, name, url, path):
+    d = get_persistent_data()
+    workspaces = d['workspaces']
+    if owner not in workspaces:
+        workspaces[owner] = {}
+    workspaces[owner][name] = {'url': url, 'path': path}
+    update_persistent_data(d)
+
+
+def get_workspace_by_path(path):
+    for owner, workspaces in get_persistent_data()['workspaces'].items():
+        for name, workspace in workspaces.items():
+            if workspace['path'] == path:
+                workspace_url = workspace['url']
+                return workspace_url
 
 
 def rm(path):
