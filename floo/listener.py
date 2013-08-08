@@ -338,7 +338,6 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path, ig=None):
-        msg.warn('-----------creating buf for %s' % path)
         if not ig:
             ig = ignore.Ignore(None, path)
         ignores = collections.deque([ig])
@@ -382,6 +381,8 @@ class Listener(sublime_plugin.EventListener):
 
         if too_big:
             sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
+
+        msg.log('All done syncing')
 
     @staticmethod
     def _scan_dir(ig):
@@ -427,17 +428,42 @@ class Listener(sublime_plugin.EventListener):
         try:
             with open(path, 'rb') as buf_fd:
                 buf = buf_fd.read()
+            encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
-            if existing_buf and existing_buf['md5'] == hashlib.md5(buf).hexdigest():
-                return msg.debug('%s already exists and has the same md5. Skipping creating.' % path)
+            if existing_buf:
+                buf_md5 = hashlib.md5(buf).hexdigest()
+                if existing_buf['md5'] == buf_md5:
+                    msg.debug('%s already exists and has the same md5. Skipping.' % path)
+                    return
+                msg.log('setting buffer ', rel_path)
 
-            encoding = 'utf8'
+                existing_buf['buf'] = buf
+                existing_buf['md5'] = buf_md5
+
+                try:
+                    buf = buf.decode('utf-8')
+                except Exception:
+                    buf = base64.b64encode(buf).decode('utf-8')
+                    encoding = 'base64'
+
+                existing_buf['encoding'] = encoding
+
+                G.AGENT.put({
+                    'name': 'set_buf',
+                    'id': existing_buf['id'],
+                    'buf': buf,
+                    'md5': buf_md5,
+                    'encoding': encoding,
+                })
+                return
+
             try:
                 buf = buf.decode('utf-8')
             except Exception:
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
+
             msg.log('creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
