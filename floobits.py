@@ -248,7 +248,7 @@ def on_room_info_msg():
     anon_perms = G.AGENT.workspace_info.get('anon_perms')
     if 'get_buf' in anon_perms:
         who = 'Anyone'
-    _msg = 'You just joined the workspace: \n\n%s\n\n%s can join this workspace in Floobits or by visiting it in a browser.' % (G.AGENT.workspace_url, who)
+    _msg = 'You are sharing\n%s\n%s can join your workspace using the URL:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
     # Workaround for horrible Sublime Text bug
     utils.set_timeout(sublime.message_dialog, 0, _msg)
 
@@ -464,6 +464,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
+            'agent_conn_kwargs': {
+                'get_bufs': False
+            }
         })
 
 
@@ -481,7 +484,8 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
 class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, workspace_url):
+    def run(self, workspace_url, agent_conn_kwargs=None):
+        agent_conn_kwargs = agent_conn_kwargs or {}
 
         def get_workspace_window():
             workspace_window = None
@@ -563,7 +567,8 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
 
             try:
-                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure, on_room_info=on_room_info_waterfall.call)
+                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure,
+                                          on_room_info=on_room_info_waterfall.call, **agent_conn_kwargs)
                 on_room_info_waterfall = utils.Waterfall()
                 Listener.reset()
                 G.AGENT.connect()

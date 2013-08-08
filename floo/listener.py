@@ -338,7 +338,6 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def create_buf(path, ig=None):
-        msg.warn('-----------creating buf for %s' % path)
         if not ig:
             ig = ignore.Ignore(None, path)
         ignores = collections.deque([ig])

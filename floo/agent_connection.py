@@ -293,12 +293,13 @@ class BaseAgentConnection(object):
 
 
 class AgentConnection(BaseAgentConnection):
-    def __init__(self, owner, workspace, on_room_info, **kwargs):
+    def __init__(self, owner, workspace, on_room_info, get_bufs=True, **kwargs):
         super(AgentConnection, self).__init__(**kwargs)
 
         self.owner = owner
         self.workspace = workspace
         self.on_room_info = on_room_info
+        self.get_bufs = get_bufs
         self.chat_deck = collections.deque(maxlen=10)
         self.workspace_info = {}
         self.reload_settings()
@@ -462,6 +463,7 @@ class AgentConnection(BaseAgentConnection):
                 utils.mkdir(new_dir)
                 listener.BUFS[buf_id] = buf
                 listener.PATHS_TO_IDS[buf['path']] = buf_id
+                # TODO: stupidly inefficient
                 view = listener.get_view(buf_id)
                 if view and not view.is_loading() and buf['encoding'] == 'utf8':
                     view_text = listener.get_text(view)
@@ -470,8 +472,9 @@ class AgentConnection(BaseAgentConnection):
                         msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
                         buf['buf'] = view_text
                         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
-                    else:
+                    elif self.get_bufs:
                         Listener.get_buf(buf_id)
+                    #TODO: maybe send patch here?
                 else:
                     try:
                         buf_fd = open(buf_path, 'rb')
@@ -482,7 +485,7 @@ class AgentConnection(BaseAgentConnection):
                             if buf['encoding'] == 'utf8':
                                 buf_buf = buf_buf.decode('utf-8')
                             buf['buf'] = buf_buf
-                        else:
+                        elif self.get_bufs:
                             Listener.get_buf(buf_id)
                     except Exception as e:
                         msg.debug('Error calculating md5:', e)
