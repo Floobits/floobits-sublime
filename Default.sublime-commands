@@ -67,6 +67,10 @@
     "command": "floobits_summon"
   },
   {
+    "caption": "Floobits - Clear Highlights",
+    "command": "floobits_clear_highlights"
+  },
+  {
     "caption": "Floobits - Leave Workspace",
     "command": "floobits_leave_workspace"
   },
