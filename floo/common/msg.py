@@ -45,17 +45,18 @@ class MSG(object):
         if self.level < LOG_LEVEL:
             return
 
+        msg = unicode(self)
         if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
             # TODO: ridiculously inefficient
             try:
                 fd = open(LOG_FILE, 'a+')
-                fd.write(unicode(self))
+                fd.write(msg)
                 fd.close()
             except Exception as e:
                 print(unicode(e))
-            print(unicode(self))
+            print(msg)
         else:
-            editor_log(unicode(self))
+            editor_log(msg)
 
     def __str__(self):
         if python2:
