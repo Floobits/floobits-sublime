@@ -108,6 +108,7 @@ class BaseAgentConnection(object):
         self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
+        sublime.status_message('Disconnected.')
 
     def is_ready(self):
         return False
@@ -181,7 +182,9 @@ class BaseAgentConnection(object):
                 self.secure = False
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
-        msg.log('Connecting to %s:%s' % (self.host, self.port))
+        conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        msg.log(conn_msg)
+        sublime.status_message(conn_msg)
         self._connect()
 
     def protocol(self, req):
@@ -339,7 +342,9 @@ class AgentConnection(BaseAgentConnection):
         self.put(req)
 
     def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        stop_msg = 'Disconnecting from workspace %s/%s' % (self.owner, self.workspace)
+        msg.log(stop_msg)
+        sublime.status_message(stop_msg)
         super(AgentConnection, self).stop()
 
     def cleanup(self, *args, **kwargs):
