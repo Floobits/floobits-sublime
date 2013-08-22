@@ -19,7 +19,7 @@ def main():
     now = datetime.now()
     pkg_json['packages'][0]['last_modified'] = now.strftime('%Y-%m-%d %H:%M:%S')
     pkg_json['packages'][0]['platforms']['*'][0]['version'] = version
-    pkg_json['packages'][0]['platforms']['*'][0]['url'] = 'http://github.com/Floobits/floobits-sublime/archive/%s.zip' % version
+    pkg_json['packages'][0]['platforms']['*'][0]['url'] = 'https://github.com/Floobits/floobits-sublime/archive/%s.zip' % version
 
     with open('packages.json', 'w') as fd:
         fd.write(json.dumps(pkg_json, indent=4, separators=(',', ': '), sort_keys=True))
