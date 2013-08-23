@@ -57,6 +57,11 @@ def sock_debug(*args, **kwargs):
     if G.SOCK_DEBUG:
         msg.log(*args, **kwargs)
 
+import hotshot
+import hotshot.stats
+prof_file = os.path.join(G.BASE_DIR, 'floobits.prof')
+prof = hotshot.Profile(prof_file)
+
 
 class BaseAgentConnection(object):
     ''' Simple chat server using select '''
@@ -109,6 +114,11 @@ class BaseAgentConnection(object):
         self.cleanup()
         msg.log('Disconnected.')
         sublime.status_message('Disconnected.')
+        prof.close()
+        stats = hotshot.stats.load(prof_file)
+        stats.strip_dirs()
+        stats.sort_stats('time', 'calls')
+        stats.print_stats(20)
 
     def is_ready(self):
         return False
@@ -170,6 +180,7 @@ class BaseAgentConnection(object):
         self.cleanup()
 
         self.empty_selects = 0
+        prof.start()
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setblocking(False)
