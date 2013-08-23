@@ -57,10 +57,11 @@ def sock_debug(*args, **kwargs):
     if G.SOCK_DEBUG:
         msg.log(*args, **kwargs)
 
+
 import hotshot
 import hotshot.stats
 prof_file = os.path.join(G.BASE_DIR, 'floobits.prof')
-prof = hotshot.Profile(prof_file)
+prof = None
 
 
 class BaseAgentConnection(object):
@@ -180,6 +181,8 @@ class BaseAgentConnection(object):
         self.cleanup()
 
         self.empty_selects = 0
+        global prof
+        prof = hotshot.Profile(prof_file)
         prof.start()
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
