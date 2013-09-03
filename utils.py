@@ -22,10 +22,6 @@ except ImportError:
     import shared as G
     from lib import DMP
 
-top_timeout_id = 0
-cancelled_timeouts = set()
-timeouts = set()
-
 
 class FlooPatch(object):
     def __init__(self, current, buf):
@@ -114,26 +110,32 @@ def load_floorc():
     return s
 
 
+cancelled_timeouts = set()
+timeout_ids = set()
+
+
 def set_timeout(func, timeout, *args, **kwargs):
-    global top_timeout_id
-    timeout_id = top_timeout_id
-    top_timeout_id += 1
-    if top_timeout_id > 100000:
-        top_timeout_id = 0
+    timeout_id = set_timeout._top_timeout_id
+    if timeout_id > 100000:
+        set_timeout._top_timeout_id = 0
+    else:
+        set_timeout._top_timeout_id += 1
 
     def timeout_func():
-        timeouts.remove(timeout_id)
+        timeout_ids.discard(timeout_id)
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
         func(*args, **kwargs)
     sublime.set_timeout(timeout_func, timeout)
-    timeouts.add(timeout_id)
+    timeout_ids.add(timeout_id)
     return timeout_id
+
+set_timeout._top_timeout_id = 0
 
 
 def cancel_timeout(timeout_id):
-    if timeout_id in timeouts:
+    if timeout_id in timeout_ids:
         cancelled_timeouts.add(timeout_id)
 
 
@@ -273,3 +275,13 @@ def mkdir(path):
         if e.errno != 17:
             sublime.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
             raise
+
+
+def iter_n_deque(deque, n=10):
+    i = 0
+    while i < n:
+        try:
+            yield deque.popleft()
+        except IndexError:
+            return
+        i += 1
