@@ -221,6 +221,9 @@ class BaseAgentConnection(object):
                     self.handler(name, data)
             except Exception as e:
                 msg.error('Error handling %s event with data %s: %s' % (name, data, e))
+                if name == 'room_info':
+                    sublime.error_message('Error joining workspace: %s' % str(e))
+                    self.stop()
             self.buf = after
 
     def select(self):
