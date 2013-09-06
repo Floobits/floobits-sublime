@@ -514,7 +514,9 @@ class AgentConnection(BaseAgentConnection):
                         # TODO: this is inefficient. we just read the file 20 lines ago
                         Listener.create_buf(utils.get_full_path(buf['path']))
 
-            msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
+            success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
+            msg.log(success_msg)
+            sublime.status_message(success_msg)
 
             temp_data = data.get('temp_data', {})
             hangout = temp_data.get('hangout', {})
