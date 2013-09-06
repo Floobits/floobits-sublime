@@ -472,7 +472,7 @@ class AgentConnection(BaseAgentConnection):
                 utils.mkdir(new_dir)
                 listener.BUFS[buf_id] = buf
                 listener.PATHS_TO_IDS[buf['path']] = buf_id
-                # TODO: stupidly inefficient
+
                 view = listener.get_view(buf_id)
                 if view and not view.is_loading() and buf['encoding'] == 'utf8':
                     view_text = listener.get_text(view)
@@ -483,7 +483,6 @@ class AgentConnection(BaseAgentConnection):
                         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                     elif self.get_bufs:
                         bufs_to_get.append(buf_id)
-                    #TODO: maybe send patch here?
                 else:
                     try:
                         buf_fd = open(buf_path, 'rb')
@@ -513,6 +512,7 @@ class AgentConnection(BaseAgentConnection):
                         Listener.get_buf(buf_id)
                     else:
                         buf = listener.BUFS[buf_id]
+                        # TODO: this is inefficient. we just read the file 20 lines ago
                         Listener.create_buf(utils.get_full_path(buf['path']))
 
             msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
