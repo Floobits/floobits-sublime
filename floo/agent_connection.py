@@ -501,8 +501,9 @@ class AgentConnection(BaseAgentConnection):
                 if len(bufs_to_get) > 4:
                     prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_get)
                 else:
-                    prompt = 'Overwrite the following local files?\n%s' % \
-                        "\n".join(map(lambda buf_id: data['bufs'][buf_id]['path'], bufs_to_get))
+                    prompt = 'Overwrite the following local files?\n'
+                    for buf_id in bufs_to_get:
+                        prompt += '\n%s' % data['bufs'][buf_id]['path']
                 stomp_local = sublime.ok_cancel_dialog(prompt)
                 for buf_id in bufs_to_get:
                     if stomp_local:
