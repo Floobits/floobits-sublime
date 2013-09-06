@@ -277,9 +277,9 @@ def mkdir(path):
 
 def iter_n_deque(deque, n=10):
     i = 0
-    while i < n:
-        try:
+    try:
+        while i < n:
             yield deque.popleft()
-        except IndexError:
-            return
-        i += 1
+            i += 1
+    except IndexError:
+        pass
