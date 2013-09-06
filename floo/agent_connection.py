@@ -461,8 +461,7 @@ class AgentConnection(BaseAgentConnection):
                     'secure': self.secure,
                 })
             }
-            with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
-                floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+            utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
             bufs_to_get = []
             for buf_id, buf in data['bufs'].items():
