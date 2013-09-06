@@ -461,6 +461,7 @@ class AgentConnection(BaseAgentConnection):
             with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
                 floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
 
+            bufs_to_get = []
             for buf_id, buf in data['bufs'].items():
                 buf_id = int(buf_id)  # json keys must be strings
                 buf_path = utils.get_full_path(buf['path'])
@@ -478,7 +479,7 @@ class AgentConnection(BaseAgentConnection):
                         buf['buf'] = view_text
                         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                     elif self.get_bufs:
-                        Listener.get_buf(buf_id)
+                        bufs_to_get.append(buf_id)
                     #TODO: maybe send patch here?
                 else:
                     try:
@@ -491,10 +492,24 @@ class AgentConnection(BaseAgentConnection):
                                 buf_buf = buf_buf.decode('utf-8')
                             buf['buf'] = buf_buf
                         elif self.get_bufs:
-                            Listener.get_buf(buf_id)
+                            bufs_to_get.append(buf_id)
                     except Exception as e:
                         msg.debug('Error calculating md5:', e)
+                        bufs_to_get.append(buf_id)
+
+            if bufs_to_get and self.get_bufs:
+                if len(bufs_to_get) > 4:
+                    prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_get)
+                else:
+                    prompt = 'Overwrite the following local files?\n%s' % \
+                        "\n".join(map(lambda buf_id: data['bufs'][buf_id]['path'], bufs_to_get))
+                stomp_local = sublime.ok_cancel_dialog(prompt)
+                for buf_id in bufs_to_get:
+                    if stomp_local:
                         Listener.get_buf(buf_id)
+                    else:
+                        buf = listener.BUFS[buf_id]
+                        Listener.create_buf(utils.get_full_path(buf['path']))
 
             msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
 
