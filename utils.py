@@ -209,6 +209,21 @@ def is_shared(p):
     return True
 
 
+def update_floo_file(path, data):
+    try:
+        floo_json = json.loads(open(path, 'rb').read().decode('utf-8'))
+    except Exception:
+        pass
+
+    try:
+        floo_json.update(data)
+    except Exception:
+        floo_json = data
+
+    with open(path, 'w') as floo_fd:
+        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+
+
 def get_persistent_data(per_path=None):
     per_data = {'recent_workspaces': [], 'workspaces': {}}
     per_path = per_path or os.path.join(G.BASE_DIR, 'persistent.json')
@@ -277,9 +292,9 @@ def mkdir(path):
 
 def iter_n_deque(deque, n=10):
     i = 0
-    while i < n:
-        try:
+    try:
+        while i < n:
             yield deque.popleft()
-        except IndexError:
-            return
-        i += 1
+            i += 1
+    except IndexError:
+        pass
