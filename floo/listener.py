@@ -434,7 +434,7 @@ class Listener(sublime_plugin.EventListener):
             if existing_buf:
                 buf_md5 = hashlib.md5(buf).hexdigest()
                 if existing_buf['md5'] == buf_md5:
-                    msg.debug('%s already exists and has the same md5. Skipping.' % path)
+                    msg.log('%s already exists and has the same md5. Skipping.' % path)
                     return
                 msg.log('setting buffer ', rel_path)
 
