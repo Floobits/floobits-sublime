@@ -188,6 +188,13 @@ d = utils.get_persistent_data()
 G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
 
+def ssl_error_msg(action):
+    sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
+                          'This is a known issue on Linux builds of Sublime Text. '
+                          'Please comment on http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ '
+                          'or submit an issue: https://github.com/SublimeText/Issues/issues')
+
+
 def get_active_window(cb):
     win = sublime.active_window()
     if not win:
@@ -320,6 +327,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
+            if ssl is False:
+                # No ssl module (broken Sublime Text). Just behave as if the workspace exists.
+                return True
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
@@ -388,6 +398,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'owner': owner[0],
             })
 
+        if ssl is False:
+            return on_done([G.USERNAME])
+
         orgs = api.get_orgs_can_admin()
         orgs = json.loads(orgs.read().decode('utf-8'))
         if len(orgs) == 0:
@@ -410,9 +423,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         if not disconnect_dialog():
             return
         if ssl is False:
-            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
-                                         'This is a known issue on Linux and Windows builds of Sublime Text 2. '
-                                         'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
+            return ssl_error_msg('create workspaces')
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
