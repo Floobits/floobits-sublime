@@ -355,7 +355,7 @@ class Listener(sublime_plugin.EventListener):
                 if not new_path:
                     continue
                 try:
-                    s = os.lstat(new_path)
+                    s = os.stat(new_path)
                 except Exception as e:
                     msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
                     continue
