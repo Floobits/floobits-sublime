@@ -391,9 +391,6 @@ class Listener(sublime_plugin.EventListener):
         if not utils.is_shared(path):
             msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
-        if os.path.islink(path):
-            msg.error('Skipping adding %s because it is a symlink.' % path)
-            return
         ignored = ig.is_ignored(path)
         if ignored:
             msg.log('Not creating buf: %s' % (ignored))
