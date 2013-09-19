@@ -335,7 +335,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
-                #urllib.error.URLError: <urlopen error timed out>
                 try:
                     result = utils.parse_url(workspace_url)
                     d = utils.get_persistent_data()
@@ -450,9 +449,6 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             api.create_workspace(self.api_args)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
-        except URLError as e:
-            msg.error('Unable to create workspace: %s' % unicode(e))
-            return sublime.error_message('Unable to create workspace: %s' % unicode(e))
         except HTTPError as e:
             err_body = e.read()
             msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
@@ -478,8 +474,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
 
             return self.window.run_command('floobits_create_workspace', kwargs)
-
         except Exception as e:
+            msg.error('Unable to create workspace: %s' % unicode(e))
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
