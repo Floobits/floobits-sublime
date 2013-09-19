@@ -73,13 +73,15 @@ try:
     Request = request.Request
     urlopen = request.urlopen
     HTTPError = urllib.error.HTTPError
-    assert Request and urlopen and HTTPError
+    URLError = urllib.error.URLError
+    assert Request and urlopen and HTTPError and URLError
 except ImportError:
     import urllib2
     urllib2 = imp.reload(urllib2)
     Request = urllib2.Request
     urlopen = urllib2.urlopen
     HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
 
 try:
     from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
@@ -333,6 +335,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
+                #urllib.error.URLError: <urlopen error timed out>
                 try:
                     result = utils.parse_url(workspace_url)
                     d = utils.get_persistent_data()
@@ -341,6 +344,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 except Exception as e:
                     msg.debug(unicode(e))
                 return False
+            except URLError:
+                # Timeout or something bad. Just assume the workspace exists
+                return True
             on_room_info_waterfall.add(on_room_info_msg)
             on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
             on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
@@ -444,6 +450,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             api.create_workspace(self.api_args)
             workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
+        except URLError as e:
+            msg.error('Unable to create workspace: %s' % unicode(e))
+            return sublime.error_message('Unable to create workspace: %s' % unicode(e))
         except HTTPError as e:
             err_body = e.read()
             msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
