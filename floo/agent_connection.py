@@ -75,6 +75,7 @@ class BaseAgentConnection(object):
         self.secure = secure
 
         self.empty_selects = 0
+        self.status_timeout = 0
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
@@ -97,10 +98,11 @@ class BaseAgentConnection(object):
         except Exception:
             pass
         G.JOINED_WORKSPACE = False
-        self.call_select = False
+        self.status_timeout = 0
         self.handshaken = False
         self.buf = bytes()
         self.sock = None
+        self.call_select = False
 
     def stop(self):
         self.retries = -1
@@ -296,6 +298,11 @@ class BaseAgentConnection(object):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
             sock_debug('Done reading for now')
+
+        self.status_timeout += 1
+        if self.status_timeout > (2000 / G.TICK_TIME):
+            sublime.status_message('Connected to %s::%s' % (self.owner, self.workspace))
+            self.status_timeout = 0
 
 
 class AgentConnection(BaseAgentConnection):
