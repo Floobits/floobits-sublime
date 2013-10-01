@@ -35,7 +35,11 @@ class FlooPatch(object):
         if buf['encoding'] == 'base64':
             self.md5_before = hashlib.md5(self.previous).hexdigest()
         else:
-            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            try:
+                self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            except Exception:
+                # Horrible fallback if for some reason encoding doesn't agree with actual object
+                self.md5_before = hashlib.md5(self.previous).hexdigest()
 
     def __str__(self):
         return '%s - %s' % (self.buf['id'], self.buf['path'])
