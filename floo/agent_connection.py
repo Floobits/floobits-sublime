@@ -557,7 +557,7 @@ class AgentConnection(BaseAgentConnection):
                     view.erase_regions(region_key)
         elif name == 'highlight':
             region_key = 'floobits-highlight-%s' % (data['user_id'])
-            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
+            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
         elif name == 'set_temp_data':
             hangout_data = data.get('data', {})
             hangout = hangout_data.get('hangout', {})

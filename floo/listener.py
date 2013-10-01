@@ -26,6 +26,7 @@ BUFS = {}
 CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
 ON_LOAD = {}
+ON_CLONE = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
 MAX_FILE_SIZE = 1024 * 1024 * 5
@@ -141,6 +142,12 @@ def send_summon(buf_id, sel):
     }
     if G.AGENT and G.AGENT.is_ready():
         G.AGENT.put(highlight_json)
+
+
+def get_view_in_group(view_buffer_id, group):
+    for v in G.WORKSPACE_WINDOW.views_in_group(group):
+        if view_buffer_id == v.buffer_id():
+            return v
 
 
 class CreationQueue(object):
@@ -518,29 +525,95 @@ class Listener(sublime_plugin.EventListener):
             view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges, summon=False):
+    def highlight(buf_id, region_key, username, ranges, summon, clone):
+        msg.log([str(x) for x in [buf_id, region_key, username, ranges, summon, clone]])
+        G.LAST_STALKED_BUF_ID = buf_id
         buf = BUFS.get(buf_id)
         if not buf:
             return
+
         view = get_view(buf_id)
-        if not view:
-            if summon or (G.STALKER_MODE and not temp_disable_stalk):
-                view = create_view(buf)
-                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon)
+        do_stuff = summon or (G.STALKER_MODE and not temp_disable_stalk)
+
+        if buf_id in ON_LOAD:
+            msg.log('ignoring command until pending is complete')
             return
+
+        if not view:
+            if do_stuff:
+                msg.log('creating view')
+                create_view(buf)
+                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon, False)
+            return
+
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
-        view.erase_regions(region_key)
-        view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        if summon or (G.STALKER_MODE and not temp_disable_stalk):
-            G.WORKSPACE_WINDOW.focus_view(view)
+
+        def swap_regions(v):
+            v.erase_regions(region_key)
+            v.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
+
+        if not do_stuff:
+            return swap_regions(view)
+
+        win = G.WORKSPACE_WINDOW
+
+        if not G.SPLIT_MODE:
+            win.focus_view(view)
+            # Explicit summon by another user. Center the line.
             if summon:
-                # Explicit summon by another user. Center the line.
                 view.show_at_center(regions[0])
+            # Avoid scrolling/jumping lots in stalker mode
             else:
-                # Avoid scrolling/jumping lots in stalker mode
                 view.show(regions[0])
+            return
+
+        focus_group = win.num_groups() - 1
+        view_in_group = get_view_in_group(view.buffer_id(), focus_group)
+
+        if view_in_group:
+            msg.log('view in group')
+            win.focus_view(view_in_group)
+            swap_regions(view_in_group)
+            utils.set_timeout(win.focus_group, 0, 0)
+            return view_in_group.show(regions[0])
+
+        if not clone:
+            msg.log('no clone')
+            win.focus_view(view)
+            msg.log('moving ', view.buffer_id(), win.num_groups() - 1, 0)
+            # win.run_command("move_to_group", follow_group)
+            win.set_view_index(view, win.num_groups() - 1, 0)
+
+            def dont_crash_sublime():
+                utils.set_timeout(win.focus_group, 0, 0)
+                swap_regions(view)
+                return view.show(regions[0])
+            return utils.set_timeout(dont_crash_sublime, 0)
+
+        msg.log('View not in group')
+        win.focus_view(view)
+        msg.log('cloning')
+        win.run_command('clone_file')
+
+        def on_clone(buf, view):
+            win.focus_view(view)
+            win.set_view_index(view, win.num_groups() - 1, 0)
+            utils.set_timeout(win.focus_group, 0, 0)
+
+            def poll_for_move():
+                if not get_view_in_group(view.buffer_id(), focus_group):
+                    return utils.set_timeout(poll_for_move, 20)
+                msg.log('moving ', view.name(), win.num_groups() - 1)
+                swap_regions(view)
+                view.show(regions[0])
+                win.focus_view(view)
+                utils.set_timeout(win.focus_group, 0, 0)
+            poll_for_move()
+
+        ON_CLONE[buf_id] = on_clone
+        return win.focus_group(0)
 
     def id(self, view):
         return view.buffer_id()
@@ -552,7 +625,13 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('new', self.name(view))
 
     def on_clone(self, view):
-        msg.debug('clone', self.name(view))
+        msg.log('Sublime cloned %s' % self.name(view))
+        buf = get_buf(view)
+        if buf:
+            f = ON_CLONE.get(buf['id'])
+            if f:
+                del ON_CLONE[buf['id']]
+                f(buf, view)
 
     def on_close(self, view):
         msg.debug('close', self.name(view))
@@ -563,7 +642,7 @@ class Listener(sublime_plugin.EventListener):
         #     del G.VIEW_TO_HASH[view.buffer_id()]
 
     def on_load(self, view):
-        msg.debug('Sublime loaded %s' % self.name(view))
+        msg.log('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
         if buf:
             f = ON_LOAD.get(buf['id'])
