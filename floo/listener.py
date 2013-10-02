@@ -541,6 +541,7 @@ class Listener(sublime_plugin.EventListener):
         view = get_view(buf_id)
         do_stuff = summon or (G.STALKER_MODE and not temp_disable_stalk)
 
+        # TODO: move this state machine into one variable
         if buf_id in ON_LOAD:
             msg.debug('ignoring command until on_load is complete')
             return
@@ -585,14 +586,14 @@ class Listener(sublime_plugin.EventListener):
         view_in_group = get_view_in_group(view.buffer_id(), focus_group)
 
         if view_in_group:
-            msg.log('view in group')
+            msg.debug('view in group')
             win.focus_view(view_in_group)
             swap_regions(view_in_group)
             utils.set_timeout(win.focus_group, 0, 0)
             return view_in_group.show(regions[0])
 
         if not clone:
-            msg.log('no clone... moving ', view.buffer_id(), win.num_groups() - 1, 0)
+            msg.debug('no clone... moving ', view.buffer_id(), win.num_groups() - 1, 0)
             win.focus_view(view)
             win.set_view_index(view, win.num_groups() - 1, 0)
 
@@ -602,19 +603,19 @@ class Listener(sublime_plugin.EventListener):
                 return view.show(regions[0])
             return utils.set_timeout(dont_crash_sublime, 0)
 
-        msg.log('View not in group... cloning')
+        msg.debug('View not in group... cloning')
         win.focus_view(view)
 
         def on_clone(buf, view):
-            msg.log('on clone')
+            msg.debug('on clone')
 
             def poll_for_move():
-                msg.log('poll_for_move')
+                msg.debug('poll_for_move')
+                win.focus_view(view)
+                win.set_view_index(view, win.num_groups() - 1, 0)
                 if not get_view_in_group(view.buffer_id(), focus_group):
-                    win.focus_view(view)
-                    win.set_view_index(view, win.num_groups() - 1, 0)
                     return utils.set_timeout(poll_for_move, 20)
-                msg.log('found view, now moving ', view.name(), win.num_groups() - 1)
+                msg.debug('found view, now moving ', view.name(), win.num_groups() - 1)
                 swap_regions(view)
                 view.show(regions[0])
                 win.focus_view(view)
@@ -641,19 +642,14 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('new', self.name(view))
 
     def on_clone(self, view):
-        msg.log('Sublime cloned %s' % self.name(view))
+        msg.debug('Sublime cloned %s' % self.name(view))
         buf = get_buf(view)
-        msg.log('asdf %s %s' % (buf['id'], ON_CLONE))
         buf_id = int(buf['id'])
         if buf:
             f = ON_CLONE.get(buf_id)
             if f:
                 del ON_CLONE[buf_id]
                 f(buf, view)
-            else:
-                msg.log('no f %s %s' % (buf_id, ON_CLONE))
-        else:
-            msg.log('no buf')
 
     def on_close(self, view):
         msg.debug('close', self.name(view))
@@ -664,7 +660,7 @@ class Listener(sublime_plugin.EventListener):
         #     del G.VIEW_TO_HASH[view.buffer_id()]
 
     def on_load(self, view):
-        msg.log('Sublime loaded %s' % self.name(view))
+        msg.debug('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
         buf_id = int(buf['id'])
         if buf:
