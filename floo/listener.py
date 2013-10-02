@@ -662,8 +662,8 @@ class Listener(sublime_plugin.EventListener):
     def on_load(self, view):
         msg.debug('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
-        buf_id = int(buf['id'])
         if buf:
+            buf_id = int(buf['id'])
             f = ON_LOAD.get(buf_id)
             if f:
                 del ON_LOAD[buf_id]
