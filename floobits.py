@@ -834,6 +834,7 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
 class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = False
+        G.SPLIT_MODE = False
 
     def is_enabled(self):
         return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
@@ -867,18 +868,12 @@ class FloobitsFollowSplit(FloobitsBaseCommand):
     def run(self):
         G.SPLIT_MODE = True
         G.STALKER_MODE = True
-        self.window.set_layout({
-            "cols": [0.0, 1.0],
-            "rows": [0.0, 0.5, 1.0],
-            "cells": [[0, 0, 1, 1], [0, 1, 1, 2]]
-        })
-        buf = listener.BUFS.get(G.LAST_STALKED_BUF_ID)
-        if not buf:
-            return
-        view = listener.get_view(G.LAST_STALKED_BUF_ID)
-        if not view:
-            return
-        self.window.set_view_index(view, self.window.num_groups() - 1, 0)
+        if self.window.num_groups() == 1:
+            self.window.set_layout({
+                "cols": [0.0, 1.0],
+                "rows": [0.0, 0.5, 1.0],
+                "cells": [[0, 0, 1, 1], [0, 1, 1, 2]]
+            })
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

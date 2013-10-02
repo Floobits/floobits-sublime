@@ -27,6 +27,7 @@ CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
 ON_LOAD = {}
 ON_CLONE = {}
+TEMP_IGNORE_HIGHLIGHT = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
 MAX_FILE_SIZE = 1024 * 1024 * 5
@@ -167,10 +168,15 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def reset():
-        global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS
+        global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS, ON_CLONE, ON_LOAD, TEMP_IGNORE_HIGHLIGHT
         BUFS = {}
         CREATE_BUF_CBS = {}
         PATHS_TO_IDS = {}
+
+        ON_CLONE = {}
+        ON_LOAD = {}
+        TEMP_IGNORE_HIGHLIGHT = {}
+
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.creation_deque = collections.deque()
@@ -526,8 +532,8 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def highlight(buf_id, region_key, username, ranges, summon, clone):
-        msg.log([str(x) for x in [buf_id, region_key, username, ranges, summon, clone]])
-        G.LAST_STALKED_BUF_ID = buf_id
+        buf_id = int(buf_id)
+        msg.log(str([buf_id, region_key, username, ranges, summon, clone]))
         buf = BUFS.get(buf_id)
         if not buf:
             return
@@ -536,12 +542,18 @@ class Listener(sublime_plugin.EventListener):
         do_stuff = summon or (G.STALKER_MODE and not temp_disable_stalk)
 
         if buf_id in ON_LOAD:
-            msg.log('ignoring command until pending is complete')
+            msg.debug('ignoring command until on_load is complete')
+            return
+        if buf_id in ON_CLONE:
+            msg.debug('ignoring command until on_clone is complete')
+            return
+        if buf_id in TEMP_IGNORE_HIGHLIGHT:
+            msg.debug('ignoring command until TEMP_IGNORE_HIGHLIGHT is complete')
             return
 
         if not view:
             if do_stuff:
-                msg.log('creating view')
+                msg.debug('creating view')
                 create_view(buf)
                 ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon, False)
             return
@@ -580,10 +592,8 @@ class Listener(sublime_plugin.EventListener):
             return view_in_group.show(regions[0])
 
         if not clone:
-            msg.log('no clone')
+            msg.log('no clone... moving ', view.buffer_id(), win.num_groups() - 1, 0)
             win.focus_view(view)
-            msg.log('moving ', view.buffer_id(), win.num_groups() - 1, 0)
-            # win.run_command("move_to_group", follow_group)
             win.set_view_index(view, win.num_groups() - 1, 0)
 
             def dont_crash_sublime():
@@ -592,27 +602,33 @@ class Listener(sublime_plugin.EventListener):
                 return view.show(regions[0])
             return utils.set_timeout(dont_crash_sublime, 0)
 
-        msg.log('View not in group')
+        msg.log('View not in group... cloning')
         win.focus_view(view)
-        msg.log('cloning')
-        win.run_command('clone_file')
 
         def on_clone(buf, view):
-            win.focus_view(view)
-            win.set_view_index(view, win.num_groups() - 1, 0)
-            utils.set_timeout(win.focus_group, 0, 0)
+            msg.log('on clone')
 
             def poll_for_move():
+                msg.log('poll_for_move')
                 if not get_view_in_group(view.buffer_id(), focus_group):
+                    win.focus_view(view)
+                    win.set_view_index(view, win.num_groups() - 1, 0)
                     return utils.set_timeout(poll_for_move, 20)
-                msg.log('moving ', view.name(), win.num_groups() - 1)
+                msg.log('found view, now moving ', view.name(), win.num_groups() - 1)
                 swap_regions(view)
                 view.show(regions[0])
                 win.focus_view(view)
                 utils.set_timeout(win.focus_group, 0, 0)
+                try:
+                    del TEMP_IGNORE_HIGHLIGHT[buf_id]
+                except:
+                    pass
+            utils.set_timeout(win.focus_group, 0, 0)
             poll_for_move()
 
         ON_CLONE[buf_id] = on_clone
+        TEMP_IGNORE_HIGHLIGHT[buf_id] = True
+        win.run_command('clone_file')
         return win.focus_group(0)
 
     def id(self, view):
@@ -627,11 +643,17 @@ class Listener(sublime_plugin.EventListener):
     def on_clone(self, view):
         msg.log('Sublime cloned %s' % self.name(view))
         buf = get_buf(view)
+        msg.log('asdf %s %s' % (buf['id'], ON_CLONE))
+        buf_id = int(buf['id'])
         if buf:
-            f = ON_CLONE.get(buf['id'])
+            f = ON_CLONE.get(buf_id)
             if f:
-                del ON_CLONE[buf['id']]
+                del ON_CLONE[buf_id]
                 f(buf, view)
+            else:
+                msg.log('no f %s %s' % (buf_id, ON_CLONE))
+        else:
+            msg.log('no buf')
 
     def on_close(self, view):
         msg.debug('close', self.name(view))
@@ -644,10 +666,11 @@ class Listener(sublime_plugin.EventListener):
     def on_load(self, view):
         msg.log('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
+        buf_id = int(buf['id'])
         if buf:
-            f = ON_LOAD.get(buf['id'])
+            f = ON_LOAD.get(buf_id)
             if f:
-                del ON_LOAD[buf['id']]
+                del ON_LOAD[buf_id]
                 f()
 
     def on_pre_save(self, view):
