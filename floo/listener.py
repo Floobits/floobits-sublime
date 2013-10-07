@@ -29,6 +29,7 @@ ON_CLONE = {}
 TEMP_IGNORE_HIGHLIGHT = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
+MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 def get_text(view):
@@ -351,28 +352,46 @@ class Listener(sublime_plugin.EventListener):
     def create_buf(path, ig=None):
         if not ig:
             ig = ignore.Ignore(None, path)
-        if ig.size > 50000000:
-            #OMG TOO BIG
-            msg.error('too big!')
-        Listener._uploader(ig.list_paths())
+        if ig.size > MAX_WORKSPACE_SIZE:
+            size = ig.size
+            child_dirs = sorted(ig.children, cmp=lambda x, y: y.size - x.size)
+            ignored_cds = []
+            while size > MAX_WORKSPACE_SIZE and child_dirs:
+                cd = child_dirs.pop()
+                ignored_cds.append(cd)
+                size -= cd.size
+            if size < MAX_WORKSPACE_SIZE:
+                upload = sublime.ok_cancel_dialog(
+                    "%s is too big to upload (%s bytes).\n\nWould you like to ignore:\n%s" %
+                    ("\n".join([x.path for x in ignored_cds])))
+                if not upload:
+                    return
+                ig.children = child_dirs
+            else:
+                sublime.error_message("%s is too big to upload (%s bytes). Consider adding stuff to the .flooignore file." % (path, ig.size))
+                return
+        Listener._uploader(ig.list_paths(), ig.size)
 
     @staticmethod
-    def _uploader(paths_iter):
+    def _uploader(paths_iter, total_bytes, bytes_uploaded=0):
         if not G.AGENT or not G.AGENT.sock:
-            # oh no
-            return utils.set_timeout(Listener._uploader, 100, paths_iter)
+            msg.error('Can\'t upload! Not connected. :(')
+            return
 
         G.AGENT.select()
         if G.AGENT.qsize() > 0:
-            return utils.set_timeout(Listener._uploader, 10, paths_iter)
+            return utils.set_timeout(Listener._uploader, 10, paths_iter, total_bytes, bytes_uploaded)
 
         try:
             p = paths_iter.next()
-            Listener.upload(p)
+            size = Listener.upload(p)
+            bytes_uploaded += size
+            sublime.set_status('Uploading... %s% complete' % (float(bytes_uploaded) / total_bytes) * 100)
         except StopIteration:
+            sublime.set_status('All done syncing')
             msg.log('All done syncing')
             return
-        return utils.set_timeout(Listener._uploader, 50, paths_iter)
+        return utils.set_timeout(Listener._uploader, 50, paths_iter, total_bytes, bytes_uploaded)
 
     @staticmethod
     def upload(path):
