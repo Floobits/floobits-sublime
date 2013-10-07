@@ -1,5 +1,6 @@
 import os
 import fnmatch
+import stat
 
 try:
     from . import msg, shared as G, utils
@@ -67,12 +68,12 @@ class Ignore(object):
             except Exception as e:
                 msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
                 continue
-            if s.S_ISDIR(s.st_mode):
+            if stat.S_ISDIR(s.st_mode):
                 ig = Ignore(self, p_path)
                 self.children.append(ig)
                 self.size += ig.size
                 continue
-            elif s.S_ISREG(s.st_mode):
+            elif stat.S_ISREG(s.st_mode):
                 if s.st_size > (MAX_FILE_SIZE):
                     self.ignores['/TOO_BIG/'].append(p)
                 else:
