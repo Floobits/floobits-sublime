@@ -349,9 +349,8 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(req)
 
     @staticmethod
-    def create_buf(path, ig=None):
-        if not ig:
-            ig = ignore.Ignore(None, path)
+    def create_buf(path, cb=None):
+        ig = ignore.Ignore(None, path)
         if ig.size > MAX_WORKSPACE_SIZE:
             size = ig.size
             child_dirs = sorted(ig.children, cmp=lambda x, y: y.size - x.size)
@@ -370,28 +369,29 @@ class Listener(sublime_plugin.EventListener):
             else:
                 sublime.error_message("%s is too big to upload (%s bytes). Consider adding stuff to the .flooignore file." % (path, ig.size))
                 return
-        Listener._uploader(ig.list_paths(), float(ig.size))
+
+        Listener._uploader(ig.list_paths(), cb, ig.size)
 
     @staticmethod
-    def _uploader(paths_iter, total_bytes, bytes_uploaded=0):
+    def _uploader(paths_iter, cb, total_bytes, bytes_uploaded=0.0):
         if not G.AGENT or not G.AGENT.sock:
             msg.error('Can\'t upload! Not connected. :(')
             return
 
         G.AGENT.select()
         if G.AGENT.qsize() > 0:
-            return utils.set_timeout(Listener._uploader, 10, paths_iter, total_bytes, bytes_uploaded)
+            return utils.set_timeout(Listener._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
         try:
             p = paths_iter.next()
             size = Listener.upload(p)
             bytes_uploaded += size
-            sublime.set_status('Uploading... %s%% complete' % (bytes_uploaded / total_bytes) * 100)
+            sublime.status_message('Uploading... %2.2f%% complete' % ((bytes_uploaded / total_bytes) * 100))
         except StopIteration:
-            sublime.set_status('All done syncing')
-            msg.log('All done syncing')
-            return
-        return utils.set_timeout(Listener._uploader, 50, paths_iter, total_bytes, bytes_uploaded)
+            sublime.status_message('Uploading... 100% complete')
+            msg.log('All done uploading')
+            return cb and cb()
+        return utils.set_timeout(Listener._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
 
     @staticmethod
     def upload(path):
@@ -407,7 +407,7 @@ class Listener(sublime_plugin.EventListener):
                 buf_md5 = hashlib.md5(buf).hexdigest()
                 if existing_buf['md5'] == buf_md5:
                     msg.log('%s already exists and has the same md5. Skipping.' % path)
-                    return
+                    return size
                 msg.log('Setting buffer ', rel_path)
 
                 existing_buf['buf'] = buf
@@ -428,7 +428,7 @@ class Listener(sublime_plugin.EventListener):
                     'md5': buf_md5,
                     'encoding': encoding,
                 })
-                return
+                return size
 
             try:
                 buf = buf.decode('utf-8')
