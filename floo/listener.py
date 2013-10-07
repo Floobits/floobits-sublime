@@ -370,7 +370,7 @@ class Listener(sublime_plugin.EventListener):
             else:
                 sublime.error_message("%s is too big to upload (%s bytes). Consider adding stuff to the .flooignore file." % (path, ig.size))
                 return
-        Listener._uploader(ig.list_paths(), ig.size)
+        Listener._uploader(ig.list_paths(), float(ig.size))
 
     @staticmethod
     def _uploader(paths_iter, total_bytes, bytes_uploaded=0):
@@ -386,7 +386,7 @@ class Listener(sublime_plugin.EventListener):
             p = paths_iter.next()
             size = Listener.upload(p)
             bytes_uploaded += size
-            sublime.set_status('Uploading... %s% complete' % (float(bytes_uploaded) / total_bytes) * 100)
+            sublime.set_status('Uploading... %s%% complete' % (bytes_uploaded / total_bytes) * 100)
         except StopIteration:
             sublime.set_status('All done syncing')
             msg.log('All done syncing')
@@ -395,9 +395,11 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def upload(path):
+        size = 0
         try:
             with open(path, 'rb') as buf_fd:
                 buf = buf_fd.read()
+            size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
@@ -406,7 +408,7 @@ class Listener(sublime_plugin.EventListener):
                 if existing_buf['md5'] == buf_md5:
                     msg.log('%s already exists and has the same md5. Skipping.' % path)
                     return
-                msg.log('setting buffer ', rel_path)
+                msg.log('Setting buffer ', rel_path)
 
                 existing_buf['buf'] = buf
                 existing_buf['md5'] = buf_md5
@@ -434,7 +436,7 @@ class Listener(sublime_plugin.EventListener):
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
 
-            msg.log('creating buffer ', rel_path)
+            msg.log('Creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
@@ -446,6 +448,7 @@ class Listener(sublime_plugin.EventListener):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
             msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
+        return size
 
     @staticmethod
     def delete_buf(path):
