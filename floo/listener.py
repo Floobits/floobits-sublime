@@ -382,13 +382,18 @@ class Listener(sublime_plugin.EventListener):
         if G.AGENT.qsize() > 0:
             return utils.set_timeout(Listener._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
+        bar_len = 20
         try:
             p = paths_iter.next()
             size = Listener.upload(p)
             bytes_uploaded += size
-            sublime.status_message('Uploading... %2.2f%% complete' % ((bytes_uploaded / total_bytes) * 100))
+            percent = (bytes_uploaded / total_bytes)
+            bar = '|' + ('|' * int(bar_len * percent)) + (' ' * int((1 - percent) * bar_len)) + '|'
+            if percent < 0.1:
+                bar += ' '
+            sublime.status_message('Uploading... %s %2.2f%% complete' % (bar, percent * 100))
         except StopIteration:
-            sublime.status_message('Uploading... 100% complete')
+            sublime.status_message('Uploading... |' + ('|' * bar_len) + '| 100% complete')
             msg.log('All done uploading')
             return cb and cb()
         return utils.set_timeout(Listener._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
