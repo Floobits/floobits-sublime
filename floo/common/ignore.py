@@ -37,7 +37,7 @@ class Ignore(object):
         self.children = []
         self.files = []
         self.ignores = {
-            "/TOO_BIG/": []
+            '/TOO_BIG/': []
         }
         self.path = utils.unfuck_path(path)
 
@@ -74,7 +74,7 @@ class Ignore(object):
                 continue
             elif s.S_ISREG(s.st_mode):
                 if s.st_size > (MAX_FILE_SIZE):
-                    self.ignores["/TOO_BIG/"].append(p)
+                    self.ignores['/TOO_BIG/'].append(p)
                 else:
                     self.size += s.st_size
                     self.files.append(p)
@@ -100,6 +100,8 @@ class Ignore(object):
                 yield p
 
     def is_ignored_message(self, path, pattern, ignore_file):
+        if ignore_file == '/TOO_BIG/':
+            return '%s ignored because it is too big (more than %s bytes)' % (path, MAX_FILE_SIZE)
         return '%s ignored by pattern %s in %s' % (path, pattern, os.path.join(self.path, ignore_file))
 
     def is_ignored(self, path):

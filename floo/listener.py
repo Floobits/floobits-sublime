@@ -354,25 +354,25 @@ class Listener(sublime_plugin.EventListener):
         if ig.size > 50000000:
             #OMG TOO BIG
             msg.error('too big!')
-        Listener._create_buf_worker(ig.list_paths())
+        Listener._uploader(ig.list_paths())
 
     @staticmethod
-    def _create_buf_worker(paths):
+    def _uploader(paths_iter):
         if not G.AGENT or not G.AGENT.sock:
             # oh no
-            return utils.set_timeout(Listener._create_buf_worker, 100, paths)
+            return utils.set_timeout(Listener._uploader, 100, paths_iter)
 
         G.AGENT.select()
         if G.AGENT.qsize() > 0:
-            return utils.set_timeout(Listener._create_buf_worker, 10, paths)
+            return utils.set_timeout(Listener._uploader, 10, paths_iter)
 
         try:
-            p = paths.next()
+            p = paths_iter.next()
             Listener.upload(p)
         except StopIteration:
             msg.log('All done syncing')
             return
-        return utils.set_timeout(Listener._create_buf_worker, 50, paths)
+        return utils.set_timeout(Listener._uploader, 50, paths_iter)
 
     @staticmethod
     def upload(path):
