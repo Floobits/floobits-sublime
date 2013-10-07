@@ -470,7 +470,8 @@ class AgentConnection(BaseAgentConnection):
             }
             utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
-            bufs_to_get = []
+            changed_bufs = []
+            missing_bufs = []
             for buf_id, buf in data['bufs'].items():
                 buf_id = int(buf_id)  # json keys must be strings
                 buf_path = utils.get_full_path(buf['path'])
@@ -488,7 +489,7 @@ class AgentConnection(BaseAgentConnection):
                         buf['buf'] = view_text
                         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                     elif self.get_bufs:
-                        bufs_to_get.append(buf_id)
+                        changed_bufs.append(buf_id)
                 else:
                     try:
                         buf_fd = open(buf_path, 'rb')
@@ -500,26 +501,29 @@ class AgentConnection(BaseAgentConnection):
                                 buf_buf = buf_buf.decode('utf-8')
                             buf['buf'] = buf_buf
                         elif self.get_bufs:
-                            bufs_to_get.append(buf_id)
+                            changed_bufs.append(buf_id)
                     except Exception as e:
                         msg.debug('Error calculating md5:', e)
-                        bufs_to_get.append(buf_id)
+                        missing_bufs.append(buf_id)
 
-            if bufs_to_get and self.get_bufs:
-                if len(bufs_to_get) > 4:
-                    prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(bufs_to_get)
+            if changed_bufs and self.get_bufs:
+                if len(changed_bufs) > 4:
+                    prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(changed_bufs)
                 else:
                     prompt = 'Overwrite the following local files?\n'
-                    for buf_id in bufs_to_get:
+                    for buf_id in changed_bufs:
                         prompt += '\n%s' % listener.BUFS[buf_id]['path']
                 stomp_local = sublime.ok_cancel_dialog(prompt)
-                for buf_id in bufs_to_get:
+                for buf_id in changed_bufs:
                     if stomp_local:
                         Listener.get_buf(buf_id)
                     else:
                         buf = listener.BUFS[buf_id]
                         # TODO: this is inefficient. we just read the file 20 lines ago
                         Listener.create_buf(utils.get_full_path(buf['path']))
+
+            for buf_id in missing_bufs:
+                Listener.get_buf(buf_id)
 
             success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
             msg.log(success_msg)
@@ -557,7 +561,7 @@ class AgentConnection(BaseAgentConnection):
                     view.erase_regions(region_key)
         elif name == 'highlight':
             region_key = 'floobits-highlight-%s' % (data['user_id'])
-            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
+            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
         elif name == 'set_temp_data':
             hangout_data = data.get('data', {})
             hangout = hangout_data.get('hangout', {})

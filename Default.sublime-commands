@@ -55,6 +55,10 @@
     "command": "floobits_enable_stalker_mode"
   },
   {
+    "caption": "Floobits - Stalk Workspace in Split (Follow Changes)",
+    "command": "floobits_follow_split"
+  },
+  {
     "caption": "Floobits - Stop Stalking Workspace",
     "command": "floobits_disable_stalker_mode"
   },

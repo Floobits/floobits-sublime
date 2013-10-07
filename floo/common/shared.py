@@ -29,6 +29,7 @@ PROJECT_PATH = ''
 JOINED_WORKSPACE = False
 PERMS = []
 STALKER_MODE = False
+SPLIT_MODE = False
 
 AUTO_GENERATED_ACCOUNT = False
 PLUGIN_PATH = None
@@ -41,5 +42,6 @@ AGENT = None
 
 IGNORE_MODIFIED_EVENTS = False
 VIEW_TO_HASH = {}
+
 
 FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))
