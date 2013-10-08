@@ -42,7 +42,7 @@ class Ignore(object):
         }
         self.path = utils.unfuck_path(path)
 
-        msg.debug('Initializing ignores for %s' % path)
+        msg.log('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
@@ -61,7 +61,7 @@ class Ignore(object):
                 continue
             is_ignored = self.is_ignored(p_path)
             if is_ignored:
-                msg.debug(is_ignored)
+                msg.log(is_ignored)
                 continue
             try:
                 s = os.stat(p_path)
@@ -76,6 +76,7 @@ class Ignore(object):
             elif stat.S_ISREG(s.st_mode):
                 if s.st_size > (MAX_FILE_SIZE):
                     self.ignores['/TOO_BIG/'].append(p)
+                    msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
                 else:
                     self.size += s.st_size
                     self.files.append(p)
