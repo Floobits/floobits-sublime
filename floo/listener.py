@@ -8,6 +8,7 @@ import hashlib
 from datetime import datetime
 import base64
 import collections
+from operator import attrgetter
 
 import sublime
 import sublime_plugin
@@ -353,7 +354,7 @@ class Listener(sublime_plugin.EventListener):
         ig = ignore.Ignore(None, path)
         if ig.size > MAX_WORKSPACE_SIZE:
             size = ig.size
-            child_dirs = sorted(ig.children, cmp=lambda x, y: x.size - y.size)
+            child_dirs = sorted(ig.children, key=attrgetter("size"))
             ignored_cds = []
             while size > MAX_WORKSPACE_SIZE and child_dirs:
                 cd = child_dirs.pop()
@@ -381,7 +382,7 @@ class Listener(sublime_plugin.EventListener):
 
         bar_len = 20
         try:
-            p = paths_iter.next()
+            p = next(paths_iter)
             size = Listener.upload(p)
             bytes_uploaded += size
             percent = (bytes_uploaded / total_bytes)
