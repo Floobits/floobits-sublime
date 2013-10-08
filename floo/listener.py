@@ -7,7 +7,6 @@ import os
 import hashlib
 from datetime import datetime
 import base64
-import stat
 import collections
 
 import sublime
@@ -30,7 +29,7 @@ ON_CLONE = {}
 TEMP_IGNORE_HIGHLIGHT = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
-MAX_FILE_SIZE = 1024 * 1024 * 5
+MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 def get_text(view):
@@ -350,94 +349,57 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(req)
 
     @staticmethod
-    def create_buf(path, ig=None):
-        if not ig:
-            ig = ignore.Ignore(None, path)
-        ignores = collections.deque([ig])
-        files = collections.deque()
-        Listener._create_buf_worker(ignores, files, [])
+    def create_buf(path, cb=None):
+        ig = ignore.Ignore(None, path)
+        if ig.size > MAX_WORKSPACE_SIZE:
+            size = ig.size
+            child_dirs = sorted(ig.children, cmp=lambda x, y: x.size - y.size)
+            ignored_cds = []
+            while size > MAX_WORKSPACE_SIZE and child_dirs:
+                cd = child_dirs.pop()
+                ignored_cds.append(cd)
+                size -= cd.size
+            if size > MAX_WORKSPACE_SIZE:
+                return sublime.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+            upload = sublime.ok_cancel_dialog(
+                "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
+            if not upload:
+                return
+            ig.children = child_dirs
+        Listener._uploader(ig.list_paths(), cb, ig.size)
 
     @staticmethod
-    def _create_buf_worker(ignores, files, too_big):
-        quota = 10
-
-        # scan until we find a minimum of 10 files
-        while quota > 0 and ignores:
-            ig = ignores.popleft()
-            for new_path in Listener._scan_dir(ig):
-                if not new_path:
-                    continue
-                try:
-                    s = os.stat(new_path)
-                except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
-                    continue
-                if stat.S_ISDIR(s.st_mode):
-                    ignores.append(ignore.Ignore(ig, new_path))
-                elif stat.S_ISREG(s.st_mode):
-                    if s.st_size > (MAX_FILE_SIZE):
-                        too_big.append(new_path)
-                    else:
-                        files.append(new_path)
-                    quota -= 1
-
-        can_upload = False
-        for f in utils.iter_n_deque(files, 10):
-            Listener.upload(f)
-            can_upload = True
-
-        if can_upload and G.AGENT and G.AGENT.sock:
-            G.AGENT.select()
-
-        if ignores or files:
-            return utils.set_timeout(Listener._create_buf_worker, 25, ignores, files, too_big)
-
-        if too_big:
-            sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
-
-        msg.log('All done syncing')
-
-    @staticmethod
-    def _scan_dir(ig):
-        path = ig.path
-
-        if not utils.is_shared(path):
-            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
-            return
-        ignored = ig.is_ignored(path)
-        if ignored:
-            msg.log('Not creating buf: %s' % (ignored))
+    def _uploader(paths_iter, cb, total_bytes, bytes_uploaded=0.0):
+        if not G.AGENT or not G.AGENT.sock:
+            msg.error('Can\'t upload! Not connected. :(')
             return
 
-        msg.debug('create_buf: path is %s' % path)
+        G.AGENT.select()
+        if G.AGENT.qsize() > 0:
+            return utils.set_timeout(Listener._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
-        if not os.path.isdir(path):
-            yield path
-            return
-
+        bar_len = 20
         try:
-            paths = os.listdir(path)
-        except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, unicode(e)))
-            return
-        for p in paths:
-            p_path = os.path.join(path, p)
-            if p[0] == '.':
-                if p not in ignore.HIDDEN_WHITELIST:
-                    msg.log('Not creating buf for hidden path %s' % p_path)
-                    continue
-            ignored = ig.is_ignored(p_path)
-            if ignored:
-                msg.log('Not creating buf: %s' % (ignored))
-                continue
-
-            yield p_path
+            p = paths_iter.next()
+            size = Listener.upload(p)
+            bytes_uploaded += size
+            percent = (bytes_uploaded / total_bytes)
+            bar = '   |' + ('|' * int(bar_len * percent)) + (' ' * int((1 - percent) * bar_len)) + '|'
+            sublime.status_message('Uploading... %2.2f%% %s' % (percent * 100, bar))
+        except StopIteration:
+            sublime.status_message('Uploading... 100% ' + ('|' * bar_len) + '| complete')
+            msg.log('All done uploading')
+            return cb and cb()
+        return utils.set_timeout(Listener._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
 
     @staticmethod
     def upload(path):
+        size = 0
         try:
             with open(path, 'rb') as buf_fd:
                 buf = buf_fd.read()
+            size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
@@ -445,8 +407,8 @@ class Listener(sublime_plugin.EventListener):
                 buf_md5 = hashlib.md5(buf).hexdigest()
                 if existing_buf['md5'] == buf_md5:
                     msg.log('%s already exists and has the same md5. Skipping.' % path)
-                    return
-                msg.log('setting buffer ', rel_path)
+                    return size
+                msg.log('Setting buffer ', rel_path)
 
                 existing_buf['buf'] = buf
                 existing_buf['md5'] = buf_md5
@@ -466,7 +428,7 @@ class Listener(sublime_plugin.EventListener):
                     'md5': buf_md5,
                     'encoding': encoding,
                 })
-                return
+                return size
 
             try:
                 buf = buf.decode('utf-8')
@@ -474,7 +436,7 @@ class Listener(sublime_plugin.EventListener):
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
 
-            msg.log('creating buffer ', rel_path)
+            msg.log('Creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
@@ -486,6 +448,7 @@ class Listener(sublime_plugin.EventListener):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
             msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
+        return size
 
     @staticmethod
     def delete_buf(path):

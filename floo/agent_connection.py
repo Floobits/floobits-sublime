@@ -126,6 +126,9 @@ class BaseAgentConnection(object):
             msg.debug('%s items in q' % qsize)
         return qsize
 
+    def qsize(self):
+        return len(SOCKET_Q)
+
     def reconnect(self):
         if self.reconnect_timeout:
             return
@@ -264,6 +267,7 @@ class BaseAgentConnection(object):
 
             try:
                 while True:
+                    # TODO: use sock.send()
                     p = SOCKET_Q.popleft()
                     sock_debug('sending patch')
                     self.sock.sendall(p.encode('utf-8'))
