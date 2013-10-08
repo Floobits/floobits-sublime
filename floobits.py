@@ -392,7 +392,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
+        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share, on_room_info_msg)
 
         def on_done(owner):
             self.window.run_command('floobits_create_workspace', {
