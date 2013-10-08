@@ -346,9 +346,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             except URLError:
                 # Timeout or something bad. Just assume the workspace exists
                 return True
-            on_room_info_waterfall.add(on_room_info_msg)
             on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-            on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
+            on_room_info_waterfall.add(Listener.create_buf, dir_to_share, on_room_info_msg)
             return True
 
         if os.path.isfile(dir_to_share):
@@ -393,7 +392,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
+        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share, on_room_info_msg)
 
         def on_done(owner):
             self.window.run_command('floobits_create_workspace', {
@@ -479,8 +478,6 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
-
-        on_room_info_waterfall.add(on_room_info_msg)
 
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
