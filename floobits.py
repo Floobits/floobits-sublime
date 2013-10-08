@@ -23,6 +23,19 @@ import sublime
 
 PY2 = sys.version_info < (3, 0)
 
+
+if PY2 and sublime.platform() == 'windows':
+    sublime.error_message('Sorry, but the Windows version of Sublime Text 2 lacks Python’s select module, so the Floobits plugin won’t work. Please upgrade to Sublime Text 3. :(')
+elif sublime.platform() == 'osx':
+    try:
+        p = subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = p.communicate()
+        if float(result[0][:4]) < 10.7:
+            sublime.error_message('Sorry, but the Floobits plugin doesn\'t. Please upgrade your operating system if you want to use this plugin. :(')
+    except Exception as e:
+        print(e)
+
+
 try:
     import ssl
     assert ssl
@@ -95,19 +108,8 @@ except (ImportError, ValueError):
     assert version
 
 
-sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
-
-utils.reload_settings()
-
-# TODO: one day this can be removed (once all our users have updated)
-old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
-if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
-    print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
-    os.rename(old_colab_dir, G.BASE_DIR)
-    os.symlink(G.BASE_DIR, old_colab_dir)
-
-
 on_room_info_waterfall = utils.Waterfall()
+ignore_modified_timeout = None
 
 
 def update_recent_workspaces(workspace):
@@ -184,11 +186,6 @@ def migrate_symlinks():
         pass
     print('migrated')
 
-migrate_symlinks()
-
-d = utils.get_persistent_data()
-G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
-
 
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
@@ -227,11 +224,6 @@ def create_or_link_account():
         print(e)
         tb = traceback.format_exc()
         print(tb)
-
-
-can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
-if not can_auth:
-    threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
 
 
 def global_tick():
@@ -907,9 +899,6 @@ class FlooViewSetMsg(sublime_plugin.TextCommand):
         return
 
 
-ignore_modified_timeout = None
-
-
 def unignore_modified_events():
     G.IGNORE_MODIFIED_EVENTS = False
 
@@ -1009,4 +998,28 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
         return
 
 
-global_tick()
+def main():
+    sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
+
+    utils.reload_settings()
+
+    # TODO: one day this can be removed (once all our users have updated)
+    old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
+    if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
+        print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
+        os.rename(old_colab_dir, G.BASE_DIR)
+        os.symlink(G.BASE_DIR, old_colab_dir)
+
+    migrate_symlinks()
+
+    d = utils.get_persistent_data()
+    G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
+
+    can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+    if not can_auth:
+        threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
+
+    global_tick()
+
+
+main()
