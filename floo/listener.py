@@ -353,23 +353,20 @@ class Listener(sublime_plugin.EventListener):
         ig = ignore.Ignore(None, path)
         if ig.size > MAX_WORKSPACE_SIZE:
             size = ig.size
-            child_dirs = sorted(ig.children, cmp=lambda x, y: y.size - x.size)
+            child_dirs = sorted(ig.children, cmp=lambda x, y: x.size - y.size)
             ignored_cds = []
             while size > MAX_WORKSPACE_SIZE and child_dirs:
                 cd = child_dirs.pop()
                 ignored_cds.append(cd)
                 size -= cd.size
-            if size < MAX_WORKSPACE_SIZE:
-                upload = sublime.ok_cancel_dialog(
-                    "%s is too big to upload (%s bytes).\n\nWould you like to ignore:\n%s" %
-                    ("\n".join([x.path for x in ignored_cds])))
-                if not upload:
-                    return
-                ig.children = child_dirs
-            else:
-                sublime.error_message("%s is too big to upload (%s bytes). Consider adding stuff to the .flooignore file." % (path, ig.size))
+            if size > MAX_WORKSPACE_SIZE:
+                return sublime.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+            upload = sublime.ok_cancel_dialog(
+                "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
+            if not upload:
                 return
-
+            ig.children = child_dirs
         Listener._uploader(ig.list_paths(), cb, ig.size)
 
     @staticmethod
