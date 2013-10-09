@@ -1,4 +1,5 @@
 import os
+import errno
 import fnmatch
 import stat
 
@@ -47,6 +48,18 @@ class Ignore(object):
         }
         self.path = utils.unfuck_path(path)
 
+        try:
+            paths = os.listdir(self.path)
+        except OSError as e:
+            if e.errno != errno.ENOTDIR:
+                raise
+            self.path = os.path.dirname(self.path)
+            self.add_file(os.path.basename(path))
+            return
+        except Exception as e:
+            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            return
+
         msg.log('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
@@ -54,37 +67,35 @@ class Ignore(object):
             except:
                 pass
 
-        try:
-            paths = os.listdir(self.path)
-        except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, unicode(e)))
-            return
         for p in paths:
-            p_path = os.path.join(path, p)
-            if p[0] == '.' and p not in HIDDEN_WHITELIST:
-                msg.log('Ignoring hidden path %s' % p_path)
-                continue
-            is_ignored = self.is_ignored(p_path)
-            if is_ignored:
-                msg.log(is_ignored)
-                continue
-            try:
-                s = os.stat(p_path)
-            except Exception as e:
-                msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
-                continue
-            if stat.S_ISDIR(s.st_mode):
-                ig = Ignore(self, p_path)
-                self.children.append(ig)
-                self.size += ig.size
-                continue
-            elif stat.S_ISREG(s.st_mode):
-                if s.st_size > (MAX_FILE_SIZE):
-                    self.ignores['/TOO_BIG/'].append(p)
-                    msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
-                else:
-                    self.size += s.st_size
-                    self.files.append(p)
+            self.add_file(p)
+
+    def add_file(self, p):
+        p_path = os.path.join(self.path, p)
+        if p[0] == '.' and p not in HIDDEN_WHITELIST:
+            msg.log('Ignoring hidden path %s' % p_path)
+            return
+        is_ignored = self.is_ignored(p_path)
+        if is_ignored:
+            msg.log(is_ignored)
+            return
+        try:
+            s = os.stat(p_path)
+        except Exception as e:
+            msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
+            return
+        if stat.S_ISDIR(s.st_mode):
+            ig = Ignore(self, p_path)
+            self.children.append(ig)
+            self.size += ig.size
+            return
+        elif stat.S_ISREG(s.st_mode):
+            if s.st_size > (MAX_FILE_SIZE):
+                self.ignores['/TOO_BIG/'].append(p)
+                msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
+            else:
+                self.size += s.st_size
+                self.files.append(p)
 
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'rb') as fd:
