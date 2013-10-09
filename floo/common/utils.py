@@ -283,7 +283,7 @@ def rm(path):
     try:
         os.removedirs(os.path.split(path)[0])
     except OSError as e:
-        if e.errno != 66:
+        if e.errno != 66 and getattr(e, "winerror", None) != 145:
             sublime.error_message('Cannot delete directory {0}.\n{1}'.format(path, e))
             raise
 
