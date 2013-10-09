@@ -9,6 +9,11 @@ except ImportError:
     import msg
     import shared as G
 
+try:
+    unicode()
+except NameError:
+    unicode = str
+
 
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
 # TODO: make this configurable
