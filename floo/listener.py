@@ -44,7 +44,11 @@ def get_view(buf_id):
     for view in G.WORKSPACE_WINDOW.views():
         if not view.file_name():
             continue
-        if buf['path'] == utils.to_rel_path(view.file_name()):
+        try:
+            rel_path = utils.to_rel_path(view.file_name())
+        except ValueError:
+            continue
+        if buf['path'] == rel_path:
             return view
     return None
 
@@ -641,7 +645,10 @@ class Listener(sublime_plugin.EventListener):
             return
         p = view.name()
         if view.file_name():
-            p = utils.to_rel_path(view.file_name())
+            try:
+                p = utils.to_rel_path(view.file_name())
+            except ValueError:
+                p = view.file_name()
         self.between_save_events[view.buffer_id()] = p
 
     def on_post_save(self, view):
@@ -656,7 +663,10 @@ class Listener(sublime_plugin.EventListener):
 
         event = None
         buf = get_buf(view)
-        name = utils.to_rel_path(view.file_name())
+        try:
+            name = utils.to_rel_path(view.file_name())
+        except ValueError:
+            name = view.file_name()
         is_shared = utils.is_shared(view.file_name())
         old_name = self.between_save_events[view.buffer_id()]
 
