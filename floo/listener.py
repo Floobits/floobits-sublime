@@ -58,7 +58,10 @@ def create_view(buf):
 
 
 def get_buf_by_path(path):
-    p = utils.to_rel_path(path)
+    try:
+        p = utils.to_rel_path(path)
+    except ValueError:
+        return
     buf_id = PATHS_TO_IDS.get(p)
     if buf_id:
         return BUFS.get(buf_id)

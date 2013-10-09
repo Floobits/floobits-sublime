@@ -208,7 +208,10 @@ def is_shared(p):
     if not G.JOINED_WORKSPACE:
         return False
     p = unfuck_path(p)
-    if to_rel_path(p).find('../') == 0:
+    try:
+        if to_rel_path(p).find('../') == 0:
+            return False
+    except ValueError:
         return False
     return True
 
