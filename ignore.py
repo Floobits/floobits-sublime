@@ -4,11 +4,10 @@ import fnmatch
 import stat
 
 try:
-    from . import msg, shared as G, utils
-    assert G and msg and utils
+    from . import msg, utils
+    assert msg and utils
 except ImportError:
     import msg
-    import shared as G
 
 try:
     unicode()
@@ -138,15 +137,3 @@ class Ignore(object):
         if self.parent:
             return self.parent.is_ignored(path)
         return False
-
-
-def build_ignores(path):
-    current_ignore = Ignore(None, G.PROJECT_PATH)
-    current_path = G.PROJECT_PATH
-    starting = os.path.relpath(path, G.PROJECT_PATH)
-    for p in starting.split(os.sep):
-        current_path = os.path.join(current_path, p)
-        if p == '..':
-            raise ValueError('%s is not in project path %s' % (current_path, G.PROJECT_PATH))
-        current_ignore = Ignore(current_ignore, current_path)
-    return current_ignore
