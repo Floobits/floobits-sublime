@@ -392,7 +392,10 @@ class Listener(sublime_plugin.EventListener):
             p = next(paths_iter)
             size = Listener.upload(p)
             bytes_uploaded += size
-            percent = (bytes_uploaded / total_bytes)
+            try:
+                percent = (bytes_uploaded / total_bytes)
+            except ZeroDivisionError:
+                percent = 0.5
             bar = '   |' + ('|' * int(bar_len * percent)) + (' ' * int((1 - percent) * bar_len)) + '|'
             sublime.status_message('Uploading... %2.2f%% %s' % (percent * 100, bar))
         except StopIteration:
