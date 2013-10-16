@@ -22,10 +22,6 @@ except ImportError:
     import shared as G
     from lib import DMP
 
-top_timeout_id = 0
-cancelled_timeouts = set()
-timeouts = set()
-
 
 class FlooPatch(object):
     def __init__(self, current, buf):
@@ -114,26 +110,32 @@ def load_floorc():
     return s
 
 
+cancelled_timeouts = set()
+timeout_ids = set()
+
+
 def set_timeout(func, timeout, *args, **kwargs):
-    global top_timeout_id
-    timeout_id = top_timeout_id
-    top_timeout_id += 1
-    if top_timeout_id > 100000:
-        top_timeout_id = 0
+    timeout_id = set_timeout._top_timeout_id
+    if timeout_id > 100000:
+        set_timeout._top_timeout_id = 0
+    else:
+        set_timeout._top_timeout_id += 1
 
     def timeout_func():
-        timeouts.remove(timeout_id)
+        timeout_ids.discard(timeout_id)
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
         func(*args, **kwargs)
     sublime.set_timeout(timeout_func, timeout)
-    timeouts.add(timeout_id)
+    timeout_ids.add(timeout_id)
     return timeout_id
+
+set_timeout._top_timeout_id = 0
 
 
 def cancel_timeout(timeout_id):
-    if timeout_id in timeouts:
+    if timeout_id in timeout_ids:
         cancelled_timeouts.add(timeout_id)
 
 
@@ -209,6 +211,21 @@ def is_shared(p):
     return True
 
 
+def update_floo_file(path, data):
+    try:
+        floo_json = json.loads(open(path, 'rb').read().decode('utf-8'))
+    except Exception:
+        pass
+
+    try:
+        floo_json.update(data)
+    except Exception:
+        floo_json = data
+
+    with open(path, 'w') as floo_fd:
+        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+
+
 def get_persistent_data(per_path=None):
     per_data = {'recent_workspaces': [], 'workspaces': {}}
     per_path = per_path or os.path.join(G.BASE_DIR, 'persistent.json')
@@ -277,9 +294,9 @@ def mkdir(path):
 
 def iter_n_deque(deque, n=10):
     i = 0
-    while i < n:
-        try:
+    try:
+        while i < n:
             yield deque.popleft()
-        except IndexError:
-            return
-        i += 1
+            i += 1
+    except IndexError:
+        pass
