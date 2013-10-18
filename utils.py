@@ -22,10 +22,6 @@ except ImportError:
     import shared as G
     from lib import DMP
 
-top_timeout_id = 0
-cancelled_timeouts = set()
-timeouts = set()
-
 
 class FlooPatch(object):
     def __init__(self, current, buf):
@@ -35,7 +31,11 @@ class FlooPatch(object):
         if buf['encoding'] == 'base64':
             self.md5_before = hashlib.md5(self.previous).hexdigest()
         else:
-            self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            try:
+                self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
+            except Exception:
+                # Horrible fallback if for some reason encoding doesn't agree with actual object
+                self.md5_before = hashlib.md5(self.previous).hexdigest()
 
     def __str__(self):
         return '%s - %s' % (self.buf['id'], self.buf['path'])
@@ -116,26 +116,32 @@ def load_floorc():
     return s
 
 
+cancelled_timeouts = set()
+timeout_ids = set()
+
+
 def set_timeout(func, timeout, *args, **kwargs):
-    global top_timeout_id
-    timeout_id = top_timeout_id
-    top_timeout_id += 1
-    if top_timeout_id > 100000:
-        top_timeout_id = 0
+    timeout_id = set_timeout._top_timeout_id
+    if timeout_id > 100000:
+        set_timeout._top_timeout_id = 0
+    else:
+        set_timeout._top_timeout_id += 1
 
     def timeout_func():
-        timeouts.remove(timeout_id)
+        timeout_ids.discard(timeout_id)
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
         func(*args, **kwargs)
     sublime.set_timeout(timeout_func, timeout)
-    timeouts.add(timeout_id)
+    timeout_ids.add(timeout_id)
     return timeout_id
+
+set_timeout._top_timeout_id = 0
 
 
 def cancel_timeout(timeout_id):
-    if timeout_id in timeouts:
+    if timeout_id in timeout_ids:
         cancelled_timeouts.add(timeout_id)
 
 
@@ -206,7 +212,10 @@ def is_shared(p):
     if not G.JOINED_WORKSPACE:
         return False
     p = unfuck_path(p)
-    if to_rel_path(p).find('../') == 0:
+    try:
+        if to_rel_path(p).find('../') == 0:
+            return False
+    except ValueError:
         return False
     return True
 
@@ -277,10 +286,8 @@ def rm(path):
     os.remove(path)
     try:
         os.removedirs(os.path.split(path)[0])
-    except OSError as e:
-        if e.errno != 66:
-            sublime.error_message('Cannot delete directory {0}.\n{1}'.format(path, e))
-            raise
+    except OSError:
+        pass
 
 
 def mkdir(path):

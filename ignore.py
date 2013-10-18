@@ -1,12 +1,18 @@
 import os
+import errno
 import fnmatch
+import stat
 
 try:
-    from . import msg, shared as G, utils
-    assert G and msg and utils
+    from . import msg, utils
+    assert msg and utils
 except ImportError:
     import msg
-    import shared as G
+
+try:
+    unicode()
+except NameError:
+    unicode = str
 
 
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
@@ -15,6 +21,7 @@ HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 # TODO: grab global git ignores:
 # gitconfig_file = popen("git config -z --get core.excludesfile", "r");
 DEFAULT_IGNORES = ['extern', 'node_modules', 'tmp', 'vendor']
+MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
 def create_flooignore(path):
@@ -32,14 +39,62 @@ def create_flooignore(path):
 class Ignore(object):
     def __init__(self, parent, path):
         self.parent = parent
-        self.ignores = {}
+        self.size = 0
+        self.children = []
+        self.files = []
+        self.ignores = {
+            '/TOO_BIG/': []
+        }
         self.path = utils.unfuck_path(path)
-        msg.debug('Initializing ignores for %s' % path)
+
+        try:
+            paths = os.listdir(self.path)
+        except OSError as e:
+            if e.errno != errno.ENOTDIR:
+                raise
+            self.path = os.path.dirname(self.path)
+            self.add_file(os.path.basename(path))
+            return
+        except Exception as e:
+            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            return
+
+        msg.log('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
             except:
                 pass
+
+        for p in paths:
+            self.add_file(p)
+
+    def add_file(self, p):
+        p_path = os.path.join(self.path, p)
+        if p[0] == '.' and p not in HIDDEN_WHITELIST:
+            msg.log('Ignoring hidden path %s' % p_path)
+            return
+        is_ignored = self.is_ignored(p_path)
+        if is_ignored:
+            msg.log(is_ignored)
+            return
+        try:
+            s = os.stat(p_path)
+        except Exception as e:
+            msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
+            return
+        if stat.S_ISDIR(s.st_mode):
+            ig = Ignore(self, p_path)
+            self.children.append(ig)
+            self.size += ig.size
+            return
+        elif stat.S_ISREG(s.st_mode):
+            if s.st_size > (MAX_FILE_SIZE):
+                self.ignores['/TOO_BIG/'].append(p)
+                msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
+            else:
+                self.size += s.st_size
+                self.files.append(p)
 
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'rb') as fd:
@@ -54,7 +109,16 @@ class Ignore(object):
             msg.debug('Adding %s to ignore patterns' % ignore)
             self.ignores[ignore_file].append(ignore)
 
+    def list_paths(self):
+        for f in self.files:
+            yield os.path.join(self.path, f)
+        for c in self.children:
+            for p in c.list_paths():
+                yield p
+
     def is_ignored_message(self, path, pattern, ignore_file):
+        if ignore_file == '/TOO_BIG/':
+            return '%s ignored because it is too big (more than %s bytes)' % (path, MAX_FILE_SIZE)
         return '%s ignored by pattern %s in %s' % (path, pattern, os.path.join(self.path, ignore_file))
 
     def is_ignored(self, path):
@@ -73,15 +137,3 @@ class Ignore(object):
         if self.parent:
             return self.parent.is_ignored(path)
         return False
-
-
-def build_ignores(path):
-    current_ignore = Ignore(None, G.PROJECT_PATH)
-    current_path = G.PROJECT_PATH
-    starting = os.path.relpath(path, G.PROJECT_PATH)
-    for p in starting.split(os.sep):
-        current_path = os.path.join(current_path, p)
-        if p == '..':
-            raise ValueError('%s is not in project path %s' % (current_path, G.PROJECT_PATH))
-        current_ignore = Ignore(current_ignore, current_path)
-    return current_ignore
