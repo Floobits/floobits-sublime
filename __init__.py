@@ -4,4 +4,10 @@ __all__ = ['api',
            'ignore',
            'migrations',
            'shared',
-           'utils']
+           'msg',
+           'protocols',
+           'utils',
+           'uploader',
+           'conn',
+           'reactor',
+           'file_descriptor']
