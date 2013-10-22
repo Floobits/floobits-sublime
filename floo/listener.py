@@ -168,13 +168,14 @@ class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
     creation_deque = collections.deque()
+    ignored_saves = collections.defaultdict(int)
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
-        self.between_save_events = {}
+        self.between_save_events = collections.defaultdict(lambda: [0, ""])
 
     @staticmethod
-    def reset():
+    def reset(self=None):
         global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS, ON_CLONE, ON_LOAD, TEMP_IGNORE_HIGHLIGHT
         BUFS = {}
         CREATE_BUF_CBS = {}
@@ -187,6 +188,7 @@ class Listener(sublime_plugin.EventListener):
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.creation_deque = collections.deque()
+        Listener.ignored_saves = collections.defaultdict(int)
 
     @staticmethod
     def push():
@@ -605,9 +607,6 @@ class Listener(sublime_plugin.EventListener):
         win.run_command('clone_file')
         return win.focus_group(0)
 
-    def id(self, view):
-        return view.buffer_id()
-
     def name(self, view):
         return view.file_name()
 
@@ -642,8 +641,16 @@ class Listener(sublime_plugin.EventListener):
                 del ON_LOAD[buf_id]
                 f()
 
+    @staticmethod
+    def save_view(view):
+        view_buf_id = view.buffer_id()
+        Listener.ignored_saves[view_buf_id] += 1
+        view.run_command("save")
+
     def on_pre_save(self, view):
         if not G.AGENT or not G.AGENT.is_ready():
+            return
+        if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
             return
         p = view.name()
         if view.file_name():
@@ -651,17 +658,30 @@ class Listener(sublime_plugin.EventListener):
                 p = utils.to_rel_path(view.file_name())
             except ValueError:
                 p = view.file_name()
-        self.between_save_events[view.buffer_id()] = p
+        i = self.between_save_events[view.buffer_id()]
+        i[0] += 1
+        i[1] = p
 
     def on_post_save(self, view):
+        view_buf_id = view.buffer_id()
         if not G.AGENT or not G.AGENT.is_ready():
             return
 
         def cleanup():
-            del self.between_save_events[view.buffer_id()]
+            i = self.between_save_events[view_buf_id]
+            i[0] -= 1
 
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+            return
+
+        if Listener.ignored_saves[view_buf_id] > 0:
+            Listener.ignored_saves[view_buf_id] -= 1
             return cleanup()
+
+        i = self.between_save_events[view_buf_id]
+        if i[0] > 1:
+            return cleanup()
+        old_name = i[1]
 
         event = None
         buf = get_buf(view)
@@ -670,10 +690,10 @@ class Listener(sublime_plugin.EventListener):
         except ValueError:
             name = view.file_name()
         is_shared = utils.is_shared(view.file_name())
-        old_name = self.between_save_events[view.buffer_id()]
 
         if buf is None:
             if is_shared:
+                # TODO: check if file is ignored
                 msg.log('new buffer ', name, view.file_name())
                 event = {
                     'name': 'create_buf',
