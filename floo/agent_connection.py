@@ -573,12 +573,15 @@ class AgentConnection(BaseAgentConnection):
             if hangout_url:
                 self.prompt_join_hangout(hangout_url)
         elif name == 'saved':
-            try:
-                buf = listener.BUFS[data['id']]
-                username = self.get_username_by_id(data['user_id'])
-                msg.log('%s saved buffer %s' % (username, buf['path']))
-            except Exception as e:
-                msg.error(str(e))
+            buf_id = data['id']
+            buf = listener.BUFS[buf_id]
+            username = self.get_username_by_id(data['user_id'])
+            msg.log('%s saved buffer %s' % (username, buf['path']))
+            view = listener.get_view(buf_id)
+            if view:
+                Listener.save_view(view)
+            else:
+                print("no view")
         elif name == 'request_perms':
             print(data)
             user_id = str(data.get('user_id'))
