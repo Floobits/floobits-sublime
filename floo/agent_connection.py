@@ -580,8 +580,6 @@ class AgentConnection(BaseAgentConnection):
             view = listener.get_view(buf_id)
             if view:
                 Listener.save_view(view)
-            else:
-                print("no view")
         elif name == 'request_perms':
             print(data)
             user_id = str(data.get('user_id'))
