@@ -692,14 +692,17 @@ class Listener(sublime_plugin.EventListener):
         is_shared = utils.is_shared(view.file_name())
 
         if buf is None:
-            if is_shared:
-                # TODO: check if file is ignored
-                msg.log('new buffer ', name, view.file_name())
-                event = {
-                    'name': 'create_buf',
-                    'buf': get_text(view),
-                    'path': name
-                }
+            if not is_shared:
+                return cleanup()
+            if ignore.is_ignored(view.file_name()):
+                msg.log('%s is ignored. Not creating buffer.' % view.file_name())
+                return cleanup()
+            msg.log('Creating new buffer ', name, view.file_name())
+            event = {
+                'name': 'create_buf',
+                'buf': get_text(view),
+                'path': name
+            }
         elif name != old_name:
             if is_shared:
                 msg.log('renamed buffer {0} to {1}'.format(old_name, name))
