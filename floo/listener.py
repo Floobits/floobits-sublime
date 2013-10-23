@@ -175,7 +175,7 @@ class Listener(sublime_plugin.EventListener):
         self.between_save_events = collections.defaultdict(lambda: [0, ""])
 
     @staticmethod
-    def reset(self=None):
+    def reset():
         global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS, ON_CLONE, ON_LOAD, TEMP_IGNORE_HIGHLIGHT
         BUFS = {}
         CREATE_BUF_CBS = {}
