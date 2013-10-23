@@ -643,9 +643,11 @@ class Listener(sublime_plugin.EventListener):
 
     @staticmethod
     def save_view(view):
+        if not G.MIRRORED_SAVES:
+            return
         view_buf_id = view.buffer_id()
         Listener.ignored_saves[view_buf_id] += 1
-        view.run_command("save")
+        view.run_command('save')
 
     def on_pre_save(self, view):
         if not G.AGENT or not G.AGENT.is_ready():
