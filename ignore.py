@@ -144,7 +144,7 @@ def is_ignored(abs_path):
     if not utils.is_shared(abs_path):
         return True
 
-    path = utils.to_rel_path(abs_path)
+    path = utils.to_rel_path(abs_path)  # Never throws ValueError because is_shared would return False
     if path == ".":
         return False
 
