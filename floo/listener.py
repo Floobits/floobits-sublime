@@ -7,8 +7,8 @@ import os
 import hashlib
 from datetime import datetime
 import base64
-import stat
 import collections
+from operator import attrgetter
 
 import sublime
 import sublime_plugin
@@ -26,9 +26,11 @@ BUFS = {}
 CREATE_BUF_CBS = {}
 PATHS_TO_IDS = {}
 ON_LOAD = {}
+ON_CLONE = {}
+TEMP_IGNORE_HIGHLIGHT = {}
 disable_stalker_mode_timeout = None
 temp_disable_stalk = False
-MAX_FILE_SIZE = 1024 * 1024 * 5
+MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 def get_text(view):
@@ -42,7 +44,11 @@ def get_view(buf_id):
     for view in G.WORKSPACE_WINDOW.views():
         if not view.file_name():
             continue
-        if buf['path'] == utils.to_rel_path(view.file_name()):
+        try:
+            rel_path = utils.to_rel_path(view.file_name())
+        except ValueError:
+            continue
+        if buf['path'] == rel_path:
             return view
     return None
 
@@ -56,7 +62,10 @@ def create_view(buf):
 
 
 def get_buf_by_path(path):
-    p = utils.to_rel_path(path)
+    try:
+        p = utils.to_rel_path(path)
+    except ValueError:
+        return
     buf_id = PATHS_TO_IDS.get(p)
     if buf_id:
         return BUFS.get(buf_id)
@@ -143,6 +152,12 @@ def send_summon(buf_id, sel):
         G.AGENT.put(highlight_json)
 
 
+def get_view_in_group(view_buffer_id, group):
+    for v in G.WORKSPACE_WINDOW.views_in_group(group):
+        if view_buffer_id == v.buffer_id():
+            return v
+
+
 class CreationQueue(object):
     def __init__(self):
         self.dirs = []
@@ -153,20 +168,27 @@ class Listener(sublime_plugin.EventListener):
     views_changed = []
     selection_changed = []
     creation_deque = collections.deque()
+    ignored_saves = collections.defaultdict(int)
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
-        self.between_save_events = {}
+        self.between_save_events = collections.defaultdict(lambda: [0, ""])
 
     @staticmethod
     def reset():
-        global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS
+        global BUFS, CREATE_BUF_CBS, PATHS_TO_IDS, ON_CLONE, ON_LOAD, TEMP_IGNORE_HIGHLIGHT
         BUFS = {}
         CREATE_BUF_CBS = {}
         PATHS_TO_IDS = {}
+
+        ON_CLONE = {}
+        ON_LOAD = {}
+        TEMP_IGNORE_HIGHLIGHT = {}
+
         Listener.views_changed = []
         Listener.selection_changed = []
         Listener.creation_deque = collections.deque()
+        Listener.ignored_saves = collections.defaultdict(int)
 
     @staticmethod
     def push():
@@ -337,109 +359,69 @@ class Listener(sublime_plugin.EventListener):
         G.AGENT.put(req)
 
     @staticmethod
-    def create_buf(path, ig=None):
-        if not ig:
-            ig = ignore.Ignore(None, path)
-        ignores = collections.deque([ig])
-        files = collections.deque()
-        Listener._create_buf_worker(ignores, files, [])
+    def create_buf(path, cb=None):
+        ig = ignore.Ignore(None, path)
+        if ig.size > MAX_WORKSPACE_SIZE:
+            size = ig.size
+            child_dirs = sorted(ig.children, key=attrgetter("size"))
+            ignored_cds = []
+            while size > MAX_WORKSPACE_SIZE and child_dirs:
+                cd = child_dirs.pop()
+                ignored_cds.append(cd)
+                size -= cd.size
+            if size > MAX_WORKSPACE_SIZE:
+                return sublime.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+            upload = sublime.ok_cancel_dialog(
+                "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
+            if not upload:
+                return
+            ig.children = child_dirs
+        Listener._uploader(ig.list_paths(), cb, ig.size)
 
     @staticmethod
-    def _create_buf_worker(ignores, files, too_big):
-        quota = 10
-
-        # scan until we find a minimum of 10 files
-        while quota > 0 and ignores:
-            ig = ignores.popleft()
-            for new_path in Listener._scan_dir(ig):
-                if not new_path:
-                    continue
-                try:
-                    s = os.lstat(new_path)
-                except Exception as e:
-                    msg.error('Error lstat()ing path %s: %s' % (new_path, unicode(e)))
-                    continue
-                if stat.S_ISDIR(s.st_mode):
-                    ignores.append(ignore.Ignore(ig, new_path))
-                elif stat.S_ISREG(s.st_mode):
-                    if s.st_size > (MAX_FILE_SIZE):
-                        too_big.append(new_path)
-                    else:
-                        files.append(new_path)
-                    quota -= 1
-
-        can_upload = False
-        for f in utils.iter_n_deque(files, 10):
-            Listener.upload(f)
-            can_upload = True
-
-        if can_upload and G.AGENT and G.AGENT.sock:
-            G.AGENT.select()
-
-        if ignores or files:
-            return utils.set_timeout(Listener._create_buf_worker, 25, ignores, files, too_big)
-
-        if too_big:
-            sublime.error_message("%s file(s) were not added because they were larger than 10 megabytes: \n%s" % (len(too_big), "\t".join(too_big)))
-
-        msg.log('All done syncing')
-
-    @staticmethod
-    def _scan_dir(ig):
-        path = ig.path
-
-        if not utils.is_shared(path):
-            msg.error('Skipping adding %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
-            return
-        if os.path.islink(path):
-            msg.error('Skipping adding %s because it is a symlink.' % path)
-            return
-        ignored = ig.is_ignored(path)
-        if ignored:
-            msg.log('Not creating buf: %s' % (ignored))
+    def _uploader(paths_iter, cb, total_bytes, bytes_uploaded=0.0):
+        if not G.AGENT or not G.AGENT.sock:
+            msg.error('Can\'t upload! Not connected. :(')
             return
 
-        msg.debug('create_buf: path is %s' % path)
+        G.AGENT.select()
+        if G.AGENT.qsize() > 0:
+            return utils.set_timeout(Listener._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
-        if not os.path.isdir(path):
-            yield path
-            return
-
+        bar_len = 20
         try:
-            paths = os.listdir(path)
-        except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, unicode(e)))
-            return
-        for p in paths:
-            p_path = os.path.join(path, p)
-            if p[0] == '.':
-                if p not in ignore.HIDDEN_WHITELIST:
-                    msg.log('Not creating buf for hidden path %s' % p_path)
-                    continue
-            ignored = ig.is_ignored(p_path)
-            if ignored:
-                msg.log('Not creating buf: %s' % (ignored))
-                continue
-
-            yield p_path
+            p = next(paths_iter)
+            size = Listener.upload(p)
+            bytes_uploaded += size
+            try:
+                percent = (bytes_uploaded / total_bytes)
+            except ZeroDivisionError:
+                percent = 0.5
+            bar = '   |' + ('|' * int(bar_len * percent)) + (' ' * int((1 - percent) * bar_len)) + '|'
+            sublime.status_message('Uploading... %2.2f%% %s' % (percent * 100, bar))
+        except StopIteration:
+            sublime.status_message('Uploading... 100% ' + ('|' * bar_len) + '| complete')
+            msg.log('All done uploading')
+            return cb and cb()
+        return utils.set_timeout(Listener._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
 
     @staticmethod
     def upload(path):
+        size = 0
         try:
             with open(path, 'rb') as buf_fd:
                 buf = buf_fd.read()
+            size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = get_buf_by_path(path)
             if existing_buf:
                 buf_md5 = hashlib.md5(buf).hexdigest()
                 if existing_buf['md5'] == buf_md5:
-                    msg.debug('%s already exists and has the same md5. Skipping.' % path)
-                    return
-                msg.log('setting buffer ', rel_path)
-
-                existing_buf['buf'] = buf
-                existing_buf['md5'] = buf_md5
+                    msg.log('%s already exists and has the same md5. Skipping.' % path)
+                    return size
+                msg.log('Setting buffer ', rel_path)
 
                 try:
                     buf = buf.decode('utf-8')
@@ -447,7 +429,9 @@ class Listener(sublime_plugin.EventListener):
                     buf = base64.b64encode(buf).decode('utf-8')
                     encoding = 'base64'
 
+                existing_buf['buf'] = buf
                 existing_buf['encoding'] = encoding
+                existing_buf['md5'] = buf_md5
 
                 G.AGENT.put({
                     'name': 'set_buf',
@@ -456,7 +440,7 @@ class Listener(sublime_plugin.EventListener):
                     'md5': buf_md5,
                     'encoding': encoding,
                 })
-                return
+                return size
 
             try:
                 buf = buf.decode('utf-8')
@@ -464,7 +448,7 @@ class Listener(sublime_plugin.EventListener):
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
 
-            msg.log('creating buffer ', rel_path)
+            msg.log('Creating buffer ', rel_path)
             event = {
                 'name': 'create_buf',
                 'buf': buf,
@@ -476,6 +460,7 @@ class Listener(sublime_plugin.EventListener):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
             msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
+        return size
 
     @staticmethod
     def delete_buf(path):
@@ -521,32 +506,106 @@ class Listener(sublime_plugin.EventListener):
             view.set_read_only(True)
 
     @staticmethod
-    def highlight(buf_id, region_key, username, ranges, summon=False):
+    def highlight(buf_id, region_key, username, ranges, summon, clone):
+        buf_id = int(buf_id)
+        msg.log(str([buf_id, region_key, username, ranges, summon, clone]))
         buf = BUFS.get(buf_id)
         if not buf:
             return
+
         view = get_view(buf_id)
-        if not view:
-            if summon or (G.STALKER_MODE and not temp_disable_stalk):
-                view = create_view(buf)
-                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon)
+        do_stuff = summon or (G.STALKER_MODE and not temp_disable_stalk)
+
+        # TODO: move this state machine into one variable
+        if buf_id in ON_LOAD:
+            msg.debug('ignoring command until on_load is complete')
             return
+        if buf_id in ON_CLONE:
+            msg.debug('ignoring command until on_clone is complete')
+            return
+        if buf_id in TEMP_IGNORE_HIGHLIGHT:
+            msg.debug('ignoring command until TEMP_IGNORE_HIGHLIGHT is complete')
+            return
+
+        if not view:
+            if do_stuff:
+                msg.debug('creating view')
+                create_view(buf)
+                ON_LOAD[buf_id] = lambda: Listener.highlight(buf_id, region_key, username, ranges, summon, False)
+            return
+
         regions = []
         for r in ranges:
             regions.append(sublime.Region(*r))
-        view.erase_regions(region_key)
-        view.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
-        if summon or (G.STALKER_MODE and not temp_disable_stalk):
-            G.WORKSPACE_WINDOW.focus_view(view)
-            if summon:
-                # Explicit summon by another user. Center the line.
-                view.show_at_center(regions[0])
-            else:
-                # Avoid scrolling/jumping lots in stalker mode
-                view.show(regions[0])
 
-    def id(self, view):
-        return view.buffer_id()
+        def swap_regions(v):
+            v.erase_regions(region_key)
+            v.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
+
+        if not do_stuff:
+            return swap_regions(view)
+
+        win = G.WORKSPACE_WINDOW
+
+        if not G.SPLIT_MODE:
+            win.focus_view(view)
+            # Explicit summon by another user. Center the line.
+            if summon:
+                view.show_at_center(regions[0])
+            # Avoid scrolling/jumping lots in stalker mode
+            else:
+                view.show(regions[0])
+            return
+
+        focus_group = win.num_groups() - 1
+        view_in_group = get_view_in_group(view.buffer_id(), focus_group)
+
+        if view_in_group:
+            msg.debug('view in group')
+            win.focus_view(view_in_group)
+            swap_regions(view_in_group)
+            utils.set_timeout(win.focus_group, 0, 0)
+            return view_in_group.show(regions[0])
+
+        if not clone:
+            msg.debug('no clone... moving ', view.buffer_id(), win.num_groups() - 1, 0)
+            win.focus_view(view)
+            win.set_view_index(view, win.num_groups() - 1, 0)
+
+            def dont_crash_sublime():
+                utils.set_timeout(win.focus_group, 0, 0)
+                swap_regions(view)
+                return view.show(regions[0])
+            return utils.set_timeout(dont_crash_sublime, 0)
+
+        msg.debug('View not in group... cloning')
+        win.focus_view(view)
+
+        def on_clone(buf, view):
+            msg.debug('on clone')
+
+            def poll_for_move():
+                msg.debug('poll_for_move')
+                win.focus_view(view)
+                win.set_view_index(view, win.num_groups() - 1, 0)
+                if not get_view_in_group(view.buffer_id(), focus_group):
+                    return utils.set_timeout(poll_for_move, 20)
+                msg.debug('found view, now moving ', view.name(), win.num_groups() - 1)
+                swap_regions(view)
+                view.show(regions[0])
+                win.focus_view(view)
+                utils.set_timeout(win.focus_group, 0, 0)
+                try:
+                    del TEMP_IGNORE_HIGHLIGHT[buf_id]
+                except:
+                    pass
+            utils.set_timeout(win.focus_group, 0, 0)
+            poll_for_move()
+
+        ON_CLONE[buf_id] = on_clone
+        TEMP_IGNORE_HIGHLIGHT[buf_id] = True
+        win.run_command('clone_file')
+        return win.focus_group(0)
 
     def name(self, view):
         return view.file_name()
@@ -555,7 +614,14 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('new', self.name(view))
 
     def on_clone(self, view):
-        msg.debug('clone', self.name(view))
+        msg.debug('Sublime cloned %s' % self.name(view))
+        buf = get_buf(view)
+        buf_id = int(buf['id'])
+        if buf:
+            f = ON_CLONE.get(buf_id)
+            if f:
+                del ON_CLONE[buf_id]
+                f(buf, view)
 
     def on_close(self, view):
         msg.debug('close', self.name(view))
@@ -569,43 +635,76 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('Sublime loaded %s' % self.name(view))
         buf = get_buf(view)
         if buf:
-            f = ON_LOAD.get(buf['id'])
+            buf_id = int(buf['id'])
+            f = ON_LOAD.get(buf_id)
             if f:
-                del ON_LOAD[buf['id']]
+                del ON_LOAD[buf_id]
                 f()
+
+    @staticmethod
+    def save_view(view):
+        if not G.MIRRORED_SAVES:
+            return
+        view_buf_id = view.buffer_id()
+        Listener.ignored_saves[view_buf_id] += 1
+        view.run_command('save')
 
     def on_pre_save(self, view):
         if not G.AGENT or not G.AGENT.is_ready():
             return
+        if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+            return
         p = view.name()
         if view.file_name():
-            p = utils.to_rel_path(view.file_name())
-        self.between_save_events[view.buffer_id()] = p
+            try:
+                p = utils.to_rel_path(view.file_name())
+            except ValueError:
+                p = view.file_name()
+        i = self.between_save_events[view.buffer_id()]
+        i[0] += 1
+        i[1] = p
 
     def on_post_save(self, view):
+        view_buf_id = view.buffer_id()
         if not G.AGENT or not G.AGENT.is_ready():
             return
 
         def cleanup():
-            del self.between_save_events[view.buffer_id()]
+            i = self.between_save_events[view_buf_id]
+            i[0] -= 1
 
         if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+            return
+
+        if Listener.ignored_saves[view_buf_id] > 0:
+            Listener.ignored_saves[view_buf_id] -= 1
             return cleanup()
+
+        i = self.between_save_events[view_buf_id]
+        if i[0] > 1:
+            return cleanup()
+        old_name = i[1]
 
         event = None
         buf = get_buf(view)
-        name = utils.to_rel_path(view.file_name())
+        try:
+            name = utils.to_rel_path(view.file_name())
+        except ValueError:
+            name = view.file_name()
         is_shared = utils.is_shared(view.file_name())
-        old_name = self.between_save_events[view.buffer_id()]
 
         if buf is None:
-            if is_shared:
-                msg.log('new buffer ', name, view.file_name())
-                event = {
-                    'name': 'create_buf',
-                    'buf': get_text(view),
-                    'path': name
-                }
+            if not is_shared:
+                return cleanup()
+            if ignore.is_ignored(view.file_name()):
+                msg.log('%s is ignored. Not creating buffer.' % view.file_name())
+                return cleanup()
+            msg.log('Creating new buffer ', name, view.file_name())
+            event = {
+                'name': 'create_buf',
+                'buf': get_text(view),
+                'path': name
+            }
         elif name != old_name:
             if is_shared:
                 msg.log('renamed buffer {0} to {1}'.format(old_name, name))

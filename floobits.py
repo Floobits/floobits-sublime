@@ -23,6 +23,19 @@ import sublime
 
 PY2 = sys.version_info < (3, 0)
 
+
+if PY2 and sublime.platform() == 'windows':
+    sublime.error_message('Sorry, but the Windows version of Sublime Text 2 lacks Python’s select module, so the Floobits plugin won’t work. Please upgrade to Sublime Text 3. :(')
+elif sublime.platform() == 'osx':
+    try:
+        p = subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = p.communicate()
+        if float(result[0][:4]) < 10.7:
+            sublime.error_message('Sorry, but the Floobits plugin doesn\'t. Please upgrade your operating system if you want to use this plugin. :(')
+    except Exception as e:
+        print(e)
+
+
 try:
     import ssl
     assert ssl
@@ -40,7 +53,18 @@ if ssl is False and sublime.platform() == 'linux':
     if not PY2:
         ssl_path += '-py3'
         lib_path += '-py3'
+
+    so_path = os.path.join(plugin_path, 'lib', 'custom')
+    try:
+        filename, path, desc = imp.find_module('_ssl', [so_path])
+        if filename:
+            _ssl = imp.load_module('_ssl', filename, path, desc)
+    except ImportError as e:
+        print('Failed loading custom _ssl module %s: %s' % (so_path, unicode(e)))
+
     for version in ssl_versions:
+        if _ssl:
+            break
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
             filename, path, desc = imp.find_module('_ssl', [so_path])
@@ -73,13 +97,15 @@ try:
     Request = request.Request
     urlopen = request.urlopen
     HTTPError = urllib.error.HTTPError
-    assert Request and urlopen and HTTPError
+    URLError = urllib.error.URLError
+    assert Request and urlopen and HTTPError and URLError
 except ImportError:
     import urllib2
     urllib2 = imp.reload(urllib2)
     Request = urllib2.Request
     urlopen = urllib2.urlopen
     HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
 
 try:
     from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
@@ -93,19 +119,8 @@ except (ImportError, ValueError):
     assert version
 
 
-sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
-
-utils.reload_settings()
-
-# TODO: one day this can be removed (once all our users have updated)
-old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
-if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
-    print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
-    os.rename(old_colab_dir, G.BASE_DIR)
-    os.symlink(G.BASE_DIR, old_colab_dir)
-
-
 on_room_info_waterfall = utils.Waterfall()
+ignore_modified_timeout = None
 
 
 def update_recent_workspaces(workspace):
@@ -182,10 +197,12 @@ def migrate_symlinks():
         pass
     print('migrated')
 
-migrate_symlinks()
 
-d = utils.get_persistent_data()
-G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
+def ssl_error_msg(action):
+    sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
+                          'This is a known issue on Linux builds of Sublime Text. '
+                          'Please comment on http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ '
+                          'or submit an issue: https://github.com/SublimeText/Issues/issues')
 
 
 def get_active_window(cb):
@@ -220,11 +237,6 @@ def create_or_link_account():
         print(tb)
 
 
-can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
-if not can_auth:
-    threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
-
-
 def global_tick():
     Listener.push()
     if G.AGENT and G.AGENT.sock:
@@ -234,7 +246,7 @@ def global_tick():
 
 def disconnect_dialog():
     if G.AGENT and G.JOINED_WORKSPACE:
-        disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave workspace %s.' % G.AGENT.workspace)
+        disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave %s/%s' % (G.AGENT.owner, G.AGENT.workspace))
         if disconnect:
             msg.debug('Stopping agent.')
             G.AGENT.stop()
@@ -320,6 +332,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
+            if ssl is False:
+                # No ssl module (broken Sublime Text). Just behave as if the workspace exists.
+                return True
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
@@ -331,9 +346,11 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 except Exception as e:
                     msg.debug(unicode(e))
                 return False
-            on_room_info_waterfall.add(on_room_info_msg)
+            except URLError:
+                # Timeout or something bad. Just assume the workspace exists
+                return True
             on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-            on_room_info_waterfall.add(Listener.create_buf, dir_to_share)
+            on_room_info_waterfall.add(Listener.create_buf, dir_to_share, on_room_info_msg)
             return True
 
         if os.path.isfile(dir_to_share):
@@ -378,7 +395,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share)
+        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share, on_room_info_msg)
 
         def on_done(owner):
             self.window.run_command('floobits_create_workspace', {
@@ -387,6 +404,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'api_args': self.api_args,
                 'owner': owner[0],
             })
+
+        if ssl is False:
+            return on_done([G.USERNAME])
 
         orgs = api.get_orgs_can_admin()
         orgs = json.loads(orgs.read().decode('utf-8'))
@@ -410,9 +430,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         if not disconnect_dialog():
             return
         if ssl is False:
-            return sublime.error_message('Your version of Sublime Text can\'t create workspaces because it has a broken SSL module. '
-                                         'This is a known issue on Linux and Windows builds of Sublime Text 2. '
-                                         'Please upgrade to Sublime Text 3. See http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ for more information.')
+            return ssl_error_msg('create workspaces')
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
@@ -458,13 +476,11 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
 
             return self.window.run_command('floobits_create_workspace', kwargs)
-
         except Exception as e:
+            msg.error('Unable to create workspace: %s' % unicode(e))
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
-
-        on_room_info_waterfall.add(on_room_info_msg)
 
         self.window.run_command('floobits_join_workspace', {
             'workspace_url': workspace_url,
@@ -818,6 +834,7 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
 class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = False
+        G.SPLIT_MODE = False
 
     def is_enabled(self):
         return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
@@ -845,6 +862,18 @@ class RequestPermissionCommand(FloobitsBaseCommand):
         if 'patch' in G.PERMS:
             return False
         return True
+
+
+class FloobitsFollowSplit(FloobitsBaseCommand):
+    def run(self):
+        G.SPLIT_MODE = True
+        G.STALKER_MODE = True
+        if self.window.num_groups() == 1:
+            self.window.set_layout({
+                "cols": [0.0, 1.0],
+                "rows": [0.0, 0.5, 1.0],
+                "cells": [[0, 0, 1, 1], [0, 1, 1, 2]]
+            })
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
@@ -879,9 +908,6 @@ class FlooViewSetMsg(sublime_plugin.TextCommand):
 
     def description(self):
         return
-
-
-ignore_modified_timeout = None
 
 
 def unignore_modified_events():
@@ -983,4 +1009,28 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
         return
 
 
-global_tick()
+def main():
+    sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
+
+    utils.reload_settings()
+
+    # TODO: one day this can be removed (once all our users have updated)
+    old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
+    if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
+        print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
+        os.rename(old_colab_dir, G.BASE_DIR)
+        os.symlink(G.BASE_DIR, old_colab_dir)
+
+    migrate_symlinks()
+
+    d = utils.get_persistent_data()
+    G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
+
+    can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+    if not can_auth:
+        threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
+
+    global_tick()
+
+
+main()

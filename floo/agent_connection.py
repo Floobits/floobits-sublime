@@ -75,6 +75,7 @@ class BaseAgentConnection(object):
         self.secure = secure
 
         self.empty_selects = 0
+        self.status_timeout = 0
         self.handshaken = False
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
@@ -97,10 +98,11 @@ class BaseAgentConnection(object):
         except Exception:
             pass
         G.JOINED_WORKSPACE = False
-        self.call_select = False
+        self.status_timeout = 0
         self.handshaken = False
         self.buf = bytes()
         self.sock = None
+        self.call_select = False
 
     def stop(self):
         self.retries = -1
@@ -108,6 +110,7 @@ class BaseAgentConnection(object):
         self.reconnect_timeout = None
         self.cleanup()
         msg.log('Disconnected.')
+        sublime.status_message('Disconnected.')
 
     def is_ready(self):
         return False
@@ -122,6 +125,9 @@ class BaseAgentConnection(object):
         if qsize > 0:
             msg.debug('%s items in q' % qsize)
         return qsize
+
+    def qsize(self):
+        return len(SOCKET_Q)
 
     def reconnect(self):
         if self.reconnect_timeout:
@@ -181,7 +187,9 @@ class BaseAgentConnection(object):
                 self.secure = False
                 if self.port == G.DEFAULT_PORT:
                     self.port = 3148  # plaintext port
-        msg.log('Connecting to %s:%s' % (self.host, self.port))
+        conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        msg.log(conn_msg)
+        sublime.status_message(conn_msg)
         self._connect()
 
     def protocol(self, req):
@@ -218,6 +226,9 @@ class BaseAgentConnection(object):
                     self.handler(name, data)
             except Exception as e:
                 msg.error('Error handling %s event with data %s: %s' % (name, data, e))
+                if name == 'room_info':
+                    sublime.error_message('Error joining workspace: %s' % str(e))
+                    self.stop()
             self.buf = after
 
     def select(self):
@@ -256,6 +267,7 @@ class BaseAgentConnection(object):
 
             try:
                 while True:
+                    # TODO: use sock.send()
                     p = SOCKET_Q.popleft()
                     sock_debug('sending patch')
                     self.sock.sendall(p.encode('utf-8'))
@@ -290,6 +302,11 @@ class BaseAgentConnection(object):
                     msg.error('No data from sock.recv() {0} times.'.format(self.empty_selects))
                     return self.reconnect()
             sock_debug('Done reading for now')
+
+        self.status_timeout += 1
+        if self.status_timeout > (2000 / G.TICK_TIME):
+            sublime.status_message('Connected to %s::%s' % (self.owner, self.workspace))
+            self.status_timeout = 0
 
 
 class AgentConnection(BaseAgentConnection):
@@ -339,7 +356,9 @@ class AgentConnection(BaseAgentConnection):
         self.put(req)
 
     def stop(self):
-        msg.log('Disconnecting from workspace %s/%s' % (self.owner, self.workspace))
+        stop_msg = 'Disconnecting from workspace %s/%s' % (self.owner, self.workspace)
+        msg.log(stop_msg)
+        sublime.status_message(stop_msg)
         super(AgentConnection, self).stop()
 
     def cleanup(self, *args, **kwargs):
@@ -453,9 +472,10 @@ class AgentConnection(BaseAgentConnection):
                     'secure': self.secure,
                 })
             }
-            with open(os.path.join(G.PROJECT_PATH, '.floo'), 'w') as floo_fd:
-                floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+            utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
 
+            changed_bufs = []
+            missing_bufs = []
             for buf_id, buf in data['bufs'].items():
                 buf_id = int(buf_id)  # json keys must be strings
                 buf_path = utils.get_full_path(buf['path'])
@@ -463,7 +483,7 @@ class AgentConnection(BaseAgentConnection):
                 utils.mkdir(new_dir)
                 listener.BUFS[buf_id] = buf
                 listener.PATHS_TO_IDS[buf['path']] = buf_id
-                # TODO: stupidly inefficient
+
                 view = listener.get_view(buf_id)
                 if view and not view.is_loading() and buf['encoding'] == 'utf8':
                     view_text = listener.get_text(view)
@@ -473,8 +493,7 @@ class AgentConnection(BaseAgentConnection):
                         buf['buf'] = view_text
                         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
                     elif self.get_bufs:
-                        Listener.get_buf(buf_id)
-                    #TODO: maybe send patch here?
+                        changed_bufs.append(buf_id)
                 else:
                     try:
                         buf_fd = open(buf_path, 'rb')
@@ -486,12 +505,33 @@ class AgentConnection(BaseAgentConnection):
                                 buf_buf = buf_buf.decode('utf-8')
                             buf['buf'] = buf_buf
                         elif self.get_bufs:
-                            Listener.get_buf(buf_id)
+                            changed_bufs.append(buf_id)
                     except Exception as e:
                         msg.debug('Error calculating md5:', e)
-                        Listener.get_buf(buf_id)
+                        missing_bufs.append(buf_id)
 
-            msg.log('Successfully joined workspace %s/%s' % (self.owner, self.workspace))
+            if changed_bufs and self.get_bufs:
+                if len(changed_bufs) > 4:
+                    prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(changed_bufs)
+                else:
+                    prompt = 'Overwrite the following local files?\n'
+                    for buf_id in changed_bufs:
+                        prompt += '\n%s' % listener.BUFS[buf_id]['path']
+                stomp_local = sublime.ok_cancel_dialog(prompt)
+                for buf_id in changed_bufs:
+                    if stomp_local:
+                        Listener.get_buf(buf_id)
+                    else:
+                        buf = listener.BUFS[buf_id]
+                        # TODO: this is inefficient. we just read the file 20 lines ago
+                        Listener.create_buf(utils.get_full_path(buf['path']))
+
+            for buf_id in missing_bufs:
+                Listener.get_buf(buf_id)
+
+            success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
+            msg.log(success_msg)
+            sublime.status_message(success_msg)
 
             temp_data = data.get('temp_data', {})
             hangout = temp_data.get('hangout', {})
@@ -525,7 +565,7 @@ class AgentConnection(BaseAgentConnection):
                     view.erase_regions(region_key)
         elif name == 'highlight':
             region_key = 'floobits-highlight-%s' % (data['user_id'])
-            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False))
+            Listener.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
         elif name == 'set_temp_data':
             hangout_data = data.get('data', {})
             hangout = hangout_data.get('hangout', {})
@@ -533,12 +573,13 @@ class AgentConnection(BaseAgentConnection):
             if hangout_url:
                 self.prompt_join_hangout(hangout_url)
         elif name == 'saved':
-            try:
-                buf = listener.BUFS[data['id']]
-                username = self.get_username_by_id(data['user_id'])
-                msg.log('%s saved buffer %s' % (username, buf['path']))
-            except Exception as e:
-                msg.error(str(e))
+            buf_id = data['id']
+            buf = listener.BUFS[buf_id]
+            username = self.get_username_by_id(data['user_id'])
+            msg.log('%s saved buffer %s' % (username, buf['path']))
+            view = listener.get_view(buf_id)
+            if view:
+                Listener.save_view(view)
         elif name == 'request_perms':
             print(data)
             user_id = str(data.get('user_id'))
