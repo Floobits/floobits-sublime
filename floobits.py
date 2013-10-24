@@ -53,7 +53,18 @@ if ssl is False and sublime.platform() == 'linux':
     if not PY2:
         ssl_path += '-py3'
         lib_path += '-py3'
+
+    so_path = os.path.join(plugin_path, 'lib', 'custom')
+    try:
+        filename, path, desc = imp.find_module('_ssl', [so_path])
+        if filename:
+            _ssl = imp.load_module('_ssl', filename, path, desc)
+    except ImportError as e:
+        print('Failed loading custom _ssl module %s: %s' % (so_path, unicode(e)))
+
     for version in ssl_versions:
+        if _ssl:
+            break
         so_path = os.path.join(lib_path, 'libssl-%s' % version)
         try:
             filename, path, desc = imp.find_module('_ssl', [so_path])
