@@ -112,6 +112,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.views_changed = []
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
+        self.chat_deck = collections.deque(maxlen=10)
 
     def send_msg(self, msg):
         self.send({'name': 'msg', 'data': msg})
