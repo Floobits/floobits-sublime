@@ -29,8 +29,6 @@ except ImportError:
 
 
 class SublimeConnection(floo_handler.FlooHandler):
-    def __init__(self, *args, **kwargs):
-        super(SublimeConnection, self).__init__(*args, **kwargs)
 
     def tick(self):
         reported = set()

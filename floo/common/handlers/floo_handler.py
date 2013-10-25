@@ -170,7 +170,7 @@ class FlooHandler(base.BaseHandler):
         self.bufs[buf_id] = data
         view = self.get_view(buf_id)
         if view:
-            self.update_view(data, view)
+            view.update()
         else:
             utils.save_buf(data)
 

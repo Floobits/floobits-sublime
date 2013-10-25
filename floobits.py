@@ -591,7 +591,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 G.AGENT = None
             on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
             try:
-                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get("get_bufs"))
+                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get("get_bufs", True))
                 reactor.connect(conn, host, port, secure)
                 conn.once('room_info', on_room_info_waterfall.call)
                 on_room_info_waterfall = utils.Waterfall()
