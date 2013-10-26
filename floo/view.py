@@ -93,4 +93,7 @@ class View(object):
         self.view.retarget(name)
 
     def save(self):
-        self.view.run_command('save')
+        if 'buf' in self.buf:
+            self.view.run_command('save')
+        else:
+            msg.debug("not saving because not populated")
