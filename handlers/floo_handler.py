@@ -71,6 +71,7 @@ class FlooHandler(base.BaseHandler):
     def reset(self):
         self.bufs = {}
         self.paths_to_ids = {}
+        self.save_on_get_bufs = set()
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -166,13 +167,21 @@ class FlooHandler(base.BaseHandler):
 
         if data['encoding'] == 'base64':
             data['buf'] = base64.b64decode(data['buf'])
-        # forced_patch doesn't exist in data, so this is equivalent to buf['forced_patch'] = False
+
         self.bufs[buf_id] = data
+
+        save = False
+        if buf_id in self.save_on_get_bufs:
+            self.save_on_get_bufs.remove(buf_id)
+            save = True
+
         view = self.get_view(buf_id)
-        if view:
-            view.update()
-        else:
-            utils.save_buf(data)
+        if not view:
+            return utils.save_buf(data)
+
+        view.update()
+        if save:
+            view.save()
 
     def _on_create_buf(self, data):
         if data['encoding'] == 'base64':
@@ -284,6 +293,7 @@ class FlooHandler(base.BaseHandler):
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)
+                    self.save_on_get_bufs.add(buf_id)
                 else:
                     buf = self.bufs[buf_id]
                     # TODO: this is inefficient. we just read the file 20 lines ago
