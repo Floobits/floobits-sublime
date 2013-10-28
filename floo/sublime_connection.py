@@ -16,12 +16,14 @@ except NameError:
     unicode = str
 
 try:
+    from . import editor
     from .common import msg, shared as G, utils
     from .view import View
     from .common.handlers import floo_handler
     from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group
     assert G and msg and utils
 except ImportError:
+    from floo import editor
     from common import msg, shared as G, utils
     from common.handlers import floo_handler
     from view import View
@@ -81,6 +83,11 @@ class SublimeConnection(floo_handler.FlooHandler):
             }
             self.send(highlight_json)
 
+        self._status_timeout += 1
+        if self._status_timeout > (2000 / G.TICK_TIME):
+            editor.status_message('Connected to %s\'s %s' % (self.owner, self.workspace))
+            self._status_timeout = 0
+
     def get_view(self, buf_id):
         buf = self.bufs.get(buf_id)
         if not buf:
@@ -111,6 +118,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
         self.chat_deck = collections.deque(maxlen=10)
+        self._status_timeout = 0
 
     def send_msg(self, msg):
         self.send({'name': 'msg', 'data': msg})

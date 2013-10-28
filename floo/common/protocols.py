@@ -50,11 +50,13 @@ class FlooProtocol(event_emitter.EventEmitter):
 
     def __init__(self, host, port, secure=True):
         super(FlooProtocol, self).__init__()
+
         self.host = host
         self.port = port
         self.secure = secure
-        self._needs_handshake = bool(secure)
         self.connected = False
+
+        self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
         self._buf = bytes()
@@ -176,7 +178,6 @@ class FlooProtocol(event_emitter.EventEmitter):
         except Exception:
             pass
         G.JOINED_WORKSPACE = False
-        self.status_timeout = 0
         self._buf = bytes()
         self._sock = None
         self.connected = False
@@ -222,11 +223,6 @@ class FlooProtocol(event_emitter.EventEmitter):
                 return self.reconnect()
             except (socket.error, TypeError):
                 break
-
-        # self.status_timeout += 1
-        # if self.status_timeout > (2000 / G.TICK_TIME):
-        #     editor.status_message('Connected to %s::%s' % (self.owner, self.workspace))
-        #     self.status_timeout = 0
 
         if buf:
             self._empty_reads = 0
