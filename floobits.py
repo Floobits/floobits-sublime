@@ -201,8 +201,7 @@ def migrate_symlinks():
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
                           'This is a known issue on Linux builds of Sublime Text. '
-                          'Please comment on http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ '
-                          'or submit an issue: https://github.com/SublimeText/Issues/issues')
+                          'See this issue: https://github.com/SublimeText/Issues/issues/177')
 
 
 def get_active_window(cb):
