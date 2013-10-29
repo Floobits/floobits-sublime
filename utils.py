@@ -10,15 +10,12 @@ except ImportError:
     from urlparse import urlparse
 
 try:
-    import sublime
-except ImportError:
-    from .. import sublime
-
-try:
+    from .. import editor
     from . import shared as G
     from .lib import DMP
     assert G and DMP
 except ImportError:
+    import editor
     import shared as G
     from lib import DMP
 
@@ -133,7 +130,7 @@ def set_timeout(func, timeout, *args, **kwargs):
             cancelled_timeouts.remove(timeout_id)
             return
         func(*args, **kwargs)
-    sublime.set_timeout(timeout_func, timeout)
+    editor.set_timeout(timeout_func, timeout)
     timeout_ids.add(timeout_id)
     return timeout_id
 
@@ -295,15 +292,15 @@ def mkdir(path):
         os.makedirs(path)
     except OSError as e:
         if e.errno != 17:
-            sublime.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
+            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
             raise
 
 
-def iter_n_deque(deque, n=10):
-    i = 0
-    try:
-        while i < n:
-            yield deque.popleft()
-            i += 1
-    except IndexError:
-        pass
+def save_buf(buf):
+    path = get_full_path(buf['path'])
+    mkdir(os.path.split(path)[0])
+    with open(path, 'wb') as fd:
+        if buf['encoding'] == 'utf8':
+            fd.write(buf['buf'].encode('utf-8'))
+        else:
+            fd.write(buf['buf'])

@@ -37,7 +37,7 @@ def create_flooignore(path):
 
 
 class Ignore(object):
-    def __init__(self, parent, path):
+    def __init__(self, parent, path, recurse=True):
         self.parent = parent
         self.size = 0
         self.children = []
@@ -66,8 +66,9 @@ class Ignore(object):
             except:
                 pass
 
-        for p in paths:
-            self.add_file(p)
+        if recurse:
+            for p in paths:
+                self.add_file(p)
 
     def add_file(self, p):
         p_path = os.path.join(self.path, p)
@@ -137,3 +138,19 @@ class Ignore(object):
         if self.parent:
             return self.parent.is_ignored(path)
         return False
+
+
+def is_ignored(abs_path):
+    if not utils.is_shared(abs_path):
+        return True
+
+    path = utils.to_rel_path(abs_path)  # Never throws ValueError because is_shared would return False
+    if path == ".":
+        return False
+
+    base_path, file_name = os.path.split(abs_path)
+    ig = Ignore(None, base_path, recurse=False)
+    if ig.is_ignored(abs_path):
+        return True
+
+    return is_ignored(base_path)

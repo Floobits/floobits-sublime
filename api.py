@@ -3,20 +3,17 @@ import base64
 import json
 
 try:
-    import sublime
-except ImportError:
-    from .. import sublime
-
-try:
-    from urllib import Request, urlopen
+    from urllib.request import Request, urlopen
     assert Request and urlopen
 except ImportError:
     from urllib2 import Request, urlopen
 
 try:
+    from .. import editor
     from . import shared as G, utils
     assert G and utils
 except ImportError:
+    import editor
     import shared as G
     import utils
 
@@ -35,7 +32,7 @@ def api_request(url, data=None):
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
-    r.add_header('User-Agent', 'Floobits Sublime Plugin %s %s py-%s.%s' % (G.__PLUGIN_VERSION__, sublime.platform(), sys.version_info[0], sys.version_info[1]))
+    r.add_header('User-Agent', 'Floobits Sublime Plugin %s %s py-%s.%s' % (G.__PLUGIN_VERSION__, editor.platform(), sys.version_info[0], sys.version_info[1]))
     return urlopen(r, timeout=5)
 
 
