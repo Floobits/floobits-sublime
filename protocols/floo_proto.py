@@ -4,7 +4,6 @@ import select
 import collections
 import json
 import errno
-import sublime
 import os.path
 
 try:
@@ -13,17 +12,13 @@ try:
 except ImportError:
     ssl = False
 try:
-    from .. import editor
-    from . import cert, msg, shared as G, utils, event_emitter, reactor
+    from .. import editor, cert, msg, shared as G, utils, reactor
+    from . import base
     assert cert and G and msg and utils
 except (ImportError, ValueError):
-    import editor
-    import cert
-    import msg
-    import shared as G
-    import utils
-    import event_emitter
-    import reactor
+    from floo import editor
+    from floo.common import cert, msg, shared as G, utils, reactor
+    import base
 
 try:
     connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY, errno.WSAEINVAL)
@@ -42,7 +37,7 @@ def sock_debug(*args, **kwargs):
         msg.log(*args, **kwargs)
 
 
-class FlooProtocol(event_emitter.EventEmitter):
+class FlooProtocol(base.BaseProtocol):
     ''' Base FD Interface'''
     NEWLINE = '\n'.encode('utf-8')
     MAX_RETRIES = 20
@@ -56,6 +51,7 @@ class FlooProtocol(event_emitter.EventEmitter):
         self.secure = secure
         self.connected = False
 
+        self._listener = False
         self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
@@ -96,6 +92,10 @@ class FlooProtocol(event_emitter.EventEmitter):
                     self.stop()
             self._buf = after
 
+    def listen(self, listener):
+        self._q.clear()
+        reactor.reactor.select()
+
     def _connect(self, attempts=0):
         if attempts > 500:
             msg.error('Connection attempt timed out.')
@@ -132,11 +132,14 @@ class FlooProtocol(event_emitter.EventEmitter):
         return self._sock
 
     def fd_set(self, readable, writeable, errorable):
-        if not self.connected:
+        if not self.connected and not self._listener:
             return
 
         fileno = self.fileno()
         errorable.append(fileno)
+
+        if self._listener:
+            readable.append(fileno)
 
         if self._needs_handshake:
             return writeable.append(fileno)
@@ -211,6 +214,9 @@ class FlooProtocol(event_emitter.EventEmitter):
             sock_debug('Done writing for now')
 
     def read(self):
+        if self._listen:
+            self._sock.accept()
+
         sock_debug('Socket is readable')
         buf = ''.encode('utf-8')
         while True:

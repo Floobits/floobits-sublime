@@ -4,9 +4,11 @@ import select
 try:
     from . import msg
     from .. import editor
-    assert msg
+    from .. handers import listener
+    assert msg and listener
 except (ImportError, ValueError):
-    import editor
+    from floo.common.handlers import listener
+    from floo import editor
     import msg
 
 
@@ -19,11 +21,17 @@ class _Reactor(object):
         self._fds = []
         self.handlers = []
 
-    def connect(self, factory, host, port, secure):
-        fd = factory.build_protocol(host, port, secure)
-        self._fds.append(fd)
-        fd.connect()
+    def connect(self, factory, host, port, secure, conn=None):
+        proto = factory.build_protocol(host, port, secure)
+        self._fds.append(proto)
+        proto.connect(conn)
         self.handlers.append(factory)
+
+    def listen(self, factory, host, port):
+        listener_factory = listener.ListenerHandler(factory, self)
+        proto = listener_factory.build_protocol(host, port)
+        self._fds.append(proto)
+        self.handlers.append(listener_factory)
 
     def stop(self):
         for _conn in self._fds:
@@ -63,7 +71,8 @@ class _Reactor(object):
 
         for fd in self._fds:
             fd.fd_set(readable, writeable, errorable)
-            fd_map[fd.fileno()] = fd
+            for _fd in fd.fileno():
+                fd_map[_fd] = fd
 
         if not readable and not writeable:
             return

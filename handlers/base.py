@@ -4,7 +4,7 @@ try:
     from ....floo import editor
 except ValueError:
     from floo import editor
-from .. import msg, event_emitter, protocols, shared as G, utils
+from .. import msg, event_emitter, shared as G, utils
 PY2 = sys.version_info < (3, 0)
 
 
@@ -21,7 +21,7 @@ BASE_FLOORC = '''# Floobits config
 
 class BaseHandler(event_emitter.EventEmitter):
     BASE_FLOORC = BASE_FLOORC
-    PROTOCOL = protocols.FlooProtocol
+    PROTOCOL = None
 
     def __init__(self):
         super(BaseHandler, self).__init__()
