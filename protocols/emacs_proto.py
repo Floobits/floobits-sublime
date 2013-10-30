@@ -25,7 +25,6 @@ except Exception:
     iscon_errno = errno.EISCONN
 
 
-CHAT_VIEW = None
 PY2 = sys.version_info < (3, 0)
 
 
