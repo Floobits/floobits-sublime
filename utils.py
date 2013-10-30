@@ -77,7 +77,6 @@ class Waterfall(object):
 
 
 def reload_settings():
-    print('Reloading settings...')
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
@@ -85,7 +84,6 @@ def reload_settings():
     G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     mkdir(G.COLAB_DIR)
-    print('Floobits debug is %s' % G.DEBUG)
 
 
 def load_floorc():
