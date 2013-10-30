@@ -27,7 +27,6 @@ class ListenerProtocol(base.BaseProtocol):
         readable.append(self._sock)
 
     def read(self):
-        print("reading")
         conn, addr = self._sock.accept()
         conn.setblocking(False)
         self.emit("connect", conn, addr)
