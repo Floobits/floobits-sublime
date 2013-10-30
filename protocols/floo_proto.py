@@ -129,7 +129,7 @@ class FlooProtocol(base.BaseProtocol):
         return len(self._q)
 
     def fileno(self):
-        return self._sock
+        return self._sock.fileno()
 
     def fd_set(self, readable, writeable, errorable):
         if not self.connected and not self._listener:

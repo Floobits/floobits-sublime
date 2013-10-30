@@ -13,7 +13,8 @@ try:
     from . import floo_proto
     assert G and msg and utils
 except (ImportError, ValueError):
-    from floo import editor, msg, shared as G, utils
+    from floo import editor
+    from floo.common import msg, shared as G, utils
     import floo_proto
 
 try:

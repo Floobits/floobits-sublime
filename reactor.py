@@ -18,35 +18,35 @@ class _Reactor(object):
     INITIAL_RECONNECT_DELAY = 500
 
     def __init__(self, tick):
-        self._fds = []
-        self.handlers = []
         self.tick = tick
+        self._protos = []
+        self._handlers = []
 
     def connect(self, factory, host, port, secure, conn=None):
         proto = factory.build_protocol(host, port, secure)
-        self._fds.append(proto)
+        self._protos.append(proto)
         proto.connect(conn)
-        self.handlers.append(factory)
+        self._handlers.append(factory)
 
     def listen(self, factory, host, port):
         listener_factory = listener.ListenerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
-        self._fds.append(proto)
-        self.handlers.append(listener_factory)
+        self._protos.append(proto)
+        self._handlers.append(listener_factory)
 
     def stop(self):
-        for _conn in self._fds:
+        for _conn in self._protos:
             _conn.stop()
 
-        self._fds = []
-        self.handlers = []
+        self._protos = []
+        self._handlers = []
         msg.log('Disconnected.')
         editor.status_message('Disconnected.')
 
     def is_ready(self):
-        if not self.handlers:
+        if not self._handlers:
             return False
-        for f in self.handlers:
+        for f in self._handlers:
             if not f.is_ready():
                 return False
         return True
@@ -56,13 +56,15 @@ class _Reactor(object):
             fd_set.remove(fd)
         fd.reconnect()
 
-    def tick(self):
-        for factory in self.handlers:
-            factory.tick()
-        self.select()
+    def block(self):
+        while True:
+            editor.call_timeouts()
+            for factory in self._handlers:
+                factory.tick()
+            self.select(20)
 
-    def select(self):
-        if not self.handlers:
+    def select(self, timeout=0):
+        if not self._handlers:
             return
 
         readable = []
@@ -70,16 +72,15 @@ class _Reactor(object):
         errorable = []
         fd_map = {}
 
-        for fd in self._fds:
+        for fd in self._protos:
             fd.fd_set(readable, writeable, errorable)
-            for _fd in fd.fileno():
-                fd_map[_fd] = fd
+            fd_map[fd.fileno()] = fd
 
         if not readable and not writeable:
             return
 
         try:
-            _in, _out, _except = select.select(readable, writeable, errorable, self.tick)
+            _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
             if len(readable) == 1:

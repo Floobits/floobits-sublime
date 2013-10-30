@@ -18,9 +18,8 @@ class ListenerProtocol(base.BaseProtocol):
     def __len__(self):
         return 0
 
-    @property
     def fileno(self):
-        return self._sock
+        return self._sock.fileno()
 
     def fd_set(self, readable, writeable, errorable):
         readable.append(self._sock)
