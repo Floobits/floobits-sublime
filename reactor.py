@@ -17,9 +17,10 @@ class _Reactor(object):
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    def __init__(self):
+    def __init__(self, tick):
         self._fds = []
         self.handlers = []
+        self.tick = tick
 
     def connect(self, factory, host, port, secure, conn=None):
         proto = factory.build_protocol(host, port, secure)
@@ -78,7 +79,7 @@ class _Reactor(object):
             return
 
         try:
-            _in, _out, _except = select.select(readable, writeable, errorable, 0)
+            _in, _out, _except = select.select(readable, writeable, errorable, self.tick)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
             if len(readable) == 1:
@@ -106,4 +107,8 @@ class _Reactor(object):
                 msg.error('Couldn\'t read from socket: %s' % str(e))
                 fd.reconnect()
 
-reactor = _Reactor()
+
+def install(tick=0):
+    global reactor
+    reactor = _Reactor(tick)
+    return reactor
