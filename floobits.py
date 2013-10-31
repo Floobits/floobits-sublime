@@ -1008,7 +1008,16 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
         return
 
 
-def main():
+called_plugin_loaded = False
+
+
+# Sublime 3 calls this once the plugin API is ready
+def plugin_loaded():
+    global called_plugin_loaded
+    if called_plugin_loaded:
+        return
+    called_plugin_loaded = True
+    print("called plugin_loaded")
     sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
@@ -1026,10 +1035,14 @@ def main():
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
     can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+    # Sublime plugin API stuff can't be called right off the bat
     if not can_auth:
-        threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
+        utils.set_timeout(create_or_link_account, 1)
 
     global_tick()
 
 
-main()
+# Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
+if PY2:
+    for i in range(0, 20):
+        threading.Timer(i, utils.set_timeout, [plugin_loaded, 1]).start()
