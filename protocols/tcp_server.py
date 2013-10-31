@@ -1,6 +1,5 @@
 import socket
 
-
 try:
     from . import base
 except (ImportError, ValueError):

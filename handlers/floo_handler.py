@@ -48,7 +48,7 @@ class FlooHandler(base.BaseHandler):
         raise NotImplementedError()
 
     def save_view(self, view):
-        raise NotImplementedError()
+        view.save()
 
     def on_connect(self):
         self.reload_settings()
