@@ -38,7 +38,6 @@ def sock_debug(*args, **kwargs):
 
 class FlooProtocol(base.BaseProtocol):
     ''' Base FD Interface'''
-    NEWLINE = '\n'.encode('utf-8')
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
@@ -147,7 +146,7 @@ class FlooProtocol(base.BaseProtocol):
 
         readable.append(fileno)
 
-    def connect(self):
+    def connect(self, conn=None):
         utils.cancel_timeout(self._reconnect_timeout)
         self._reconnect_timeout = None
         self.cleanup()

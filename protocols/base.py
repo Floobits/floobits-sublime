@@ -6,6 +6,7 @@ except (ImportError, ValueError):
 
 class BaseProtocol(event_emitter.EventEmitter):
     ''' Base FD Interface'''
+    NEWLINE = '\n'.encode('utf-8')
 
     def __init__(self, host, port, secure=True):
         super(BaseProtocol, self).__init__()
@@ -16,9 +17,6 @@ class BaseProtocol(event_emitter.EventEmitter):
 
     def __len__(self):
         return 0
-
-    def listen(self):
-        raise NotImplemented()
 
     def fileno(self):
         raise NotImplemented()

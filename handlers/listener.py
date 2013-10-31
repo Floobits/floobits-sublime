@@ -21,4 +21,4 @@ class ListenerHandler(base.BaseHandler):
 
     def on_connect(self, conn, addr):
         #TODO: pass addr along maybe?
-        self.reactor.connect(self.factory, None, None, None, conn=conn)
+        self.reactor.accept(self.factory, conn, addr)

@@ -6,9 +6,14 @@ import base64
 from operator import attrgetter
 
 try:
+    from ..reactor import reactor
+    from ..lib import DMP
+    from .. import msg, ignore, shared as G, utils
     from ....floo import editor
 except (ImportError, ValueError):
     from floo import editor
+    from floo.common import reactor, msg, ignore, shared as G, utils
+    from floo.common.lib import DMP
 
 try:
     from . import base
@@ -19,10 +24,6 @@ try:
     unicode()
 except NameError:
     unicode = str
-
-from ..reactor import reactor
-from ..lib import DMP
-from .. import msg, ignore, shared as G, utils
 
 
 MAX_WORKSPACE_SIZE = 50000000  # 50MB
