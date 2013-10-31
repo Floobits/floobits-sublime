@@ -45,10 +45,10 @@ class FlooHandler(base.BaseHandler):
         self.paths_to_ids = {}
 
     def get_view(self, buf_id):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def save_view(self, view):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def on_connect(self):
         self.reload_settings()

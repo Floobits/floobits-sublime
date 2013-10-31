@@ -229,7 +229,7 @@ class FlooProtocol(base.BaseProtocol):
             return self.reconnect()
 
     def error(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def stop(self):
         self.retries = -1

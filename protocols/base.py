@@ -18,25 +18,25 @@ class BaseProtocol(event_emitter.EventEmitter):
         return 0
 
     def fileno(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def fd_set(self, readable, writeable, errorable):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def cleanup(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def write(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def read(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def error(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def reconnect(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def stop(self):
         self.cleanup()
