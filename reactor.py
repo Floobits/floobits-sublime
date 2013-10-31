@@ -13,7 +13,7 @@ except (ImportError, ValueError):
 
 
 class _Reactor(object):
-    ''' Simple chat server using select '''
+    ''' Low level event driver '''
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
