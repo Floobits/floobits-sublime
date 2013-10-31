@@ -102,11 +102,11 @@ class _Reactor(object):
 
         for fileno in _in:
             fd = fd_map[fileno]
-            # try:
-            fd.read()
-            # except Exception as e:
-                # msg.error('Couldn\'t read from socket: %s' % str(e))
-                # fd.reconnect()
+            try:
+                fd.read()
+            except Exception as e:
+                msg.error('Couldn\'t read from socket: %s' % str(e))
+                fd.reconnect()
 
 
 def install(tick=0):
