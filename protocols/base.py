@@ -10,7 +10,6 @@ class BaseProtocol(event_emitter.EventEmitter):
 
     def __init__(self, host, port, secure=True):
         super(BaseProtocol, self).__init__()
-
         self.host = host
         self.port = port
         self.secure = secure

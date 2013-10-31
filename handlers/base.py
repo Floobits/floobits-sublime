@@ -27,8 +27,8 @@ class BaseHandler(event_emitter.EventEmitter):
         super(BaseHandler, self).__init__()
         G.AGENT = self
 
-    def build_protocol(self, *args):
-        self.proto = self.PROTOCOL(*args)
+    def build_protocol(self, *args, **kwargs):
+        self.proto = self.PROTOCOL(*args, **kwargs)
         self.proto.on("data", self.on_data)
         self.proto.on("connect", self.on_connect)
         return self.proto

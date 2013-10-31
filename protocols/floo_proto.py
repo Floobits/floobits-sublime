@@ -42,14 +42,8 @@ class FlooProtocol(base.BaseProtocol):
     INITIAL_RECONNECT_DELAY = 500
 
     def __init__(self, host, port, secure=True):
-        super(FlooProtocol, self).__init__()
-
-        self.host = host
-        self.port = port
-        self.secure = secure
+        super(FlooProtocol, self).__init__(host, port, secure)
         self.connected = False
-
-        self._listener = False
         self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
@@ -130,14 +124,11 @@ class FlooProtocol(base.BaseProtocol):
         return self._sock.fileno()
 
     def fd_set(self, readable, writeable, errorable):
-        if not self.connected and not self._listener:
+        if not self.connected:
             return
 
         fileno = self.fileno()
         errorable.append(fileno)
-
-        if self._listener:
-            readable.append(fileno)
 
         if self._needs_handshake:
             return writeable.append(fileno)
@@ -212,9 +203,6 @@ class FlooProtocol(base.BaseProtocol):
             sock_debug('Done writing for now')
 
     def read(self):
-        if self._listen:
-            self._sock.accept()
-
         sock_debug('Socket is readable')
         buf = ''.encode('utf-8')
         while True:

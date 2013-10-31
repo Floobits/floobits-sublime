@@ -7,9 +7,9 @@ except (ImportError, ValueError):
     import base
 
 
-class ListenerProtocol(base.BaseProtocol):
+class TCPServerProtocol(base.BaseProtocol):
     def __init__(self, host, port):
-        super(ListenerProtocol, self).__init__(host, port, False)
+        super(TCPServerProtocol, self).__init__(host, port, False)
         self.host = host
         self.port = port
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,4 +29,4 @@ class ListenerProtocol(base.BaseProtocol):
     def read(self):
         conn, addr = self._sock.accept()
         conn.setblocking(False)
-        self.emit("connect", conn, addr)
+        self.emit("connect", conn, addr[0], addr[1])

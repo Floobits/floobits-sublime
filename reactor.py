@@ -4,10 +4,10 @@ import select
 try:
     from . import msg
     from .. import editor
-    from .. handers import listener
-    assert msg and listener
+    from .. handers import tcp_server
+    assert msg and tcp_server
 except (ImportError, ValueError):
-    from floo.common.handlers import listener
+    from floo.common.handlers import tcp_server
     from floo import editor
     import msg
 
@@ -29,7 +29,7 @@ class _Reactor(object):
         self._handlers.append(factory)
 
     def listen(self, factory, host, port):
-        listener_factory = listener.ListenerHandler(factory, self)
+        listener_factory = tcp_server.TCPServerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
         self._protos.append(proto)
         self._handlers.append(listener_factory)
@@ -102,11 +102,11 @@ class _Reactor(object):
 
         for fileno in _in:
             fd = fd_map[fileno]
-            try:
-                fd.read()
-            except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str(e))
-                fd.reconnect()
+            # try:
+            fd.read()
+            # except Exception as e:
+                # msg.error('Couldn\'t read from socket: %s' % str(e))
+                # fd.reconnect()
 
 
 def install(tick=0):
