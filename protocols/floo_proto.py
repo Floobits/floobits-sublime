@@ -3,6 +3,7 @@ import socket
 import select
 import collections
 import json
+import traceback
 import errno
 import os.path
 
@@ -77,7 +78,7 @@ class FlooProtocol(base.BaseProtocol):
                 self.emit("data", name, data)
                 msg.debug("got data " + name)
             except Exception as e:
-                print(e)
+                print(traceback.format_exc())
                 msg.error('Error handling %s event (%s).' % (name, str(e)))
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
@@ -121,7 +122,7 @@ class FlooProtocol(base.BaseProtocol):
         return len(self._q)
 
     def fileno(self):
-        return self._sock.fileno()
+        return self._sock and self._sock.fileno()
 
     def fd_set(self, readable, writeable, errorable):
         if not self.connected:

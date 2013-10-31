@@ -11,6 +11,8 @@ except (ImportError, ValueError):
     from floo import editor
     import msg
 
+reactor = None
+
 
 class _Reactor(object):
     ''' Low level event driver '''
@@ -73,6 +75,9 @@ class _Reactor(object):
         fd_map = {}
 
         for fd in self._protos:
+            fileno = fd.fileno()
+            if not fileno:
+                continue
             fd.fd_set(readable, writeable, errorable)
             fd_map[fd.fileno()] = fd
 

@@ -10,10 +10,13 @@ try:
     from ..lib import DMP
     from .. import msg, ignore, shared as G, utils
     from ....floo import editor
+    from ..protocols import floo_proto
 except (ImportError, ValueError):
     from floo import editor
-    from floo.common import reactor, msg, ignore, shared as G, utils
     from floo.common.lib import DMP
+    from floo.common import reactor, msg, ignore, shared as G, utils
+    from floo.common.protocols import floo_proto
+
 
 try:
     from . import base
@@ -30,8 +33,7 @@ MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 class FlooHandler(base.BaseHandler):
-    bufs = {}
-    paths_to_ids = {}
+    PROTOCOL = floo_proto.FlooProtocol
 
     def __init__(self, owner, workspace, get_bufs=True):
         super(FlooHandler, self).__init__()
@@ -39,6 +41,8 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
+        self.bufs = {}
+        self.paths_to_ids = {}
 
     def get_view(self, buf_id):
         raise NotImplemented()
