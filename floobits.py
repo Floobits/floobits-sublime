@@ -1046,3 +1046,7 @@ def plugin_loaded():
 if PY2:
     for i in range(0, 20):
         threading.Timer(i, utils.set_timeout, [plugin_loaded, 1]).start()
+
+    def warning():
+        print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
+    threading.Timer(20, warning).start()
