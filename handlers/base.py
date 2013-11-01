@@ -42,15 +42,6 @@ class BaseHandler(event_emitter.EventEmitter):
             return handler(data)
         msg.debug('unknown name!', name, 'data:', data)
 
-    def get_buf_by_path(self, path):
-        try:
-            p = utils.to_rel_path(path)
-        except ValueError:
-            return
-        buf_id = self.paths_to_ids.get(p)
-        if buf_id:
-            return self.bufs.get(buf_id)
-
     @property
     def client(self):
         if PY2:

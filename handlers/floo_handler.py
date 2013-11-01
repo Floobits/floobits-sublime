@@ -44,8 +44,20 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
 
+    def ok_cancel_dialog(self, msg, cb=None):
+        raise NotImplementedError()
+
     def get_view(self, buf_id):
         raise NotImplementedError()
+
+    def get_buf_by_path(self, path):
+        try:
+            p = utils.to_rel_path(path)
+        except ValueError:
+            return
+        buf_id = self.paths_to_ids.get(p)
+        if buf_id:
+            return self.bufs.get(buf_id)
 
     def save_view(self, view):
         view.save()
@@ -227,7 +239,7 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            if editor.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
+            if self.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
         project_json = {
@@ -294,7 +306,7 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
-            stomp_local = editor.ok_cancel_dialog(prompt)
+            stomp_local = self.ok_cancel_dialog(prompt)
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)
@@ -379,7 +391,7 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
-        confirm = bool(editor.ok_cancel_dialog(prompt))
+        confirm = bool(self.ok_cancel_dialog(prompt))
         if confirm:
             action = 'add'
         else:
@@ -424,7 +436,7 @@ class FlooHandler(base.BaseHandler):
                 size -= cd.size
             if size > MAX_WORKSPACE_SIZE:
                 return editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
-            upload = editor.ok_cancel_dialog(
+            upload = self.ok_cancel_dialog(
                 "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
             if not upload:

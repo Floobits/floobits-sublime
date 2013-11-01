@@ -302,3 +302,24 @@ def save_buf(buf):
             fd.write(buf['buf'].encode('utf-8'))
         else:
             fd.write(buf['buf'])
+
+
+def _unwind_generator(gen_expr):
+    res = None
+    while True:
+        try:
+            if callable(res):
+                res = gen_expr.send(_unwind_generator(res()))
+            elif type(res) == tuple and callable(res[0]):
+                res = gen_expr.send(_unwind_generator(res[0](*res[1:])))
+            else:
+                res = gen_expr.send(res)
+        # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
+        except StopIteration:
+            return res
+
+
+def inline_callbacks(f):
+    def wrap(*args, **kwargs):
+        return _unwind_generator(f(*args, **kwargs))
+    return wrap
