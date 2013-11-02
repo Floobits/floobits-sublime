@@ -332,6 +332,15 @@ def _unwind_generator(gen_expr, cb=None, res=None):
             return res
 
 
+class __StopUnwindingException(BaseException):
+    def __init__(self, ret_val):
+        self.ret_val = ret_val
+
+
+def return_value(args):
+    raise __StopUnwindingException(args)
+
+
 def inlined_callbacks(f):
     """ Branching logic in async functions generates a callback nightmare.
     Use this decorator to inline the results.  If you yield a function, it must
@@ -357,15 +366,18 @@ def inlined_callbacks(f):
          c, = yield asf2, 3
          a += c
          print(a)
-
-    a()
-
-    >>>2
+         return_value(a)
+    >b = a()
+    2
     a
     ('2', 3)
     10
-
+    >print(b)
+    10
     """
     def wrap(*args, **kwargs):
-        return _unwind_generator(f(*args, **kwargs))
+        try:
+            return _unwind_generator(f(*args, **kwargs))
+        except __StopUnwindingException as e:
+            return e.ret_val
     return wrap
