@@ -59,6 +59,20 @@ class FlooHandler(base.BaseHandler):
         if buf_id:
             return self.bufs.get(buf_id)
 
+    def get_buf(self, buf_id, view=None):
+        self.send({
+            'name': 'get_buf',
+            'id': buf_id
+        })
+        buf = self.bufs[buf_id]
+        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
+        if 'buf' in buf:
+            del buf['buf']
+
+        if view:
+            view.set_read_only(True)
+            view.set_status('Floobits', 'Floobits locked this file until it is synced.')
+
     def save_view(self, view):
         view.save()
 
@@ -240,7 +254,8 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            if self.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
+            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
+            if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
         project_json = {
@@ -329,7 +344,6 @@ class FlooHandler(base.BaseHandler):
         hangout_url = hangout.get('url')
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
-
         self.emit("room_info")
 
     def _on_user_info(self, data):
@@ -375,12 +389,13 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 
+    @utils.inlined_callbacks
     def _on_request_perms(self, data):
-        print(data)
         user_id = str(data.get('user_id'))
         username = self.get_username_by_id(user_id)
         if not username:
-            return msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            return
         perm_mapping = {
             'edit_room': 'edit',
             'admin_room': 'admin',
@@ -392,14 +407,10 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
-        confirm = bool(self.ok_cancel_dialog(prompt))
-        if confirm:
-            action = 'add'
-        else:
-            action = 'reject'
+        confirm = yield self.ok_cancel_dialog, prompt
         self.send({
             'name': 'perms',
-            'action': action,
+            'action': confirm and 'add' or 'reject',
             'user_id': user_id,
             'perms': perms
         })

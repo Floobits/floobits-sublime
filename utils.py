@@ -314,7 +314,12 @@ def _unwind_generator(gen_expr, cb=None, res=None):
                 arg0 = res
                 args = []
             if not callable(arg0):
-                res = gen_expr.send(res)
+                # send only accepts one argument... this is slightly dangerous if
+                # we ever just return a tuple of one elemetn
+                if type(res) == tuple and len(res) == 1:
+                    res = gen_expr.send(res[0])
+                else:
+                    res = gen_expr.send(res)
             else:
                 def f(*args):
                     _unwind_generator(gen_expr, cb, args)
@@ -323,7 +328,7 @@ def _unwind_generator(gen_expr, cb=None, res=None):
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
         except StopIteration:
             if cb:
-                return cb(res)
+                return cb(*res)
             return res
 
 
@@ -332,7 +337,7 @@ def inlined_callbacks(f):
     Use this decorator to inline the results.  If you yield a function, it must
     accept a callback as its final argument that it is responsible for firing.
 
-    example:
+    example usage:
 
      @inline_callbacks
      def a():
