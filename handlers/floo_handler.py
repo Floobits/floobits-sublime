@@ -50,6 +50,12 @@ class FlooHandler(base.BaseHandler):
     def get_view(self, buf_id):
         raise NotImplementedError()
 
+    def get_username_by_id(self, user_id):
+        try:
+            return self.workspace_info['users'][str(user_id)]['username']
+        except Exception:
+            return ""
+
     def get_buf_by_path(self, path):
         try:
             p = utils.to_rel_path(path)
@@ -321,7 +327,10 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
+            print("calling ok_cancel_dialog\n\n")
             stomp_local = self.ok_cancel_dialog(prompt)
+            print('returned from ok_cancel_dialog with value %s\n\n' % stomp_local)
+            # asdf()
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)
@@ -456,7 +465,7 @@ class FlooHandler(base.BaseHandler):
         self._uploader(ig.list_paths(), cb, ig.size)
 
     def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
-        reactor.select()
+        reactor.reactor.select()
         if len(self.proto) > 0:
             return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 

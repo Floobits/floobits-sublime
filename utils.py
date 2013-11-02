@@ -305,31 +305,38 @@ def save_buf(buf):
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):
-    while True:
-        try:
+    try:
+        while True:
+            print(gen_expr, res, cb)
+            arg0 = res
+            args = []
             if type(res) == tuple:
                 arg0 = res[0]
                 args = list(res[1:])
-            else:
-                arg0 = res
-                args = []
             if not callable(arg0):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
+                print("sending", res)
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:
                     res = gen_expr.send(res)
             else:
                 def f(*args):
-                    _unwind_generator(gen_expr, cb, args)
+                    print('f', gen_expr, cb, args)
+                    return _unwind_generator(gen_expr, cb, args)
                 args.append(f)
                 return arg0(*args)
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
-        except StopIteration:
-            if cb:
-                return cb(*res)
-            return res
+    except StopIteration:
+        print("hit end")
+    except __StopUnwindingException as e:
+        print("unwound")
+        res = e.ret_val
+    print("returning from _unwind_generator", res)
+    if cb:
+        return cb(res)
+    return res
 
 
 class __StopUnwindingException(BaseException):
@@ -347,37 +354,27 @@ def inlined_callbacks(f):
     accept a callback as its final argument that it is responsible for firing.
 
     example usage:
-
-     @inline_callbacks
-     def a():
-         a = yield 2
-         print(a)
-
-         def asf(cb):
-             print("a")
-             return cb(5)
-
-         def asf2(b, cb):
-             print('2', b)
-             return cb(b)
-         c, = yield asf
-         a += c
-
-         c, = yield asf2, 3
-         a += c
-         print(a)
-         return_value(a)
-    >b = a()
-    2
-    a
-    ('2', 3)
-    10
-    >print(b)
-    10
     """
     def wrap(*args, **kwargs):
-        try:
-            return _unwind_generator(f(*args, **kwargs))
-        except __StopUnwindingException as e:
-            return e.ret_val
+        return _unwind_generator(f(*args, **kwargs))
     return wrap
+
+
+@inlined_callbacks
+def thing(val):
+    def _test(cb):
+        print("called _test", cb)
+        set_timeout(cb, 100, val)
+        # return cb(val)
+    print("a")
+    a = yield _test
+    print("b")
+    return_value(a)
+    print('test function ended')
+
+
+def test(val):
+    print("calling thing")
+    a = thing(val)
+    print('thing returned', a)
+
