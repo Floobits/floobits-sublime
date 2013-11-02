@@ -231,6 +231,7 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s deleted %s' % (username, path))
 
+    @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
         G.JOINED_WORKSPACE = True
@@ -306,7 +307,7 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
-            stomp_local = self.ok_cancel_dialog(prompt)
+            stomp_local = yield self.ok_cancel_dialog, prompt
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)

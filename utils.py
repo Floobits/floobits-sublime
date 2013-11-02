@@ -304,22 +304,63 @@ def save_buf(buf):
             fd.write(buf['buf'])
 
 
-def _unwind_generator(gen_expr):
-    res = None
+def _unwind_generator(gen_expr, cb=None, res=None):
     while True:
         try:
-            if callable(res):
-                res = gen_expr.send(_unwind_generator(res()))
-            elif type(res) == tuple and callable(res[0]):
-                res = gen_expr.send(_unwind_generator(res[0](*res[1:])))
+            if type(res) == tuple:
+                arg0 = res[0]
+                args = list(res[1:])
             else:
+                arg0 = res
+                args = []
+            if not callable(arg0):
                 res = gen_expr.send(res)
+            else:
+                def f(*args):
+                    _unwind_generator(gen_expr, cb, args)
+                args.append(f)
+                return arg0(*args)
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
         except StopIteration:
+            if cb:
+                return cb(res)
             return res
 
 
-def inline_callbacks(f):
+def inlined_callbacks(f):
+    """ Branching logic in async functions generates a callback nightmare.
+    Use this decorator to inline the results.  If you yield a function, it must
+    accept a callback as its final argument that it is responsible for firing.
+
+    example:
+
+     @inline_callbacks
+     def a():
+         a = yield 2
+         print(a)
+
+         def asf(cb):
+             print("a")
+             return cb(5)
+
+         def asf2(b, cb):
+             print('2', b)
+             return cb(b)
+         c, = yield asf
+         a += c
+
+         c, = yield asf2, 3
+         a += c
+         print(a)
+
+    a()
+
+    >>>2
+    a
+    ('2', 3)
+    10
+
+    """
     def wrap(*args, **kwargs):
         return _unwind_generator(f(*args, **kwargs))
     return wrap
