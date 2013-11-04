@@ -251,6 +251,7 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s deleted %s' % (username, path))
 
+    @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
         G.JOINED_WORKSPACE = True
@@ -259,7 +260,7 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            should_send = self.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?')
+            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
             if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
@@ -327,10 +328,7 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
-            print("calling ok_cancel_dialog\n\n")
-            stomp_local = self.ok_cancel_dialog(prompt)
-            print('returned from ok_cancel_dialog with value %s\n\n' % stomp_local)
-            # asdf()
+            stomp_local = yield self.ok_cancel_dialog, prompt
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)
@@ -415,7 +413,7 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
-        confirm = self.ok_cancel_dialog(prompt)
+        confirm = yield self.ok_cancel_dialog, prompt
         self.send({
             'name': 'perms',
             'action': confirm and 'add' or 'reject',
@@ -444,6 +442,7 @@ class FlooHandler(base.BaseHandler):
     def _on_msg(self, data):
         self.on_msg(data)
 
+    @utils.inlined_callbacks
     def upload(self, path, cb=None):
         ig = ignore.Ignore(None, path)
         if ig.size > MAX_WORKSPACE_SIZE:
@@ -457,8 +456,8 @@ class FlooHandler(base.BaseHandler):
             if size > MAX_WORKSPACE_SIZE:
                 editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
                 return
-            upload = self.ok_cancel_dialog("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
-                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
+            upload = yield self.ok_cancel_dialog, "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" % \
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
             if not upload:
                 return
             ig.children = child_dirs
