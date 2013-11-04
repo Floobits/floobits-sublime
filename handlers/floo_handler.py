@@ -373,8 +373,7 @@ class FlooHandler(base.BaseHandler):
             print('Unable to delete user %s from user list' % (data))
 
     def _on_highlight(self, data):
-        region_key = 'floobits-highlight-%s' % (data['user_id'])
-        self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
+        raise NotImplementedError()
 
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
