@@ -307,7 +307,6 @@ def save_buf(buf):
 def _unwind_generator(gen_expr, cb=None, res=None):
     try:
         while True:
-            print(gen_expr, res, cb)
             arg0 = res
             args = []
             if type(res) == tuple:
@@ -316,24 +315,20 @@ def _unwind_generator(gen_expr, cb=None, res=None):
             if not callable(arg0):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
-                print("sending", res)
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:
                     res = gen_expr.send(res)
             else:
                 def f(*args):
-                    print('f', gen_expr, cb, args)
                     return _unwind_generator(gen_expr, cb, args)
                 args.append(f)
                 return arg0(*args)
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
     except StopIteration:
-        print("hit end")
+        pass
     except __StopUnwindingException as e:
-        print("unwound")
         res = e.ret_val
-    print("returning from _unwind_generator", res)
     if cb:
         return cb(res)
     return res
@@ -358,23 +353,3 @@ def inlined_callbacks(f):
     def wrap(*args, **kwargs):
         return _unwind_generator(f(*args, **kwargs))
     return wrap
-
-
-@inlined_callbacks
-def thing(val):
-    def _test(cb):
-        print("called _test", cb)
-        set_timeout(cb, 100, val)
-        # return cb(val)
-    print("a")
-    a = yield _test
-    print("b")
-    return_value(a)
-    print('test function ended')
-
-
-def test(val):
-    print("calling thing")
-    a = thing(val)
-    print('thing returned', a)
-
