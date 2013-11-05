@@ -216,7 +216,7 @@ class FlooHandler(base.BaseHandler):
         if not view:
             return utils.save_buf(data)
 
-        view.update()
+        view.update(data)
         if save:
             view.save()
 
