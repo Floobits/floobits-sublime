@@ -7,7 +7,7 @@ except (ImportError, ValueError):
 
 
 class TCPServerProtocol(base.BaseProtocol):
-    def __init__(self, host, port):
+    def __init__(self, host, port=0):
         super(TCPServerProtocol, self).__init__(host, port, False)
         self.host = host
         self.port = port
@@ -29,3 +29,6 @@ class TCPServerProtocol(base.BaseProtocol):
         conn, addr = self._sock.accept()
         conn.setblocking(False)
         self.emit("connect", conn, addr[0], addr[1])
+
+    def sockname(self):
+        return self._sock.getsockname()

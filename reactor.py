@@ -35,6 +35,7 @@ class _Reactor(object):
         proto = listener_factory.build_protocol(host, port)
         self._protos.append(proto)
         self._handlers.append(listener_factory)
+        return proto.sockname()
 
     def stop(self):
         for _conn in self._protos:
