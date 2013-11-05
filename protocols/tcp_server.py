@@ -7,7 +7,7 @@ except (ImportError, ValueError):
 
 
 class TCPServerProtocol(base.BaseProtocol):
-    def __init__(self, host, port=0):
+    def __init__(self, host, port):
         super(TCPServerProtocol, self).__init__(host, port, False)
         self.host = host
         self.port = port

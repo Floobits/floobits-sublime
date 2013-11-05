@@ -30,7 +30,7 @@ class _Reactor(object):
         proto.connect(conn)
         self._handlers.append(factory)
 
-    def listen(self, factory, host, port):
+    def listen(self, factory, host='127.0.0.1', port=0):
         listener_factory = tcp_server.TCPServerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
         self._protos.append(proto)
