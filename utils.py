@@ -2,6 +2,7 @@ import os
 import json
 import re
 import hashlib
+from functools import wraps
 
 try:
     from urllib.parse import urlparse
@@ -350,6 +351,7 @@ def inlined_callbacks(f):
 
     example usage:
     """
+    @wraps(f)
     def wrap(*args, **kwargs):
         return _unwind_generator(f(*args, **kwargs))
     return wrap

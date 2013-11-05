@@ -77,7 +77,7 @@ class FlooHandler(base.BaseHandler):
 
         if view:
             view.set_read_only(True)
-            view.set_status('Floobits', 'Floobits locked this file until it is synced.')
+            view.set_status('Floobits locked this file until it is synced.')
 
     def save_view(self, view):
         view.save()
@@ -191,7 +191,7 @@ class FlooHandler(base.BaseHandler):
             utils.save_buf(buf)
             return
 
-        view.apply_patches(t[2], data['username'])
+        view.apply_patches(buf, t[2], data['username'])
 
     def _on_get_buf(self, data):
         buf_id = data['id']
