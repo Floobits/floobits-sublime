@@ -264,16 +264,6 @@ class FlooHandler(base.BaseHandler):
             if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
-        project_json = {
-            'folders': [
-                {'path': G.PROJECT_PATH}
-            ]
-        }
-
-        utils.mkdir(G.PROJECT_PATH)
-        with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
-            project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
-
         floo_json = {
             'url': utils.to_workspace_url({
                 'owner': self.owner,
@@ -350,6 +340,10 @@ class FlooHandler(base.BaseHandler):
         hangout_url = hangout.get('url')
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
+
+        data = utils.get_persistent_data()
+        data['recent_workspaces'].insert(0, {"url": self.workspace_url})
+        utils.update_persistent_data(data)
         self.emit("room_info")
 
     def _on_user_info(self, data):
