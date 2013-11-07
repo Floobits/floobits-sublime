@@ -80,6 +80,10 @@ class BaseAgentConnection(object):
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
 
+        # We reference these in a couple of places where we log stuff
+        self.owner = None
+        self.workspace = None
+
     @property
     def client(self):
         if PY2:
@@ -242,7 +246,8 @@ class BaseAgentConnection(object):
             raise
         self.handshaken = True
         sock_debug('Successful handshake')
-        sublime.status_message('SSL handshake completed to %s::%s' % (self.owner, self.workspace))
+        if self.owner is not None and self.workspace is not None:
+            sublime.status_message('SSL handshake completed to %s::%s' % (self.owner, self.workspace))
 
     def select(self):
         if not self.call_select:
