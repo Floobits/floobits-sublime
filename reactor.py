@@ -53,9 +53,12 @@ class _Reactor(object):
                 return False
         return True
 
-    def _reconnect(fd, *fd_sets):
+    def _reconnect(self, fd, *fd_sets):
         for fd_set in fd_sets:
-            fd_set.remove(fd)
+            try:
+                fd_set.remove(fd)
+            except ValueError:
+                pass
         fd.reconnect()
 
     def tick(self):

@@ -173,27 +173,32 @@ class FlooProtocol(base.BaseProtocol):
         G.JOINED_WORKSPACE = False
         self._buf = bytes()
         self._sock = None
+        self._needs_handshake = self.secure
         self.connected = False
+
+    def _do_ssl_handshake(self):
+        try:
+            sock_debug('Doing SSL handshake')
+            self._sock.do_handshake()
+        except ssl.SSLError as e:
+            sock_debug('Floobits: ssl.SSLError. This is expected sometimes.')
+            if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
+                return False
+        except Exception as e:
+            msg.error('Error in SSL handshake:', e)
+        else:
+            sock_debug('Successful handshake')
+            self._needs_handshake = False
+            editor.status_message('SSL handshake completed to %s:%s' % (self.host, self.port))
+            return True
+
+        self.reconnect()
+        return False
 
     def write(self):
         sock_debug('Socket is writeable')
-        if self._needs_handshake:
-            # sock_debug('Socket is writeable')
-            try:
-                sock_debug('Doing SSL handshake')
-                self._sock.do_handshake()
-            except ssl.SSLError as e:
-                sock_debug('ssl.SSLError. This is expected sometimes.')
-                return
-            except Exception as e:
-                msg.error('Error in SSL handshake:', e)
-                self.reconnect()
-                return
-
-            self._needs_handshake = False
-            sock_debug('Successful handshake')
+        if self._needs_handshake and not self._do_ssl_handshake():
             return
-
         try:
             while True:
                 # TODO: use sock.send()
@@ -205,6 +210,8 @@ class FlooProtocol(base.BaseProtocol):
 
     def read(self):
         sock_debug('Socket is readable')
+        if self._needs_handshake and not self._do_ssl_handshake():
+            return
         buf = ''.encode('utf-8')
         while True:
             try:
