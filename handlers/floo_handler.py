@@ -1,33 +1,27 @@
 import os
 import sys
 import hashlib
-import json
 import base64
 from operator import attrgetter
 
 try:
+    from . import base
     from ..reactor import reactor
     from ..lib import DMP
     from .. import msg, ignore, shared as G, utils
     from ....floo import editor
     from ..protocols import floo_proto
 except (ImportError, ValueError):
+    import base
     from floo import editor
     from floo.common.lib import DMP
     from floo.common import reactor, msg, ignore, shared as G, utils
     from floo.common.protocols import floo_proto
 
-
-try:
-    from . import base
-except (ImportError, ValueError):
-    import base
-
 try:
     unicode()
 except NameError:
     unicode = str
-
 
 MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
@@ -344,6 +338,7 @@ class FlooHandler(base.BaseHandler):
         data = utils.get_persistent_data()
         data['recent_workspaces'].insert(0, {"url": self.workspace_url})
         utils.update_persistent_data(data)
+        utils.add_workspace_to_persistent_json(self.owner, self.workspace, self.workspace_url, G.PROJECT_PATH)
         self.emit("room_info")
 
     def _on_user_info(self, data):
@@ -395,6 +390,7 @@ class FlooHandler(base.BaseHandler):
         if not username:
             msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
             return
+
         perm_mapping = {
             'edit_room': 'edit',
             'admin_room': 'admin',
@@ -406,6 +402,7 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
+
         confirm = yield self.ok_cancel_dialog, prompt
         self.send({
             'name': 'perms',

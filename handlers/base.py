@@ -4,7 +4,9 @@ try:
     from ....floo import editor
 except ValueError:
     from floo import editor
+
 from .. import msg, event_emitter, shared as G, utils
+
 PY2 = sys.version_info < (3, 0)
 
 
@@ -27,8 +29,8 @@ class BaseHandler(event_emitter.EventEmitter):
         super(BaseHandler, self).__init__()
         G.AGENT = self
 
-    def build_protocol(self, *args, **kwargs):
-        self.proto = self.PROTOCOL(*args, **kwargs)
+    def build_protocol(self, *args):
+        self.proto = self.PROTOCOL(*args)
         self.proto.on("data", self.on_data)
         self.proto.on("connect", self.on_connect)
         return self.proto

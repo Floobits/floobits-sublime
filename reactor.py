@@ -19,8 +19,7 @@ class _Reactor(object):
     MAX_RETRIES = 20
     INITIAL_RECONNECT_DELAY = 500
 
-    def __init__(self, tick):
-        self.tick = tick
+    def __init__(self):
         self._protos = []
         self._handlers = []
 
@@ -59,6 +58,11 @@ class _Reactor(object):
             fd_set.remove(fd)
         fd.reconnect()
 
+    def tick(self):
+        for factory in self._handlers:
+            factory.tick()
+        self.select(0)
+
     def block(self):
         while True:
             self.select(.05)
@@ -92,7 +96,7 @@ class _Reactor(object):
             if len(readable) == 1:
                 readable[0].reconnect()
                 return msg.error('Error in select(): %s' % str(e))
-            raise Exception("can't handle more than one fd")
+            raise Exception("can't handle more than one fd exception in reactor")
 
         for fileno in _except:
             fd = fd_map[fileno]
@@ -114,8 +118,4 @@ class _Reactor(object):
                 msg.error('Couldn\'t read from socket: %s' % str(e))
                 fd.reconnect()
 
-
-def install(tick=0):
-    global reactor
-    reactor = _Reactor(tick)
-    return reactor
+reactor = _Reactor()
