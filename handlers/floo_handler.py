@@ -229,10 +229,11 @@ class FlooHandler(base.BaseHandler):
         new_dir = os.path.split(new)[0]
         if new_dir:
             utils.mkdir(new_dir)
-        os.rename(old, new)
         view = self.get_view(data['id'])
         if view:
             view.rename(new)
+        else:
+            os.rename(old, new)
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
@@ -475,11 +476,15 @@ class FlooHandler(base.BaseHandler):
             return cb and cb()
         return utils.set_timeout(self._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
 
-    def _upload(self, path):
+    def _upload(self, path, text=None):
         size = 0
         try:
-            with open(path, 'rb') as buf_fd:
-                buf = buf_fd.read()
+            if text:
+                # TODO: possible encoding issues with python 3
+                buf = text
+            else:
+                with open(path, 'rb') as buf_fd:
+                    buf = buf_fd.read()
             size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
