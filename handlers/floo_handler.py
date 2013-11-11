@@ -9,9 +9,10 @@ try:
     from ..reactor import reactor
     from ..lib import DMP
     from .. import msg, ignore, shared as G, utils
-    from ....floo import editor
+    from ... import editor
     from ..protocols import floo_proto
-except (ImportError, ValueError):
+except (ImportError, ValueError) as e:
+    print(e)
     import base
     from floo import editor
     from floo.common.lib import DMP

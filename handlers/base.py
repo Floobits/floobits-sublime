@@ -1,7 +1,7 @@
 import sys
 
 try:
-    from ....floo import editor
+    from ... import editor
 except ValueError:
     from floo import editor
 
