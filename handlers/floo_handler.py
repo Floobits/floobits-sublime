@@ -16,7 +16,8 @@ except (ImportError, ValueError) as e:
     import base
     from floo import editor
     from floo.common.lib import DMP
-    from floo.common import reactor, msg, ignore, shared as G, utils
+    from floo.common.reactor import reactor
+    from floo.common import msg, ignore, shared as G, utils
     from floo.common.protocols import floo_proto
 
 try:
@@ -456,7 +457,7 @@ class FlooHandler(base.BaseHandler):
         self._uploader(ig.list_paths(), cb, ig.size)
 
     def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
-        reactor.reactor.select()
+        reactor.select()
         if len(self.proto) > 0:
             return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
