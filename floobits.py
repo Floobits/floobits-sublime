@@ -448,7 +448,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             self.api_args['owner'] = self.owner
             msg.debug(str(self.api_args))
             api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+            workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             err_body = e.read()
@@ -491,7 +491,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, workspace='https://floobits.com/r/'):
+    def run(self, workspace='https://floobits.com/'):
         self.window.show_input_panel('Workspace URL:', workspace, self.on_input, None, None)
 
     def on_input(self, workspace_url):
