@@ -53,7 +53,7 @@ class View(object):
         self.view.set_status('Floobits', 'Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
     def update(self, data):
-        buf = self.buf
+        buf = self.buf = data
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
         G.VIEW_TO_HASH[self.view.buffer_id()] = buf['md5']
         self.view.set_read_only(False)
