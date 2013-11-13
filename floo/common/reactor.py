@@ -4,56 +4,72 @@ import select
 try:
     from . import msg
     from .. import editor
-    assert msg
+    from .. handers import tcp_server
+    assert msg and tcp_server
 except (ImportError, ValueError):
-    import editor
+    from floo.common.handlers import tcp_server
+    from floo import editor
     import msg
+
+reactor = None
 
 
 class _Reactor(object):
-    ''' Simple chat server using select '''
-    MAX_RETRIES = 20
-    INITIAL_RECONNECT_DELAY = 500
-
+    ''' Low level event driver '''
     def __init__(self):
-        self._fds = []
-        self.handlers = []
+        self._protos = []
+        self._handlers = []
 
-    def connect(self, factory, host, port, secure):
-        fd = factory.build_protocol(host, port, secure)
-        self._fds.append(fd)
-        fd.connect()
-        self.handlers.append(factory)
+    def connect(self, factory, host, port, secure, conn=None):
+        proto = factory.build_protocol(host, port, secure)
+        self._protos.append(proto)
+        proto.connect(conn)
+        self._handlers.append(factory)
+
+    def listen(self, factory, host='127.0.0.1', port=0):
+        listener_factory = tcp_server.TCPServerHandler(factory, self)
+        proto = listener_factory.build_protocol(host, port)
+        self._protos.append(proto)
+        self._handlers.append(listener_factory)
+        return proto.sockname()
 
     def stop(self):
-        for _conn in self._fds:
+        for _conn in self._protos:
             _conn.stop()
 
-        self._fds = []
-        self.handlers = []
-        msg.log('Disconnected.')
-        editor.status_message('Disconnected.')
+        self._protos = []
+        self._handlers = []
 
     def is_ready(self):
-        if not self.handlers:
+        if not self._handlers:
             return False
-        for f in self.handlers:
+        for f in self._handlers:
             if not f.is_ready():
                 return False
         return True
 
-    def _reconnect(fd, *fd_sets):
+    def _reconnect(self, fd, *fd_sets):
         for fd_set in fd_sets:
-            fd_set.remove(fd)
+            try:
+                fd_set.remove(fd)
+            except ValueError:
+                pass
         fd.reconnect()
 
     def tick(self):
-        for factory in self.handlers:
+        for factory in self._handlers:
             factory.tick()
-        self.select()
+        self.select(0)
 
-    def select(self):
-        if not self.handlers:
+    def block(self):
+        while True:
+            self.select(.05)
+            for factory in self._handlers:
+                factory.tick()
+            editor.call_timeouts()
+
+    def select(self, timeout=0):
+        if not self._handlers:
             return
 
         readable = []
@@ -61,7 +77,10 @@ class _Reactor(object):
         errorable = []
         fd_map = {}
 
-        for fd in self._fds:
+        for fd in self._protos:
+            fileno = fd.fileno()
+            if not fileno:
+                continue
             fd.fd_set(readable, writeable, errorable)
             fd_map[fd.fileno()] = fd
 
@@ -69,13 +88,13 @@ class _Reactor(object):
             return
 
         try:
-            _in, _out, _except = select.select(readable, writeable, errorable, 0)
+            _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
             if len(readable) == 1:
                 readable[0].reconnect()
                 return msg.error('Error in select(): %s' % str(e))
-            raise Exception("can't handle more than one fd")
+            raise Exception("can't handle more than one fd exception in reactor")
 
         for fileno in _except:
             fd = fd_map[fileno]

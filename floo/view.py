@@ -35,7 +35,7 @@ class View(object):
         return get_text(self.view)
 
     #TODO: changed args :(
-    def apply_patches(self, patches, username):
+    def apply_patches(self, buf, patches, username):
         regions = []
         commands = []
         for patch in patches:
@@ -52,7 +52,7 @@ class View(object):
         utils.set_timeout(self.view.erase_regions, 2000, region_key)
         self.view.set_status('Floobits', 'Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
-    def update(self):
+    def update(self, data):
         buf = self.buf
         msg.log('Floobits synced data for consistency: %s' % buf['path'])
         G.VIEW_TO_HASH[self.view.buffer_id()] = buf['md5']

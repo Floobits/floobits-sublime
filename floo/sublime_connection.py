@@ -366,3 +366,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         for window in sublime.windows():
             for view in window.views():
                 view.erase_regions(region_key)
+
+    def _on_highlight(self, data):
+        region_key = 'floobits-highlight-%s' % (data['user_id'])
+        self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
