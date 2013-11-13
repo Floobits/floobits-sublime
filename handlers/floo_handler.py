@@ -40,6 +40,9 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
 
+    def _on_highlight(self, data):
+        raise NotImplementedError()
+
     def ok_cancel_dialog(self, msg, cb=None):
         raise NotImplementedError()
 
@@ -364,9 +367,6 @@ class FlooHandler(base.BaseHandler):
             del self.workspace_info['users'][user_id]
         except Exception:
             print('Unable to delete user %s from user list' % (data))
-
-    def _on_highlight(self, data):
-        raise NotImplementedError()
 
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
