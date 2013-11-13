@@ -88,6 +88,16 @@ class SublimeConnection(floo_handler.FlooHandler):
             editor.status_message('Connected to %s\'s %s' % (self.owner, self.workspace))
             self._status_timeout = 0
 
+    def ok_cancel_dialog(self, msg, cb=None):
+        res = sublime.ok_cancel_dialog(msg)
+        return (cb and cb(res) or res)
+
+    def error_message(self, msg):
+        sublime.error_message(msg)
+
+    def status_message(self, msg):
+        sublime.status_message(msg)
+
     def get_view(self, buf_id):
         buf = self.bufs.get(buf_id)
         if not buf:
