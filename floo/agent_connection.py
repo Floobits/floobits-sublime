@@ -80,6 +80,10 @@ class BaseAgentConnection(object):
         self.cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
         self.call_select = False
 
+        # We reference these in a couple of places where we log stuff
+        self.owner = None
+        self.workspace = None
+
     @property
     def client(self):
         if PY2:
@@ -231,6 +235,20 @@ class BaseAgentConnection(object):
                     self.stop()
             self.buf = after
 
+    def ssl_handshake(self):
+        try:
+            sock_debug('Doing SSL handshake')
+            self.sock.do_handshake()
+        except ssl.SSLError as e:
+            sock_debug('Floobits: ssl.SSLError. This is expected sometimes.')
+            if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
+                return
+            raise
+        self.handshaken = True
+        sock_debug('Successful handshake')
+        if self.owner is not None and self.workspace is not None:
+            sublime.status_message('SSL handshake completed to %s::%s' % (self.owner, self.workspace))
+
     def select(self):
         if not self.call_select:
             return
@@ -253,17 +271,12 @@ class BaseAgentConnection(object):
             sock_debug('Socket is writeable')
             if self.secure and not self.handshaken:
                 try:
-                    sock_debug('Doing SSL handshake')
-                    self.sock.do_handshake()
-                except ssl.SSLError as e:
-                    sock_debug('ssl.SSLError. This is expected sometimes.')
-                    return
+                    self.ssl_handshake()
+                    if not self.handshaken:
+                        return
                 except Exception as e:
                     msg.error('Error in SSL handshake:', e)
                     return self.reconnect()
-                else:
-                    self.handshaken = True
-                    sock_debug('Successful handshake')
 
             try:
                 while True:
@@ -279,6 +292,15 @@ class BaseAgentConnection(object):
 
         if _in:
             sock_debug('Socket is readable')
+            if self.secure and not self.handshaken:
+                try:
+                    self.ssl_handshake()
+                    if not self.handshaken:
+                        return
+                except Exception as e:
+                    msg.error('Error in SSL handshake:', e)
+                    return self.reconnect()
+
             buf = ''.encode('utf-8')
             while True:
                 try:
@@ -324,7 +346,7 @@ class AgentConnection(BaseAgentConnection):
     @property
     def workspace_url(self):
         protocol = self.secure and 'https' or 'http'
-        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
+        return '{protocol}://{host}/{owner}/{name}'.format(protocol=protocol, host=self.host, owner=self.owner, name=self.workspace)
 
     def is_ready(self):
         return G.JOINED_WORKSPACE
