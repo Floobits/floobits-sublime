@@ -457,7 +457,7 @@ class FlooHandler(base.BaseHandler):
         self._uploader(ig.list_paths(), cb, ig.size)
 
     def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
-        reactor.reactor.tick()
+        reactor.tick()
         if len(self.proto) > 0:
             return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 
