@@ -1,36 +1,33 @@
 import os
 import sys
 import hashlib
-import json
 import base64
 from operator import attrgetter
 
 try:
-    from ....floo import editor
-except (ImportError, ValueError):
-    from floo import editor
-
-try:
     from . import base
+    from ..reactor import reactor
+    from ..lib import DMP
+    from .. import msg, ignore, shared as G, utils
+    from ....floo import editor
+    from ..protocols import floo_proto
 except (ImportError, ValueError):
     import base
+    from floo import editor
+    from floo.common.lib import DMP
+    from floo.common import reactor, msg, ignore, shared as G, utils
+    from floo.common.protocols import floo_proto
 
 try:
     unicode()
 except NameError:
     unicode = str
 
-from ..reactor import reactor
-from ..lib import DMP
-from .. import msg, ignore, shared as G, utils
-
-
 MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 class FlooHandler(base.BaseHandler):
-    bufs = {}
-    paths_to_ids = {}
+    PROTOCOL = floo_proto.FlooProtocol
 
     def __init__(self, owner, workspace, get_bufs=True):
         super(FlooHandler, self).__init__()
@@ -38,12 +35,46 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
+        self.bufs = {}
+        self.paths_to_ids = {}
+
+    def ok_cancel_dialog(self, msg, cb=None):
+        raise NotImplementedError()
 
     def get_view(self, buf_id):
-        raise NotImplemented()
+        raise NotImplementedError()
+
+    def get_username_by_id(self, user_id):
+        try:
+            return self.workspace_info['users'][str(user_id)]['username']
+        except Exception:
+            return ""
+
+    def get_buf_by_path(self, path):
+        try:
+            p = utils.to_rel_path(path)
+        except ValueError:
+            return
+        buf_id = self.paths_to_ids.get(p)
+        if buf_id:
+            return self.bufs.get(buf_id)
+
+    def get_buf(self, buf_id, view=None):
+        self.send({
+            'name': 'get_buf',
+            'id': buf_id
+        })
+        buf = self.bufs[buf_id]
+        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
+        if 'buf' in buf:
+            del buf['buf']
+
+        if view:
+            view.set_read_only(True)
+            view.set_status('Floobits locked this file until it is synced.')
 
     def save_view(self, view):
-        raise NotImplemented()
+        view.save()
 
     def on_connect(self):
         self.reload_settings()
@@ -154,7 +185,7 @@ class FlooHandler(base.BaseHandler):
             utils.save_buf(buf)
             return
 
-        view.apply_patches(t[2], data['username'])
+        view.apply_patches(buf, t[2], data['username'])
 
     def _on_get_buf(self, data):
         buf_id = data['id']
@@ -179,7 +210,7 @@ class FlooHandler(base.BaseHandler):
         if not view:
             return utils.save_buf(data)
 
-        view.update()
+        view.update(data)
         if save:
             view.save()
 
@@ -214,6 +245,7 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s deleted %s' % (username, path))
 
+    @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
         G.JOINED_WORKSPACE = True
@@ -222,18 +254,9 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            if editor.ok_cancel_dialog('You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'):
+            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
+            if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
-
-        project_json = {
-            'folders': [
-                {'path': G.PROJECT_PATH}
-            ]
-        }
-
-        utils.mkdir(G.PROJECT_PATH)
-        with open(os.path.join(G.PROJECT_PATH, '.sublime-project'), 'wb') as project_fd:
-            project_fd.write(json.dumps(project_json, indent=4, sort_keys=True).encode('utf-8'))
 
         floo_json = {
             'url': utils.to_workspace_url({
@@ -289,7 +312,8 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
-            stomp_local = editor.ok_cancel_dialog(prompt)
+
+            stomp_local = yield self.ok_cancel_dialog, prompt
             for buf_id in changed_bufs:
                 if stomp_local:
                     self.get_buf(buf_id)
@@ -312,6 +336,10 @@ class FlooHandler(base.BaseHandler):
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
 
+        data = utils.get_persistent_data()
+        data['recent_workspaces'].insert(0, {"url": self.workspace_url})
+        utils.update_persistent_data(data)
+        utils.add_workspace_to_persistent_json(self.owner, self.workspace, self.workspace_url, G.PROJECT_PATH)
         self.emit("room_info")
 
     def _on_user_info(self, data):
@@ -335,8 +363,7 @@ class FlooHandler(base.BaseHandler):
             print('Unable to delete user %s from user list' % (data))
 
     def _on_highlight(self, data):
-        region_key = 'floobits-highlight-%s' % (data['user_id'])
-        self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)
+        raise NotImplementedError()
 
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
@@ -357,12 +384,14 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 
+    @utils.inlined_callbacks
     def _on_request_perms(self, data):
-        print(data)
         user_id = str(data.get('user_id'))
         username = self.get_username_by_id(user_id)
         if not username:
-            return msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            return
+
         perm_mapping = {
             'edit_room': 'edit',
             'admin_room': 'admin',
@@ -374,14 +403,10 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
-        confirm = bool(editor.ok_cancel_dialog(prompt))
-        if confirm:
-            action = 'add'
-        else:
-            action = 'reject'
+        confirm = yield self.ok_cancel_dialog, prompt
         self.send({
             'name': 'perms',
-            'action': action,
+            'action': confirm and 'add' or 'reject',
             'user_id': user_id,
             'perms': perms
         })
@@ -407,6 +432,7 @@ class FlooHandler(base.BaseHandler):
     def _on_msg(self, data):
         self.on_msg(data)
 
+    @utils.inlined_callbacks
     def upload(self, path, cb=None):
         ig = ignore.Ignore(None, path)
         if ig.size > MAX_WORKSPACE_SIZE:
@@ -418,17 +444,17 @@ class FlooHandler(base.BaseHandler):
                 ignored_cds.append(cd)
                 size -= cd.size
             if size > MAX_WORKSPACE_SIZE:
-                return editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
-            upload = editor.ok_cancel_dialog(
-                "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" %
-                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds])))
+                editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+                return
+            upload = yield self.ok_cancel_dialog, "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" % \
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
             if not upload:
                 return
             ig.children = child_dirs
         self._uploader(ig.list_paths(), cb, ig.size)
 
     def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
-        reactor.select()
+        reactor.reactor.tick()
         if len(self.proto) > 0:
             return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 

@@ -4,7 +4,8 @@ try:
     from ....floo import editor
 except ValueError:
     from floo import editor
-from .. import msg, event_emitter, protocols, shared as G, utils
+from .. import msg, event_emitter, shared as G, utils
+
 PY2 = sys.version_info < (3, 0)
 
 
@@ -21,7 +22,7 @@ BASE_FLOORC = '''# Floobits config
 
 class BaseHandler(event_emitter.EventEmitter):
     BASE_FLOORC = BASE_FLOORC
-    PROTOCOL = protocols.FlooProtocol
+    PROTOCOL = None
 
     def __init__(self):
         super(BaseHandler, self).__init__()
@@ -41,15 +42,6 @@ class BaseHandler(event_emitter.EventEmitter):
         if handler:
             return handler(data)
         msg.debug('unknown name!', name, 'data:', data)
-
-    def get_buf_by_path(self, path):
-        try:
-            p = utils.to_rel_path(path)
-        except ValueError:
-            return
-        buf_id = self.paths_to_ids.get(p)
-        if buf_id:
-            return self.bufs.get(buf_id)
 
     @property
     def client(self):

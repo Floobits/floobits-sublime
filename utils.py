@@ -2,6 +2,7 @@ import os
 import json
 import re
 import hashlib
+from functools import wraps
 
 try:
     from urllib.parse import urlparse
@@ -254,6 +255,8 @@ def get_persistent_data(per_path=None):
 
 
 def update_persistent_data(data):
+    seen = set()
+    data['recent_workspaces'] = [x for x in data['recent_workspaces'] if x['url'] not in seen and not seen.add(x['url'])]
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
@@ -302,3 +305,55 @@ def save_buf(buf):
             fd.write(buf['buf'].encode('utf-8'))
         else:
             fd.write(buf['buf'])
+
+
+def _unwind_generator(gen_expr, cb=None, res=None):
+    try:
+        while True:
+            arg0 = res
+            args = []
+            if type(res) == tuple:
+                arg0 = res[0]
+                args = list(res[1:])
+            if not callable(arg0):
+                # send only accepts one argument... this is slightly dangerous if
+                # we ever just return a tuple of one elemetn
+                if type(res) == tuple and len(res) == 1:
+                    res = gen_expr.send(res[0])
+                else:
+                    res = gen_expr.send(res)
+            else:
+                def f(*args):
+                    return _unwind_generator(gen_expr, cb, args)
+                args.append(f)
+                return arg0(*args)
+        # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
+    except StopIteration:
+        pass
+    except __StopUnwindingException as e:
+        res = e.ret_val
+    if cb:
+        return cb(res)
+    return res
+
+
+class __StopUnwindingException(BaseException):
+    def __init__(self, ret_val):
+        self.ret_val = ret_val
+
+
+def return_value(args):
+    raise __StopUnwindingException(args)
+
+
+def inlined_callbacks(f):
+    """ Branching logic in async functions generates a callback nightmare.
+    Use this decorator to inline the results.  If you yield a function, it must
+    accept a callback as its final argument that it is responsible for firing.
+
+    example usage:
+    """
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        return _unwind_generator(f(*args, **kwargs))
+    return wrap
