@@ -99,7 +99,7 @@ class FlooHandler(base.BaseHandler):
     @property
     def workspace_url(self):
         protocol = self.proto.secure and 'https' or 'http'
-        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.proto.host, owner=self.owner, name=self.workspace)
+        return '{protocol}://{host}/{owner}/{name}'.format(protocol=protocol, host=self.proto.host, owner=self.owner, name=self.workspace)
 
     def reset(self):
         self.bufs = {}
