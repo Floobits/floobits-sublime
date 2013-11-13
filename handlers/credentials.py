@@ -5,7 +5,7 @@ import webbrowser
 try:
     from . import base
     from .. import api, shared as G, utils
-    from ....floo import editor
+    from ... import editor
     assert api and G and utils
 except (ImportError, ValueError):
     import base

@@ -13,7 +13,8 @@ try:
 except ImportError:
     ssl = False
 try:
-    from .. import editor, cert, msg, shared as G, utils, reactor
+    from ... import editor
+    from .. import cert, msg, shared as G, utils, reactor
     from . import base
     assert cert and G and msg and utils
 except (ImportError, ValueError):

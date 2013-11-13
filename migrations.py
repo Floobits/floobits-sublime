@@ -2,8 +2,12 @@ import os
 import json
 from collections import defaultdict
 
-import shared as G
-import utils
+try:
+    from . import shared as G
+    from . import utils
+except (ImportError, ValueError):
+    import shared as G
+    import utils
 
 
 def rename_floobits_dir():
