@@ -14,12 +14,12 @@ except ImportError:
     ssl = False
 try:
     from ... import editor
-    from .. import cert, msg, shared as G, utils, reactor
+    from .. import cert, msg, shared as G, utils
     from . import base
     assert cert and G and msg and utils
 except (ImportError, ValueError):
     from floo import editor
-    from floo.common import cert, msg, shared as G, utils, reactor
+    from floo.common import cert, msg, shared as G, utils
     import base
 
 try:
@@ -86,10 +86,6 @@ class FlooProtocol(base.BaseProtocol):
                     self.stop()
             self._buf = after
 
-    def listen(self, listener):
-        self._q.clear()
-        reactor.reactor.select()
-
     def _connect(self, attempts=0):
         if attempts > 500:
             msg.error('Connection attempt timed out.')
@@ -117,7 +113,6 @@ class FlooProtocol(base.BaseProtocol):
         self.retries = self.MAX_RETRIES
         self.emit("connect")
         self.connected = True
-        reactor.reactor.select()
 
     def __len__(self):
         return len(self._q)
