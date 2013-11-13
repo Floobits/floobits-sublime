@@ -4,7 +4,7 @@ import select
 try:
     from . import msg
     from .. import editor
-    from .. handers import tcp_server
+    from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
     from floo.common.handlers import tcp_server

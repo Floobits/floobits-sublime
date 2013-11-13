@@ -9,13 +9,15 @@ try:
     from ..reactor import reactor
     from ..lib import DMP
     from .. import msg, ignore, shared as G, utils
-    from ....floo import editor
+    from ... import editor
     from ..protocols import floo_proto
-except (ImportError, ValueError):
+except (ImportError, ValueError) as e:
+    print(e)
     import base
     from floo import editor
     from floo.common.lib import DMP
-    from floo.common import reactor, msg, ignore, shared as G, utils
+    from floo.common.reactor import reactor
+    from floo.common import msg, ignore, shared as G, utils
     from floo.common.protocols import floo_proto
 
 try:
@@ -97,7 +99,7 @@ class FlooHandler(base.BaseHandler):
     @property
     def workspace_url(self):
         protocol = self.proto.secure and 'https' or 'http'
-        return '{protocol}://{host}/r/{owner}/{name}'.format(protocol=protocol, host=self.proto.host, owner=self.owner, name=self.workspace)
+        return '{protocol}://{host}/{owner}/{name}'.format(protocol=protocol, host=self.proto.host, owner=self.owner, name=self.workspace)
 
     def reset(self):
         self.bufs = {}
@@ -229,10 +231,11 @@ class FlooHandler(base.BaseHandler):
         new_dir = os.path.split(new)[0]
         if new_dir:
             utils.mkdir(new_dir)
-        os.rename(old, new)
         view = self.get_view(data['id'])
         if view:
             view.rename(new)
+        else:
+            os.rename(old, new)
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
@@ -475,11 +478,15 @@ class FlooHandler(base.BaseHandler):
             return cb and cb()
         return utils.set_timeout(self._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
 
-    def _upload(self, path):
+    def _upload(self, path, text=None):
         size = 0
         try:
-            with open(path, 'rb') as buf_fd:
-                buf = buf_fd.read()
+            if text:
+                # TODO: possible encoding issues with python 3
+                buf = text
+            else:
+                with open(path, 'rb') as buf_fd:
+                    buf = buf_fd.read()
             size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)

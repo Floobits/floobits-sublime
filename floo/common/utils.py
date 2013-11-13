@@ -154,11 +154,15 @@ def parse_url(workspace_url):
     else:
         if not port:
             port = G.DEFAULT_PORT
-    result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+    result = re.match('^/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+    if not result:
+        result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+
     if result:
         (owner, workspace_name) = result.groups()
     else:
         raise ValueError('%s is not a valid Floobits URL' % workspace_url)
+
     return {
         'host': parsed_url.hostname,
         'owner': owner,
@@ -181,7 +185,7 @@ def to_workspace_url(r):
     if port != '':
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
-    workspace_url = '%s://%s%s/r/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
+    workspace_url = '%s://%s%s/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
 
 
