@@ -12,7 +12,6 @@ try:
     from ... import editor
     from ..protocols import floo_proto
 except (ImportError, ValueError) as e:
-    print(e)
     import base
     from floo import editor
     from floo.common.lib import DMP

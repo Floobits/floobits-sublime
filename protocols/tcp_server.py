@@ -2,11 +2,15 @@ import socket
 
 try:
     from . import base
+    from ..protocols import floo_proto
 except (ImportError, ValueError):
     import base
+    from floo.common.protocols import floo_proto
 
 
 class TCPServerProtocol(base.BaseProtocol):
+    PROTOCOL = floo_proto.FlooProtocol
+
     def __init__(self, host, port):
         super(TCPServerProtocol, self).__init__(host, port, False)
         self.host = host
