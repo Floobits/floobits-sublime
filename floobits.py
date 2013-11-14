@@ -108,16 +108,26 @@ except ImportError:
     URLError = urllib2.URLError
 
 try:
-    from .floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
-    from .floo.common import api, ignore, msg, shared as G, utils
+    from .floo import version
+    from .floo import sublime_utils as sutils
     from .floo.listener import Listener
-    assert HTTPError and api and AgentConnection and CreateAccountConnection and RequestCredentialsConnection and G and Listener and ignore and listener and msg and utils and version
+    from .floo.sublime_connection import SublimeConnection
+    from .floo.common import api, ignore, reactor, msg, shared as G, utils
+    from .floo.common.handlers.account import CreateAccountHandler
+    from .floo.common.handlers.credentials import RequestCredentialsHandler
+    assert HTTPError and api and G and ignore and msg and utils
 except (ImportError, ValueError):
-    from floo import AgentConnection, CreateAccountConnection, RequestCredentialsConnection, listener, version
-    from floo.common import api, ignore, msg, shared as G, utils
+    from floo import version
+    from floo import sublime_utils as sutils
     from floo.listener import Listener
-    assert version
+    from floo.common import api, ignore, reactor, msg, shared as G, utils
+    from floo.common.handlers.account import CreateAccountHandler
+    from floo.common.handlers.credentials import RequestCredentialsHandler
+    from floo.sublime_connection import SublimeConnection
 
+assert Listener and version
+
+reactor = reactor.reactor
 
 on_room_info_waterfall = utils.Waterfall()
 ignore_modified_timeout = None
@@ -218,18 +228,16 @@ def create_or_link_account():
                                        'Open browser')
     if account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-        agent = RequestCredentialsConnection(token)
+        agent = RequestCredentialsHandler(token)
     elif not utils.get_persistent_data().get('disable_account_creation'):
-        agent = CreateAccountConnection()
+        agent = CreateAccountHandler()
 
     if not agent:
         sublime.error_message('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.')
         return
 
     try:
-        Listener.reset()
-        G.AGENT = agent
-        agent.connect()
+        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
     except Exception as e:
         print(e)
         tb = traceback.format_exc()
@@ -237,9 +245,7 @@ def create_or_link_account():
 
 
 def global_tick():
-    Listener.push()
-    if G.AGENT and G.AGENT.sock:
-        G.AGENT.select()
+    reactor.tick()
     utils.set_timeout(global_tick, G.TICK_TIME)
 
 
@@ -248,7 +254,7 @@ def disconnect_dialog():
         disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave %s/%s' % (G.AGENT.owner, G.AGENT.workspace))
         if disconnect:
             msg.debug('Stopping agent.')
-            G.AGENT.stop()
+            reactor.stop()
             G.AGENT = None
         return disconnect
     return True
@@ -349,7 +355,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 # Timeout or something bad. Just assume the workspace exists
                 return True
             on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-            on_room_info_waterfall.add(Listener.create_buf, dir_to_share, on_room_info_msg)
+            on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
             return True
 
         if os.path.isfile(dir_to_share):
@@ -394,7 +400,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-        on_room_info_waterfall.add(Listener.create_buf, file_to_share or dir_to_share, on_room_info_msg)
+        on_room_info_waterfall.add(lambda: G.AGENT.upload(file_to_share or dir_to_share, on_room_info_msg))
 
         def on_done(owner):
             self.window.run_command('floobits_create_workspace', {
@@ -580,18 +586,14 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             global on_room_info_waterfall
             if G.AGENT:
                 msg.debug('Stopping agent.')
-                G.AGENT.stop()
+                reactor.stop()
                 G.AGENT = None
-
             on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
-
             try:
-                msg.debug("agent_conn_kwargs: %s" % str(agent_conn_kwargs))
-                G.AGENT = AgentConnection(owner=owner, workspace=workspace, host=host, port=port, secure=secure,
-                                          on_room_info=on_room_info_waterfall.call, **agent_conn_kwargs)
+                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get("get_bufs", True))
+                reactor.connect(conn, host, port, secure)
+                conn.once('room_info', on_room_info_waterfall.call)
                 on_room_info_waterfall = utils.Waterfall()
-                Listener.reset()
-                G.AGENT.connect()
             except Exception as e:
                 print(e)
                 tb = traceback.format_exc()
@@ -651,14 +653,14 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
         print(username, secret)
         if not (username and secret):
             return sublime.error_message('You don\'t seem to have a Floobits account of any sort')
-        webbrowser.open('https://%s/u/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+        webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
 
     def run(self):
         if G.AGENT:
-            G.AGENT.stop()
+            reactor.stop()
             G.AGENT = None
             # TODO: Mention the name of the thing we left
             sublime.error_message('You have left the workspace.')
@@ -689,13 +691,13 @@ class FloobitsMsgCommand(FloobitsBaseCommand):
 
 class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
     def run(self):
-        Listener.clear_highlights(self.window.active_view())
+        G.AGENT.clear_highlights(self.window.active_view())
 
 
 class FloobitsSummonCommand(FloobitsBaseCommand):
     # TODO: ghost this option if user doesn't have permissions
     def run(self):
-        Listener.summon(self.window.active_view())
+        G.AGENT.summon(self.window.active_view())
 
 
 class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
@@ -745,7 +747,7 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
             paths = [self.window.active_view().file_name()]
 
         for path in paths:
-            Listener.create_buf(path)
+            G.AGENT.upload(path)
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
@@ -764,7 +766,7 @@ class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
             paths = [self.window.active_view().file_name()]
 
         for path in paths:
-            Listener.delete_buf(path)
+            G.AGENT.delete_buf(path)
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
@@ -799,11 +801,11 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
         try:
             agent = G.AGENT
             url = utils.to_workspace_url({
-                'port': agent.port,
-                'secure': agent.secure,
+                'port': agent.proto.port,
+                'secure': agent.proto.secure,
                 'owner': agent.owner,
                 'workspace': agent.workspace,
-                'host': agent.host,
+                'host': agent.proto.host,
             })
             webbrowser.open(url)
         except Exception as e:
@@ -850,7 +852,7 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
 
 class RequestPermissionCommand(FloobitsBaseCommand):
     def run(self, perms, *args, **kwargs):
-        G.AGENT.put({
+        G.AGENT.send({
             'name': 'request_perms',
             'perms': perms
         })
@@ -950,7 +952,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
 
         if stop - start > 10000:
             self.view.replace(edit, region, data)
-            G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+            G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(sutils.get_text(self.view).encode('utf-8')).hexdigest()
             return transform_selections(selections, start, stop - start)
 
         existing = self.view.substr(region)
@@ -970,7 +972,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
         self.view.replace(edit, region, replace_str)
-        G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(listener.get_text(self.view).encode('utf-8')).hexdigest()
+        G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(sutils.get_text(self.view).encode('utf-8')).hexdigest()
         new_offset = len(replace_str) - ((stop - j) - (start + i))
         return transform_selections(selections, start + i, new_offset)
 
@@ -1017,7 +1019,7 @@ def plugin_loaded():
     if called_plugin_loaded:
         return
     called_plugin_loaded = True
-    print("called plugin_loaded")
+    print("Floobits: Called plugin_loaded.")
     sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
@@ -1048,5 +1050,6 @@ if PY2:
         threading.Timer(i, utils.set_timeout, [plugin_loaded, 1]).start()
 
     def warning():
-        print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
+        if not called_plugin_loaded:
+            print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
     threading.Timer(20, warning).start()
