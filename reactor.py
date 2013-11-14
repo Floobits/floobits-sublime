@@ -16,9 +16,6 @@ reactor = None
 
 class _Reactor(object):
     ''' Low level event driver '''
-    MAX_RETRIES = 20
-    INITIAL_RECONNECT_DELAY = 500
-
     def __init__(self):
         self._protos = []
         self._handlers = []

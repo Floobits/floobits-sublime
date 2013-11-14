@@ -12,7 +12,6 @@ try:
     from ... import editor
     from ..protocols import floo_proto
 except (ImportError, ValueError) as e:
-    print(e)
     import base
     from floo import editor
     from floo.common.lib import DMP
@@ -39,6 +38,9 @@ class FlooHandler(base.BaseHandler):
         self.reset()
         self.bufs = {}
         self.paths_to_ids = {}
+
+    def _on_highlight(self, data):
+        raise NotImplementedError()
 
     def ok_cancel_dialog(self, msg, cb=None):
         raise NotImplementedError()
@@ -315,6 +317,7 @@ class FlooHandler(base.BaseHandler):
                 prompt = 'Overwrite the following local files?\n'
                 for buf_id in changed_bufs:
                     prompt += '\n%s' % self.bufs[buf_id]['path']
+
             stomp_local = yield self.ok_cancel_dialog, prompt
             for buf_id in changed_bufs:
                 if stomp_local:
@@ -364,9 +367,6 @@ class FlooHandler(base.BaseHandler):
         except Exception:
             print('Unable to delete user %s from user list' % (data))
 
-    def _on_highlight(self, data):
-        raise NotImplementedError()
-
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
         hangout = hangout_data.get('hangout', {})
@@ -405,7 +405,6 @@ class FlooHandler(base.BaseHandler):
         if message:
             prompt += '\n\n%s says: %s' % (username, message)
         prompt += '\n\nDo you want to grant them permission?'
-
         confirm = yield self.ok_cancel_dialog, prompt
         self.send({
             'name': 'perms',
@@ -457,7 +456,7 @@ class FlooHandler(base.BaseHandler):
         self._uploader(ig.list_paths(), cb, ig.size)
 
     def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
-        reactor.select()
+        reactor.tick()
         if len(self.proto) > 0:
             return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
 

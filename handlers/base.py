@@ -4,7 +4,6 @@ try:
     from ... import editor
 except ValueError:
     from floo import editor
-
 from .. import msg, event_emitter, shared as G, utils
 
 PY2 = sys.version_info < (3, 0)
