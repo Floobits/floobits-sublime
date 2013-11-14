@@ -39,6 +39,8 @@ class _Reactor(object):
 
         self._protos = []
         self._handlers = []
+        msg.log('Disconnected.')
+        editor.status_message('Disconnected.')
 
     def is_ready(self):
         if not self._handlers:
@@ -56,18 +58,15 @@ class _Reactor(object):
                 pass
         fd.reconnect()
 
-    def tick(self):
+    def tick(self, timeout=0):
         for factory in self._handlers:
             factory.tick()
-        self.select(0)
+        self.select(timeout)
         editor.call_timeouts()
 
     def block(self):
         while True:
-            self.select(.05)
-            for factory in self._handlers:
-                factory.tick()
-            editor.call_timeouts()
+            self.tick(.05)
 
     def select(self, timeout=0):
         if not self._handlers:
