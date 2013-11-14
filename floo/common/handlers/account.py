@@ -6,10 +6,12 @@ try:
     from . import base
     from .. import msg, api, shared as G, utils
     from ....floo import editor
+    from ..protocols import floo_proto
     assert api and G and msg and utils
 except (ImportError, ValueError):
     import base
     from floo import editor
+    from floo.common.protocols import floo_proto
     from .. import msg, api, shared as G, utils
 
 welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
@@ -17,6 +19,7 @@ You must run \'Floobits - Complete Sign Up\' in the command palette before you c
 
 
 class CreateAccountHandler(base.BaseHandler):
+    PROTOCOL = floo_proto.FlooProtocol
 
     def on_connect(self):
         try:
@@ -52,7 +55,7 @@ class CreateAccountHandler(base.BaseHandler):
                     d['auto_generated_account'] = True
                     utils.update_persistent_data(d)
                     G.AUTO_GENERATED_ACCOUNT = True
-                    editor.active_window().open_file(p)
+                    editor.open_file(p)
             except Exception as e:
                 msg.error(e)
             try:

@@ -19,3 +19,9 @@ def platform():
 
 def set_timeout(*args):
     sublime.set_timeout(*args)
+
+
+def open_file(file):
+    win = sublime.active_window()
+    if win:
+        win.open_file(file)
