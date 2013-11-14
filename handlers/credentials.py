@@ -57,5 +57,5 @@ class RequestCredentialsHandler(base.BaseHandler):
                 with open(p, 'wb') as fd:
                     text = WELCOME_MSG % (G.USERNAME, self.proto.host)
                     fd.write(text.encode('utf-8'))
-                editor.active_window().open_file(p)
+                editor.open_file(p)
             self.proto.stop()
