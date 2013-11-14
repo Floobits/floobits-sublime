@@ -34,7 +34,6 @@ class View(object):
     def get_text(self):
         return get_text(self.view)
 
-    #TODO: changed args :(
     def apply_patches(self, buf, patches, username):
         regions = []
         commands = []

@@ -213,12 +213,10 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def highlight(self, buf_id, region_key, username, ranges, summon, clone):
         buf_id = int(buf_id)
-        msg.log(str([buf_id, region_key, username, ranges, summon, clone]))
+        msg.debug(str([buf_id, region_key, username, ranges, summon, clone]))
         buf = self.bufs.get(buf_id)
         if not buf:
             return
-
-        do_stuff = summon or (G.STALKER_MODE and not self.temp_disable_stalk)
 
         # TODO: move this state machine into one variable
         if buf_id in self.on_load:
@@ -231,8 +229,10 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.debug('ignoring command until temp_ignore_highlight is complete')
             return
 
+        do_stuff = summon or (G.STALKER_MODE and not self.temp_disable_stalk)
+
         view = self.get_view(buf_id)
-        if not view:
+        if not view or view.is_loading():
             if do_stuff:
                 msg.debug('creating view')
                 create_view(buf)
@@ -254,6 +254,7 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         if not G.SPLIT_MODE:
             win.focus_view(view)
+            swap_regions(view)
             # Explicit summon by another user. Center the line.
             if summon:
                 view.show_at_center(regions[0])
