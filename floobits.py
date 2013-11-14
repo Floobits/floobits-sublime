@@ -1019,7 +1019,7 @@ def plugin_loaded():
     if called_plugin_loaded:
         return
     called_plugin_loaded = True
-    print("called plugin_loaded")
+    print("Floobits: Called plugin_loaded.")
     sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
@@ -1050,5 +1050,6 @@ if PY2:
         threading.Timer(i, utils.set_timeout, [plugin_loaded, 1]).start()
 
     def warning():
-        print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
+        if not called_plugin_loaded:
+            print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
     threading.Timer(20, warning).start()
