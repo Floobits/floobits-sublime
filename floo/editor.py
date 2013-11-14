@@ -21,6 +21,10 @@ def set_timeout(*args):
     sublime.set_timeout(*args)
 
 
+def call_timeouts():
+    pass
+
+
 def open_file(file):
     win = sublime.active_window()
     if win:
