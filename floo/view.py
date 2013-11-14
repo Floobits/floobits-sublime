@@ -66,6 +66,9 @@ class View(object):
             self.view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             self.view.set_read_only(True)
 
+    def set_status(self, *args):
+        self.view.set_status(*args)
+
     def set_read_only(self, ro):
         self.view.set_read_only(ro)
 
