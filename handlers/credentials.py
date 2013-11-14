@@ -6,10 +6,12 @@ try:
     from . import base
     from .. import api, shared as G, utils
     from ... import editor
+    from ..protocols import floo_proto
     assert api and G and utils
 except (ImportError, ValueError):
     import base
     from floo import editor
+    from floo.common.protocols import floo_proto
     from .. import api, shared as G, utils
 
 WELCOME_MSG = """Welcome %s!\n\nYou\'re all set to collaborate.
@@ -18,6 +20,7 @@ You may want to check out our docs at https://%s/help/plugins/#sublime-usage"""
 
 
 class RequestCredentialsHandler(base.BaseHandler):
+    PROTOCOL = floo_proto.FlooProtocol
 
     def __init__(self, token):
         super(RequestCredentialsHandler, self).__init__()
@@ -54,5 +57,5 @@ class RequestCredentialsHandler(base.BaseHandler):
                 with open(p, 'wb') as fd:
                     text = WELCOME_MSG % (G.USERNAME, self.proto.host)
                     fd.write(text.encode('utf-8'))
-                editor.active_window().open_file(p)
+                editor.open_file(p)
             self.proto.stop()

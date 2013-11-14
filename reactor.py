@@ -16,9 +16,6 @@ reactor = None
 
 class _Reactor(object):
     ''' Low level event driver '''
-    MAX_RETRIES = 20
-    INITIAL_RECONNECT_DELAY = 500
-
     def __init__(self):
         self._protos = []
         self._handlers = []
@@ -42,8 +39,6 @@ class _Reactor(object):
 
         self._protos = []
         self._handlers = []
-        msg.log('Disconnected.')
-        editor.status_message('Disconnected.')
 
     def is_ready(self):
         if not self._handlers:
@@ -65,6 +60,7 @@ class _Reactor(object):
         for factory in self._handlers:
             factory.tick()
         self.select(0)
+        editor.call_timeouts()
 
     def block(self):
         while True:
