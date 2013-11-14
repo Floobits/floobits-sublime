@@ -189,7 +189,7 @@ class FlooHandler(base.BaseHandler):
             utils.save_buf(buf)
             return
 
-        view.apply_patches(buf, t[2], data['username'])
+        view.apply_patches(buf, t, data['username'])
 
     def _on_get_buf(self, data):
         buf_id = data['id']

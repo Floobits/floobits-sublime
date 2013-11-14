@@ -62,6 +62,7 @@ class _Reactor(object):
         for factory in self._handlers:
             factory.tick()
         self.select(0)
+        editor.call_timeouts()
 
     def block(self):
         while True:

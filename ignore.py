@@ -51,7 +51,8 @@ class Ignore(object):
             paths = os.listdir(self.path)
         except OSError as e:
             if e.errno != errno.ENOTDIR:
-                raise
+                msg.error('Error listing path %s: %s' % (path, unicode(e)))
+                return
             self.path = os.path.dirname(self.path)
             self.add_file(os.path.basename(path))
             return
