@@ -37,7 +37,7 @@ class View(object):
     def apply_patches(self, buf, patches, username):
         regions = []
         commands = []
-        for patch in patches:
+        for patch in patches[2]:
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
