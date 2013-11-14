@@ -211,8 +211,7 @@ def migrate_symlinks():
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
                           'This is a known issue on Linux builds of Sublime Text. '
-                          'Please comment on http://sublimetext.userecho.com/topic/50801-bundle-python-ssl-module/ '
-                          'or submit an issue: https://github.com/SublimeText/Issues/issues')
+                          'See this issue: https://github.com/SublimeText/Issues/issues/177')
 
 
 def get_active_window(cb):
@@ -455,7 +454,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             self.api_args['owner'] = self.owner
             msg.debug(str(self.api_args))
             api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/r/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+            workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
             print('Created workspace %s' % workspace_url)
         except HTTPError as e:
             err_body = e.read()
@@ -498,7 +497,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, workspace='https://floobits.com/r/'):
+    def run(self, workspace='https://floobits.com/'):
         self.window.show_input_panel('Workspace URL:', workspace, self.on_input, None, None)
 
     def on_input(self, workspace_url):
@@ -1011,7 +1010,16 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
         return
 
 
-def main():
+called_plugin_loaded = False
+
+
+# Sublime 3 calls this once the plugin API is ready
+def plugin_loaded():
+    global called_plugin_loaded
+    if called_plugin_loaded:
+        return
+    called_plugin_loaded = True
+    print("called plugin_loaded")
     sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
@@ -1029,10 +1037,18 @@ def main():
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
     can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+    # Sublime plugin API stuff can't be called right off the bat
     if not can_auth:
-        threading.Timer(0.5, utils.set_timeout, [create_or_link_account, 1]).start()
+        utils.set_timeout(create_or_link_account, 1)
 
     global_tick()
 
 
-main()
+# Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
+if PY2:
+    for i in range(0, 20):
+        threading.Timer(i, utils.set_timeout, [plugin_loaded, 1]).start()
+
+    def warning():
+        print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
+    threading.Timer(20, warning).start()
