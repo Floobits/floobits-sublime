@@ -1,12 +1,8 @@
-import sys
-
 try:
     from ... import editor
 except ValueError:
     from floo import editor
 from .. import msg, event_emitter, shared as G, utils
-
-PY2 = sys.version_info < (3, 0)
 
 
 BASE_FLOORC = '''# Floobits config
@@ -45,11 +41,7 @@ class BaseHandler(event_emitter.EventEmitter):
 
     @property
     def client(self):
-        if PY2:
-            sublime_version = 2
-        else:
-            sublime_version = 3
-        return 'SublimeText-%s' % sublime_version
+        return editor.name()
 
     def _on_error(self, data):
         message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
