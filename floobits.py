@@ -516,7 +516,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             workspace_window = None
             for w in sublime.windows():
                 for f in w.folders():
-                    if f == G.PROJECT_PATH:
+                    if utils.unfuck_path(f) == utils.unfuck_path(G.PROJECT_PATH):
                         workspace_window = w
                         break
             return workspace_window
