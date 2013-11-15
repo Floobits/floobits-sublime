@@ -37,7 +37,7 @@ class View(object):
     def apply_patches(self, buf, patches, username):
         regions = []
         commands = []
-        for patch in patches:
+        for patch in patches[2]:
             offset = patch[0]
             length = patch[1]
             patch_text = patch[2]
@@ -65,6 +65,9 @@ class View(object):
         if 'patch' not in G.PERMS:
             self.view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
             self.view.set_read_only(True)
+
+    def set_status(self, *args):
+        self.view.set_status(*args)
 
     def set_read_only(self, ro):
         self.view.set_read_only(ro)
