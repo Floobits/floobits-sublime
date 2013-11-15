@@ -32,7 +32,7 @@ def set_timeout(*args):
 
 
 def call_timeouts():
-    pass
+    return
 
 
 def open_file(file):

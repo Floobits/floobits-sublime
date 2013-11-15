@@ -1041,8 +1041,7 @@ def plugin_loaded():
     if not can_auth:
         utils.set_timeout(create_or_link_account, 1)
 
-    global_tick()
-
+    utils.set_timeout(global_tick, 1)
 
 # Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
 if PY2:
