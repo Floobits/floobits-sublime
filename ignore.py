@@ -123,15 +123,26 @@ class Ignore(object):
             return '%s ignored because it is too big (more than %s bytes)' % (path, MAX_FILE_SIZE)
         return '%s ignored by pattern %s in %s' % (path, pattern, os.path.join(self.path, ignore_file))
 
-    def is_ignored(self, path):
+    def is_ignored(self, path, is_dir=None):
         rel_path = os.path.relpath(path, self.path)
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
                 base_path, file_name = os.path.split(rel_path)
                 if pattern[0] == '/':
+                    # Only match immediate children
                     if utils.unfuck_path(base_path) == self.path and fnmatch.fnmatch(file_name, pattern[1:]):
                         return self.is_ignored_message(path, pattern, ignore_file)
                 else:
+                    if len(pattern) > 0 and pattern[-1] == '/':
+                        if is_dir is None:
+                            try:
+                                s = os.stat(path)
+                            except Exception as e:
+                                msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
+                                continue
+                            is_dir = stat.S_ISDIR(s.st_mode)
+                        if is_dir:
+                            pattern = pattern[:-1]
                     if fnmatch.fnmatch(file_name, pattern):
                         return self.is_ignored_message(path, pattern, ignore_file)
                     if fnmatch.fnmatch(rel_path, pattern):
