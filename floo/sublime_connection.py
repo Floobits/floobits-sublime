@@ -85,7 +85,7 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         self._status_timeout += 1
         if self._status_timeout > (2000 / G.TICK_TIME):
-            editor.status_message('Connected to %s\'s %s' % (self.owner, self.workspace))
+            editor.status_message('Connected to %s/%s' % (self.owner, self.workspace))
             self._status_timeout = 0
 
     def ok_cancel_dialog(self, msg, cb=None):
