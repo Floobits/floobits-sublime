@@ -2,6 +2,8 @@ import os
 import json
 import re
 import hashlib
+import vim
+import msg
 from functools import wraps
 
 try:
@@ -114,6 +116,13 @@ def load_floorc():
 
 cancelled_timeouts = set()
 timeout_ids = set()
+
+
+def redraw():
+    def doit():
+        msg.debug("redrawing!")
+        vim.command(":redraw!")
+    set_timeout(doit, 100)
 
 
 def set_timeout(func, timeout, *args, **kwargs):
