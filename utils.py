@@ -154,9 +154,9 @@ def parse_url(workspace_url):
     else:
         if not port:
             port = G.DEFAULT_PORT
-    result = re.match('^/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+    result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
     if not result:
-        result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+        result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:
         (owner, workspace_name) = result.groups()
