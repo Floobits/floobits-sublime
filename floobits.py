@@ -468,8 +468,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 'owner': self.owner,
             }
             if e.code == 400:
-                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
+                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
             elif e.code == 402:
                 try:
                     err_body = json.loads(err_body)
