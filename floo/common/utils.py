@@ -97,7 +97,7 @@ def load_floorc():
             return s
         raise
 
-    default_settings = fd.read().split(os.linesep)
+    default_settings = fd.read().split('\n')
     fd.close()
 
     for setting in default_settings:
@@ -222,7 +222,7 @@ def is_shared(p):
 
 def update_floo_file(path, data):
     try:
-        floo_json = json.loads(open(path, 'rb').read().decode('utf-8'))
+        floo_json = json.loads(open(path, 'r').read())
     except Exception:
         pass
 

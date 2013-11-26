@@ -176,7 +176,7 @@ def get_legacy_projects():
             workspace_path = os.path.join(workspaces_path, workspace)
             workspace_path = os.path.realpath(workspace_path)
             try:
-                fd = open(os.path.join(workspace_path, '.floo'), 'rb')
+                fd = open(os.path.join(workspace_path, '.floo'), 'r')
                 url = json.loads(fd.read())['url']
                 fd.close()
             except Exception:
@@ -371,7 +371,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
             info = {}
             try:
-                floo_info = open(floo_file, 'rb').read().decode('utf-8')
+                floo_info = open(floo_file, 'r').read()
                 info = json.loads(floo_info)
             except (IOError, OSError):
                 pass
