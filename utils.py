@@ -91,13 +91,13 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(G.FLOORC_PATH, 'rb')
+        fd = open(G.FLOORC_PATH, 'r')
     except IOError as e:
         if e.errno == 2:
             return s
         raise
 
-    default_settings = fd.read().decode('utf-8').split('\n')
+    default_settings = fd.read().split('\n')
     fd.close()
 
     for setting in default_settings:
