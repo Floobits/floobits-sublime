@@ -46,7 +46,7 @@ class RequestCredentialsHandler(base.BaseHandler):
     def on_data(self, name, data):
         if name == 'credentials':
             with open(G.FLOORC_PATH, 'w') as floorc_fd:
-                floorc = self.BASE_FLOORC + os.linesep.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + os.linesep
+                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc)
             utils.reload_settings()
             if not G.USERNAME or not G.SECRET:
