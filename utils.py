@@ -83,8 +83,10 @@ def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
-    G.COLAB_DIR = G.SHARE_DIR or os.path.join(G.BASE_DIR, 'share')
-    G.COLAB_DIR = os.path.expanduser(G.COLAB_DIR)
+    if G.SHARE_DIR:
+        G.BASE_DIR = G.SHARE_DIR
+    G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
+    G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
     mkdir(G.COLAB_DIR)
 
