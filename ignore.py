@@ -60,7 +60,7 @@ class Ignore(object):
             msg.error('Error listing path %s: %s' % (path, unicode(e)))
             return
 
-        msg.log('Initializing ignores for %s' % path)
+        msg.debug('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
