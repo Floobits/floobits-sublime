@@ -173,6 +173,7 @@ class FlooHandler(base.BaseHandler):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+            del buf['timeout_id']
 
         if not clean_patch:
             msg.log('Couldn\'t patch %s cleanly.' % buf['path'])
@@ -383,6 +384,8 @@ class FlooHandler(base.BaseHandler):
             view = self.get_view(data['id'])
             if view:
                 self.save_view(view)
+            elif 'buf' in buf:
+                utils.save_buf(buf)
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 

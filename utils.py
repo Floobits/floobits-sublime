@@ -93,13 +93,13 @@ def load_floorc():
     """try to read settings out of the .floorc file"""
     s = {}
     try:
-        fd = open(G.FLOORC_PATH, 'rb')
+        fd = open(G.FLOORC_PATH, 'r')
     except IOError as e:
         if e.errno == 2:
             return s
         raise
 
-    default_settings = fd.read().decode('utf-8').split('\n')
+    default_settings = fd.read().split('\n')
     fd.close()
 
     for setting in default_settings:
@@ -163,9 +163,9 @@ def parse_url(workspace_url):
     else:
         if not port:
             port = G.DEFAULT_PORT
-    result = re.match('^/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+    result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
     if not result:
-        result = re.match('^/r/([-\@\+\.\w]+)/([-\w]+)/?$', parsed_url.path)
+        result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:
         (owner, workspace_name) = result.groups()
@@ -231,7 +231,7 @@ def is_shared(p):
 
 def update_floo_file(path, data):
     try:
-        floo_json = json.loads(open(path, 'rb').read().decode('utf-8'))
+        floo_json = json.loads(open(path, 'r').read())
     except Exception:
         pass
 
