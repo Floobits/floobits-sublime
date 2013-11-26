@@ -97,7 +97,7 @@ def load_floorc():
             return s
         raise
 
-    default_settings = fd.read().split('\n')
+    default_settings = fd.read().split(os.linesep)
     fd.close()
 
     for setting in default_settings:

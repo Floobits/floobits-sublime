@@ -30,8 +30,8 @@ def create_flooignore(path):
     if os.path.exists(flooignore):
         return
     try:
-        with open(flooignore, 'wb') as fd:
-            fd.write('\n'.join(DEFAULT_IGNORES).encode('utf-8'))
+        with open(flooignore, 'w') as fd:
+            fd.write(os.linesep.join(DEFAULT_IGNORES))
     except Exception as e:
         msg.error('Error creating default .flooignore: %s' % str(e))
 
@@ -102,7 +102,7 @@ class Ignore(object):
         with open(os.path.join(self.path, ignore_file), 'r') as fd:
             ignores = fd.read()
         self.ignores[ignore_file] = []
-        for ignore in ignores.split('\n'):
+        for ignore in ignores.split(os.linesep):
             ignore = ignore.strip()
             if len(ignore) == 0:
                 continue
