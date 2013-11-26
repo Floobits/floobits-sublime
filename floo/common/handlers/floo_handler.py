@@ -199,6 +199,7 @@ class FlooHandler(base.BaseHandler):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+            del buf['timeout_id']
 
         if data['encoding'] == 'base64':
             data['buf'] = base64.b64decode(data['buf'])
