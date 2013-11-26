@@ -39,7 +39,7 @@ class CreateAccountHandler(base.BaseHandler):
         if name == 'create_user':
             del data['name']
             try:
-                floorc = self.BASE_FLOORC + os.linesep.join(['%s %s' % (k, v) for k, v in data.items()]) + os.linesep
+                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'w') as floorc_fd:
                     floorc_fd.write(floorc)
                 utils.reload_settings()
