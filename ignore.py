@@ -83,7 +83,7 @@ class Ignore(object):
         try:
             s = os.stat(p_path)
         except Exception as e:
-            msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
+            msg.error('Error stat()ing path %s: %s' % (p_path, unicode(e)))
             return
         if stat.S_ISDIR(s.st_mode):
             ig = Ignore(self, p_path)
@@ -99,8 +99,8 @@ class Ignore(object):
                 self.files.append(p)
 
     def load(self, ignore_file):
-        with open(os.path.join(self.path, ignore_file), 'rb') as fd:
-            ignores = fd.read().decode('utf-8')
+        with open(os.path.join(self.path, ignore_file), 'r') as fd:
+            ignores = fd.read()
         self.ignores[ignore_file] = []
         for ignore in ignores.split('\n'):
             ignore = ignore.strip()
