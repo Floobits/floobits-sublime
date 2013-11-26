@@ -49,7 +49,7 @@ class View(object):
         region_key = 'floobits-patch-' + username
         self.view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.set_timeout(self.view.erase_regions, 2000, region_key)
-        self.view.set_status('Floobits', 'Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
+        self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
     def update(self, data):
         buf = self.buf = data
@@ -58,16 +58,16 @@ class View(object):
         self.view.set_read_only(False)
         try:
             self.view.run_command('floo_view_replace_region', {'r': [0, self.view.size()], 'data': buf['buf']})
-            self.view.set_status('Floobits', 'Floobits synced data for consistency.')
-            utils.set_timeout(lambda: self.view.set_status('Floobits', ''), 5000)
+            self.set_status('Floobits synced data for consistency.')
+            utils.set_timeout(self.set_status, 5000, '')
         except Exception as e:
             msg.error('Exception updating view: %s' % e)
         if 'patch' not in G.PERMS:
-            self.view.set_status('Floobits', 'You don\'t have write permission. Buffer is read-only.')
+            self.set_status('You don\'t have write permission. Buffer is read-only.')
             self.view.set_read_only(True)
 
-    def set_status(self, *args):
-        self.view.set_status(*args)
+    def set_status(self, status):
+        self.view.set_status('Floobits', status)
 
     def set_read_only(self, ro):
         self.view.set_read_only(ro)
