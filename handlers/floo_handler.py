@@ -139,7 +139,7 @@ class FlooHandler(base.BaseHandler):
                 buf['buf'] = patch.current
                 buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
                 buf['forced_patch'] = True
-                msg.debug('forcing patch for %s' % buf['path'])
+                msg.log('forcing patch for %s' % buf['path'])
                 self.send(patch.to_json())
                 old_text = view_text
             else:
