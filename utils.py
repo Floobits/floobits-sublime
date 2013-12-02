@@ -2,7 +2,6 @@ import os
 import json
 import re
 import hashlib
-import msg
 from functools import wraps
 
 try:
