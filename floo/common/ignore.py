@@ -30,8 +30,8 @@ def create_flooignore(path):
     if os.path.exists(flooignore):
         return
     try:
-        with open(flooignore, 'wb') as fd:
-            fd.write('\n'.join(DEFAULT_IGNORES).encode('utf-8'))
+        with open(flooignore, 'w') as fd:
+            fd.write('\n'.join(DEFAULT_IGNORES))
     except Exception as e:
         msg.error('Error creating default .flooignore: %s' % str(e))
 
@@ -60,7 +60,7 @@ class Ignore(object):
             msg.error('Error listing path %s: %s' % (path, unicode(e)))
             return
 
-        msg.log('Initializing ignores for %s' % path)
+        msg.debug('Initializing ignores for %s' % path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
@@ -83,7 +83,7 @@ class Ignore(object):
         try:
             s = os.stat(p_path)
         except Exception as e:
-            msg.error('Error lstat()ing path %s: %s' % (p_path, unicode(e)))
+            msg.error('Error stat()ing path %s: %s' % (p_path, unicode(e)))
             return
         if stat.S_ISDIR(s.st_mode):
             ig = Ignore(self, p_path)
@@ -99,8 +99,8 @@ class Ignore(object):
                 self.files.append(p)
 
     def load(self, ignore_file):
-        with open(os.path.join(self.path, ignore_file), 'rb') as fd:
-            ignores = fd.read().decode('utf-8')
+        with open(os.path.join(self.path, ignore_file), 'r') as fd:
+            ignores = fd.read()
         self.ignores[ignore_file] = []
         for ignore in ignores.split('\n'):
             ignore = ignore.strip()
@@ -151,18 +151,18 @@ class Ignore(object):
             return self.parent.is_ignored(path)
         return False
 
-
-def is_ignored(abs_path):
-    if not utils.is_shared(abs_path):
+def is_ignored(current_path, abs_path=None):
+    abs_path = abs_path or current_path
+    if not utils.is_shared(current_path):
         return True
 
-    path = utils.to_rel_path(abs_path)  # Never throws ValueError because is_shared would return False
+    path = utils.to_rel_path(current_path)  # Never throws ValueError because is_shared would return False
     if path == ".":
         return False
 
-    base_path, file_name = os.path.split(abs_path)
+    base_path, file_name = os.path.split(current_path)
     ig = Ignore(None, base_path, recurse=False)
     if ig.is_ignored(abs_path):
         return True
 
-    return is_ignored(base_path)
+    return is_ignored(base_path, abs_path)

@@ -45,17 +45,17 @@ class RequestCredentialsHandler(base.BaseHandler):
 
     def on_data(self, name, data):
         if name == 'credentials':
-            with open(G.FLOORC_PATH, 'wb') as floorc_fd:
+            with open(G.FLOORC_PATH, 'w') as floorc_fd:
                 floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
-                floorc_fd.write(floorc.encode('utf-8'))
+                floorc_fd.write(floorc)
             utils.reload_settings()
             if not G.USERNAME or not G.SECRET:
                 editor.message_dialog('Something went wrong. See https://%s/help/floorc/ to complete the installation.' % self.proto.host)
                 api.send_error({'message': 'No username or secret'})
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
-                with open(p, 'wb') as fd:
+                with open(p, 'w') as fd:
                     text = WELCOME_MSG % (G.USERNAME, self.proto.host)
-                    fd.write(text.encode('utf-8'))
+                    fd.write(text)
                 editor.open_file(p)
             self.proto.stop()

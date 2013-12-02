@@ -173,6 +173,7 @@ class FlooHandler(base.BaseHandler):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+            del buf['timeout_id']
 
         if not clean_patch:
             msg.log('Couldn\'t patch %s cleanly.' % buf['path'])

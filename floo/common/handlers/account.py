@@ -40,17 +40,17 @@ class CreateAccountHandler(base.BaseHandler):
             del data['name']
             try:
                 floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
-                with open(G.FLOORC_PATH, 'wb') as floorc_fd:
-                    floorc_fd.write(floorc.encode('utf-8'))
+                with open(G.FLOORC_PATH, 'w') as floorc_fd:
+                    floorc_fd.write(floorc)
                 utils.reload_settings()
                 if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
                     editor.message_dialog('Something went wrong. You will need to sign up for an account to use Floobits.')
                     api.send_error({'message': 'No username or secret'})
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
-                    with open(p, 'wb') as fd:
+                    with open(p, 'w') as fd:
                         text = welcome_text % (G.USERNAME, self.proto.host)
-                        fd.write(text.encode('utf-8'))
+                        fd.write(text)
                     d = utils.get_persistent_data()
                     d['auto_generated_account'] = True
                     utils.update_persistent_data(d)
