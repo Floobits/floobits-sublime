@@ -27,8 +27,8 @@ def platform():
     return sublime.platform()
 
 
-def set_timeout(*args):
-    sublime.set_timeout(*args)
+def set_timeout(f, timeout):
+    sublime.set_timeout(f, timeout)
 
 
 def call_timeouts():

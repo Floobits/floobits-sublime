@@ -176,7 +176,7 @@ def get_legacy_projects():
             workspace_path = os.path.join(workspaces_path, workspace)
             workspace_path = os.path.realpath(workspace_path)
             try:
-                fd = open(os.path.join(workspace_path, '.floo'), 'rb')
+                fd = open(os.path.join(workspace_path, '.floo'), 'r')
                 url = json.loads(fd.read())['url']
                 fd.close()
             except Exception:
@@ -371,7 +371,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
             info = {}
             try:
-                floo_info = open(floo_file, 'rb').read().decode('utf-8')
+                floo_info = open(floo_file, 'r').read()
                 info = json.loads(floo_info)
             except (IOError, OSError):
                 pass
@@ -468,8 +468,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 'owner': self.owner,
             }
             if e.code == 400:
-                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-]', '-', workspace_name)
-                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-]. Choose another name:'
+                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
+                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
             elif e.code == 402:
                 try:
                     err_body = json.loads(err_body)

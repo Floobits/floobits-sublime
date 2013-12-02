@@ -170,20 +170,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         except Exception:
             return ''
 
-    def get_buf(self, buf_id, view=None):
-        req = {
-            'name': 'get_buf',
-            'id': buf_id
-        }
-        buf = self.bufs[buf_id]
-        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
-        if 'buf' in buf:
-            del buf['buf']
-        if view:
-            view.set_read_only(True)
-            view.set_status('Floobits', 'Floobits locked this file until it is synced.')
-        G.AGENT.send(req)
-
     def delete_buf(self, path):
         if not utils.is_shared(path):
             msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
@@ -209,7 +195,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
         }
-        G.AGENT.send(event)
+        self.send(event)
 
     def highlight(self, buf_id, region_key, username, ranges, summon, clone):
         buf_id = int(buf_id)
@@ -314,13 +300,11 @@ class SublimeConnection(floo_handler.FlooHandler):
         return win.focus_group(0)
 
     def clear_highlights(self, view):
-        if not G.AGENT:
-            return
         buf = get_buf(view)
         if not buf:
             return
         msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
-        for user_id, username in G.AGENT.workspace_info['users'].items():
+        for user_id, username in self.workspace_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     def summon(self, view):
