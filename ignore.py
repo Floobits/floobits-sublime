@@ -151,18 +151,18 @@ class Ignore(object):
             return self.parent.is_ignored(path)
         return False
 
-
-def is_ignored(abs_path):
-    if not utils.is_shared(abs_path):
+def is_ignored(current_path, abs_path=None):
+    abs_path = abs_path or current_path
+    if not utils.is_shared(current_path):
         return True
 
-    path = utils.to_rel_path(abs_path)  # Never throws ValueError because is_shared would return False
+    path = utils.to_rel_path(current_path)  # Never throws ValueError because is_shared would return False
     if path == ".":
         return False
 
-    base_path, file_name = os.path.split(abs_path)
+    base_path, file_name = os.path.split(current_path)
     ig = Ignore(None, base_path, recurse=False)
     if ig.is_ignored(abs_path):
         return True
 
-    return is_ignored(base_path)
+    return is_ignored(base_path, abs_path)
