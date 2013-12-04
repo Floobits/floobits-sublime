@@ -40,7 +40,7 @@ class FlooHandler(base.BaseHandler):
         self.paths_to_ids = {}
 
     def _on_highlight(self, data):
-        raise NotImplementedError("_on_highlight not implemented.")
+        raise NotImplementedError("_on_highlight not implemented")
 
     def ok_cancel_dialog(self, msg, cb=None):
         raise NotImplementedError("ok_cancel_dialog not implemented.")
@@ -112,7 +112,7 @@ class FlooHandler(base.BaseHandler):
         buf_id = data['id']
         buf = self.bufs[buf_id]
         if 'buf' not in buf:
-            msg.debug('buf %s not populated yet. not patching' % buf['path'])
+            msg.log('buf %s not populated yet. not patching' % buf['path'])
             return
 
         if buf['encoding'] == 'base64':
@@ -120,10 +120,10 @@ class FlooHandler(base.BaseHandler):
             return self.get_buf(buf_id, None)
 
         if len(data['patch']) == 0:
-            msg.log('wtf? no patches to apply. server is being stupid')
+            msg.debug('wtf? no patches to apply. server is being stupid')
             return
 
-        msg.log('patch is', data['patch'])
+        msg.debug('patch is', data['patch'])
         dmp_patches = DMP.patch_fromText(data['patch'])
         # TODO: run this in a separate thread
         old_text = buf['buf']
