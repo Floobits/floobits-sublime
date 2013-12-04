@@ -14,9 +14,9 @@ except (ImportError, ValueError):
     from floo.common.protocols import floo_proto
     from .. import api, shared as G, utils
 
-WELCOME_MSG = """Welcome %s!\n\nYou\'re all set to collaborate.
+WELCOME_MSG = """Welcome %s!\n\nYou are all set to collaborate.
 
-You may want to check out our docs at https://%s/help/plugins/#sublime-usage"""
+You may want to check out our docs at https://%s/help/plugins/"""
 
 
 class RequestCredentialsHandler(base.BaseHandler):
