@@ -13,10 +13,12 @@ except ImportError:
 try:
     from .. import editor
     from . import shared as G
+    from . import msg
     from .lib import DMP
     assert G and DMP
 except ImportError:
     import editor
+    import msg
     import shared as G
     from lib import DMP
 
@@ -244,15 +246,15 @@ def get_persistent_data(per_path=None):
     try:
         per = open(per_path, 'rb')
     except (IOError, OSError):
-        print('Failed to open %s. Recent workspace list will be empty.' % per_path)
+        msg.debug('Failed to open %s. Recent workspace list will be empty.' % per_path)
         return per_data
     try:
         data = per.read().decode('utf-8')
         persistent_data = json.loads(data)
     except Exception as e:
-        print('Failed to parse %s. Recent workspace list will be empty.' % per_path)
-        print(e)
-        print(data)
+        msg.debug('Failed to parse %s. Recent workspace list will be empty.' % per_path)
+        msg.debug(str(e))
+        msg.debug(data)
         return per_data
     if 'recent_workspaces' not in persistent_data:
         persistent_data['recent_workspaces'] = []

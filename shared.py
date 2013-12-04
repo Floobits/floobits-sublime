@@ -18,7 +18,7 @@ BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 
 
 # Shared globals
-DEFAULT_HOST = 'floobits.com'
+DEFAULT_HOST = 'staging.floobits.com'
 DEFAULT_PORT = 3448
 SECURE = True
 

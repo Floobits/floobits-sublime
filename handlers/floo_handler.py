@@ -40,13 +40,13 @@ class FlooHandler(base.BaseHandler):
         self.paths_to_ids = {}
 
     def _on_highlight(self, data):
-        raise NotImplementedError()
+        raise NotImplementedError("_on_highlight not implemented.")
 
     def ok_cancel_dialog(self, msg, cb=None):
-        raise NotImplementedError()
+        raise NotImplementedError("ok_cancel_dialog not implemented.")
 
     def get_view(self, buf_id):
-        raise NotImplementedError()
+        raise NotImplementedError("get_view not implemented")
 
     def get_username_by_id(self, user_id):
         try:
@@ -112,7 +112,7 @@ class FlooHandler(base.BaseHandler):
         buf_id = data['id']
         buf = self.bufs[buf_id]
         if 'buf' not in buf:
-            msg.debug('buf %s not populated yet. not patching' % buf['path'])
+            msg.log('buf %s not populated yet. not patching' % buf['path'])
             return
 
         if buf['encoding'] == 'base64':
@@ -120,10 +120,10 @@ class FlooHandler(base.BaseHandler):
             return self.get_buf(buf_id, None)
 
         if len(data['patch']) == 0:
-            msg.error('wtf? no patches to apply. server is being stupid')
+            msg.log('wtf? no patches to apply. server is being stupid')
             return
 
-        msg.debug('patch is', data['patch'])
+        msg.log('patch is', data['patch'])
         dmp_patches = DMP.patch_fromText(data['patch'])
         # TODO: run this in a separate thread
         old_text = buf['buf']
@@ -139,7 +139,7 @@ class FlooHandler(base.BaseHandler):
                 buf['buf'] = patch.current
                 buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
                 buf['forced_patch'] = True
-                msg.debug('forcing patch for %s' % buf['path'])
+                msg.log('forcing patch for %s' % buf['path'])
                 self.send(patch.to_json())
                 old_text = view_text
             else:
