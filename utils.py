@@ -3,6 +3,7 @@ import json
 import re
 import hashlib
 import webbrowser
+
 from functools import wraps
 
 try:
