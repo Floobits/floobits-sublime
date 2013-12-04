@@ -34,7 +34,6 @@ class BaseHandler(event_emitter.EventEmitter):
         self.proto.put(*args, **kwargs)
 
     def on_data(self, name, data):
-        msg.log("got data %s" % name)
         handler = getattr(self, "_on_%s" % name, None)
         if handler:
             return handler(data)

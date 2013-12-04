@@ -55,7 +55,7 @@ class CreateAccountHandler(base.BaseHandler):
                     G.AUTO_GENERATED_ACCOUNT = True
                     editor.open_file(p)
             except Exception as e:
-                msg.log(traceback.format_exc())
+                msg.debug(traceback.format_exc())
                 msg.error(str(e))
             try:
                 d = utils.get_persistent_data()
