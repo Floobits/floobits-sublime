@@ -2,6 +2,7 @@ import os
 import json
 import re
 import hashlib
+import webbrowser
 from functools import wraps
 
 try:
@@ -366,3 +367,21 @@ def inlined_callbacks(f):
     def wrap(*args, **kwargs):
         return _unwind_generator(f(*args, **kwargs))
     return wrap
+
+
+def has_browser():
+    valid_browsers = [
+        "MacOSX", #Default mac browser.
+        "Chrome",
+        "Chromium",
+        "Firefox",
+        "Safari",
+        "Opera"
+    ]
+    for browser in valid_browsers:
+        try:
+            webbrowser.get(browser)
+            return True
+        except Exception as e:
+            continue
+    return False
