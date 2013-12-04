@@ -37,6 +37,10 @@ def call_timeouts():
     return
 
 
+def message_dialog(msg):
+    sublime.message_dialog(msg)
+
+
 def open_file(file):
     win = sublime.active_window()
     if win:
