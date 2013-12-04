@@ -112,7 +112,7 @@ class FlooHandler(base.BaseHandler):
         buf_id = data['id']
         buf = self.bufs[buf_id]
         if 'buf' not in buf:
-            msg.log('buf %s not populated yet. not patching' % buf['path'])
+            msg.debug('buf %s not populated yet. not patching' % buf['path'])
             return
 
         if buf['encoding'] == 'base64':
