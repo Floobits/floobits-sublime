@@ -122,7 +122,6 @@ cancelled_timeouts = set()
 timeout_ids = set()
 
 
-
 def set_timeout(func, timeout, *args, **kwargs):
     timeout_id = set_timeout._top_timeout_id
     if timeout_id > 100000:
@@ -372,7 +371,7 @@ def inlined_callbacks(f):
 
 def has_browser():
     valid_browsers = [
-        "MacOSX", #Default mac browser.
+        "MacOSX",  # Default mac browser.
         "Chrome",
         "Chromium",
         "Firefox",
@@ -383,6 +382,6 @@ def has_browser():
         try:
             webbrowser.get(browser)
             return True
-        except Exception as e:
+        except Exception:
             continue
     return False
