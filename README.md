@@ -39,17 +39,18 @@ The Python included with the Windows version of Sublime Text 2 does not have the
 ## Linux
 On Linux, Sublime Text 2 and 3 ship with a broken SSL module. This is a known bug. We try to work around it, but we can't link against every version of OpenSSL. If you see the error, "Your version of Sublime Text can't  because it has a broken SSL module." you can try building your own SSL module.
 
-1. Download the Python source code. For Sublime Text 3, you need [Python 3.3.2](http://python.org/ftp/python/3.3.2/Python-3.3.2.tar.bz2). For Sublime Text 2, you need [Python 2.6.8](http://www.python.org/ftp/python/2.6.8/Python-2.6.8.tar.bz2).
+1. Download the Python source code. For Sublime Text 3, you need [Python 3.3.2](http://python.org/ftp/python/3.3.2/Python-3.3.2.tar.bz2). For Sublime Text 2, you need [Python 2.6.8](http://www.python.org/ftp/python/2.6.8/Python-2.6.8.tar.bz2).  While you are at it, verify you have the openssl source files you need (on Debian, `sudo apt-get instal libssl-dev` might do the trick).
+ 
 1. Extract and build the source code:
 
-    tar xjf Python-*.tar.bz2
-    cd Python-*/
-    ./configure && make
+        tar xjf Python-*.tar.bz2
+        cd Python-*/
+        ./configure && make
 
-1. Copy the ssl shared object to your Floobits plugin (you may need to tweak these paths)
+1. Copy the ssl shared object to your Floobits plugin.  You may need to tweak these paths.  If you have installed the Floobits zip package into `~/.config/sublime-text-3/Installed\ Packages/Floobits.sublime-package` (the default behavior of Package Control) then you will need to unzip it or install the plugin source from github.  As of this writing, Sublime Text 3's default behavior ignores unzipped packages in `Installed\ Packages`, so you will need to unzip/install into `Packages` instead (despite the fact that [this directory is supposed to be for packages that ship with Sublime Text](http://www.sublimetext.com/docs/3/packages.html)).
 
-	mkdir ~/.config/sublime-text-3/packages/Floobits/lib/linux/custom/
-    cp build/lib.linux*/_ssl.cpython-*m.so ~/.config/sublime-text-3/packages/Floobits/lib/linux/custom/_ssl.so
+        mkdir ~/.config/sublime-text-3/Packages/Floobits/lib/custom/
+        cp build/lib.linux\*/\_ssl.cpython-\*m.so ~/.config/sublime-text-3/Packages/Floobits/lib/custom/\_ssl.so
 
 1. Verify that the shared object works: Restart Sublime Text. Open the Sublime console (ctrl + `) and look for "Hooray! ssl_custom.so is a winner!"
 
