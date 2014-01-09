@@ -20,6 +20,12 @@ class _Reactor(object):
         self._protos = []
         self._handlers = []
 
+    def spawn(self, factory, *args):
+        proto = factory.build_protocol(*args)
+        self._protos.append(proto)
+        # proto.connect(conn)
+        self._handlers.append(factory)
+
     def connect(self, factory, host, port, secure, conn=None):
         proto = factory.build_protocol(host, port, secure)
         self._protos.append(proto)
@@ -82,7 +88,13 @@ class _Reactor(object):
             if not fileno:
                 continue
             fd.fd_set(readable, writeable, errorable)
-            fd_map[fd.fileno()] = fd
+            try:
+                isFileno = int(fileno)
+            except:
+                for f in fileno:
+                    fd_map[isFileno] = fd
+            else:
+                fd_map[fileno] = fd
 
         if not readable and not writeable:
             return

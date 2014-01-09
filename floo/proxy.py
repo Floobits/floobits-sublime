@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import sys
 import platform
+import subprocess
 from collections import defaultdict
 import time
 
@@ -103,6 +104,7 @@ except (ImportError, ValueError):
 eventStream = event_emitter.EventEmitter()
 eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x))
 eventStream.on('from_floobits', lambda x: msg.log("from_floobits: " + x))
+
 #KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
 class RemoteProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''

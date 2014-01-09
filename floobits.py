@@ -528,6 +528,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW = workspace_window
             cb()
 
+        def create_chat_view(cb):
+            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                msgs_fd.write('')
+            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+
         def truncate_chat_view(chat_view, cb):
             if chat_view:
                 chat_view.set_read_only(False)
@@ -535,10 +540,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 chat_view.set_read_only(True)
             cb()
 
-        def create_chat_view(cb):
-            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
-                msgs_fd.write('')
-            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+        def open_workspace_window(cb):
+            if PY2:
+                open_workspace_window2(cb)
+            else:
+                open_workspace_window3(cb)
 
         def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
@@ -576,12 +582,25 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
             create_chat_view(cb)
 
-        def open_workspace_window(cb):
-            if PY2:
-                open_workspace_window2(cb)
-            else:
-                open_workspace_window3(cb)
+        def make_dir(d):
+            d = os.path.realpath(os.path.expanduser(d))
 
+            if not os.path.isdir(d):
+                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
+                if not make_dir:
+                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
+
+            G.PROJECT_PATH = d
+            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+            open_workspace_window(lambda: run_agent(**result))
+
+        def proxy():
+            pass
+            
         def run_agent(owner, workspace, host, port, secure):
             global on_room_info_waterfall
             if G.AGENT:
@@ -598,22 +617,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 print(e)
                 tb = traceback.format_exc()
                 print(tb)
-
-        def make_dir(d):
-            d = os.path.realpath(os.path.expanduser(d))
-
-            if not os.path.isdir(d):
-                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
-                if not make_dir:
-                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
-
-            G.PROJECT_PATH = d
-            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-            open_workspace_window(lambda: run_agent(**result))
 
         try:
             result = utils.parse_url(workspace_url)

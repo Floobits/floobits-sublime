@@ -19,19 +19,19 @@ try:
     from . import editor
     from .common import msg, shared as G, utils
     from .view import View
-    from .common.handlers import floo_handler
+    from .common.handlers import floo_handler, base
+    from .common.protocols import base as baseproto
     from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group
     assert G and msg and utils
 except ImportError:
     from floo import editor
     from common import msg, shared as G, utils
-    from common.handlers import floo_handler
+    from common.handlers import floo_handler, base
+    from common.protocols import base as baseproto
     from view import View
     from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
 
-
 class SublimeConnection(floo_handler.FlooHandler):
-
     def tick(self):
         reported = set()
         while self.views_changed:
