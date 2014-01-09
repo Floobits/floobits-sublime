@@ -16,9 +16,9 @@ except (ImportError, ValueError):
     import base
 
 class SpawnProto(base.BaseProtocol):
-    def __init__(self):
+    def __init__(self, args):
         self._q = collections.deque()
-        self.proc = subprocess.Popen(['python', '-m', 'proxy.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def __len__(self):
         return len(self._q)

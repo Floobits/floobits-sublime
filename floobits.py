@@ -113,6 +113,7 @@ try:
     from .floo.listener import Listener
     from .floo.sublime_connection import SublimeConnection
     from .floo.common import api, ignore, reactor, msg, shared as G, utils
+    from .floo.common.handlers.spawn import Spawn
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
     assert HTTPError and api and G and ignore and msg and utils
@@ -121,6 +122,7 @@ except (ImportError, ValueError):
     from floo import sublime_utils as sutils
     from floo.listener import Listener
     from floo.common import api, ignore, reactor, msg, shared as G, utils
+    from floo.common.handlers.spawn import Spawn
     from floo.common.handlers.account import CreateAccountHandler
     from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.sublime_connection import SublimeConnection
@@ -599,8 +601,9 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             open_workspace_window(lambda: run_agent(**result))
 
         def proxy():
-            pass
-            
+            proc = Spawn()
+            reactor.spawn(proc, 'python', '-m', 'proxy.py')
+
         def run_agent(owner, workspace, host, port, secure):
             global on_room_info_waterfall
             if G.AGENT:
