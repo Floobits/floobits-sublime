@@ -40,13 +40,13 @@ class FlooHandler(base.BaseHandler):
         self.paths_to_ids = {}
 
     def _on_highlight(self, data):
-        raise NotImplementedError()
+        raise NotImplementedError("_on_highlight not implemented")
 
     def ok_cancel_dialog(self, msg, cb=None):
-        raise NotImplementedError()
+        raise NotImplementedError("ok_cancel_dialog not implemented.")
 
     def get_view(self, buf_id):
-        raise NotImplementedError()
+        raise NotImplementedError("get_view not implemented")
 
     def get_username_by_id(self, user_id):
         try:
@@ -120,7 +120,7 @@ class FlooHandler(base.BaseHandler):
             return self.get_buf(buf_id, None)
 
         if len(data['patch']) == 0:
-            msg.error('wtf? no patches to apply. server is being stupid')
+            msg.debug('wtf? no patches to apply. server is being stupid')
             return
 
         msg.debug('patch is', data['patch'])
@@ -173,6 +173,7 @@ class FlooHandler(base.BaseHandler):
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
+            del buf['timeout_id']
 
         if not clean_patch:
             msg.log('Couldn\'t patch %s cleanly.' % buf['path'])
@@ -383,6 +384,8 @@ class FlooHandler(base.BaseHandler):
             view = self.get_view(data['id'])
             if view:
                 self.save_view(view)
+            elif 'buf' in buf:
+                utils.save_buf(buf)
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 

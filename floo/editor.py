@@ -2,6 +2,8 @@ import sys
 
 import sublime
 
+welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
+You must run \'Floobits - Complete Sign Up\' in the command palette before you can login to floobits.com.'
 
 def name():
     if sys.version_info < (3, 0):
@@ -27,12 +29,16 @@ def platform():
     return sublime.platform()
 
 
-def set_timeout(*args):
-    sublime.set_timeout(*args)
+def set_timeout(f, timeout):
+    sublime.set_timeout(f, timeout)
 
 
 def call_timeouts():
-    pass
+    return
+
+
+def message_dialog(msg):
+    sublime.message_dialog(msg)
 
 
 def open_file(file):

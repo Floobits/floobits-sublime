@@ -18,25 +18,25 @@ class BaseProtocol(event_emitter.EventEmitter):
         return 0
 
     def fileno(self):
-        raise NotImplementedError()
+        raise NotImplementedError("fileno not implemented.")
 
     def fd_set(self, readable, writeable, errorable):
-        raise NotImplementedError()
+        raise NotImplementedError("fd_set not implemented.")
 
     def cleanup(self):
-        raise NotImplementedError()
+        raise NotImplementedError("clean up not implemented.")
 
     def write(self):
-        raise NotImplementedError()
+        raise NotImplementedError("write not implemented.")
 
     def read(self):
-        raise NotImplementedError()
+        raise NotImplementedError("read not implemented.")
 
     def error(self):
-        raise NotImplementedError()
+        raise NotImplementedError("error not implemented.")
 
     def reconnect(self):
-        raise NotImplementedError()
+        raise NotImplementedError("reconnect not implemented.")
 
     def stop(self):
         self.cleanup()

@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import getpass
 
 try:
@@ -13,9 +14,6 @@ except (ImportError, ValueError):
     from floo import editor
     from floo.common.protocols import floo_proto
     from .. import msg, api, shared as G, utils
-
-welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
-You must run \'Floobits - Complete Sign Up\' in the command palette before you can login to floobits.com.'
 
 
 class CreateAccountHandler(base.BaseHandler):
@@ -40,24 +38,25 @@ class CreateAccountHandler(base.BaseHandler):
             del data['name']
             try:
                 floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
-                with open(G.FLOORC_PATH, 'wb') as floorc_fd:
-                    floorc_fd.write(floorc.encode('utf-8'))
+                with open(G.FLOORC_PATH, 'w') as floorc_fd:
+                    floorc_fd.write(floorc)
                 utils.reload_settings()
                 if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
                     editor.message_dialog('Something went wrong. You will need to sign up for an account to use Floobits.')
                     api.send_error({'message': 'No username or secret'})
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
-                    with open(p, 'wb') as fd:
-                        text = welcome_text % (G.USERNAME, self.proto.host)
-                        fd.write(text.encode('utf-8'))
+                    with open(p, 'w') as fd:
+                        text = editor.welcome_text % (G.USERNAME, self.proto.host)
+                        fd.write(text)
                     d = utils.get_persistent_data()
                     d['auto_generated_account'] = True
                     utils.update_persistent_data(d)
                     G.AUTO_GENERATED_ACCOUNT = True
                     editor.open_file(p)
             except Exception as e:
-                msg.error(e)
+                msg.debug(traceback.format_exc())
+                msg.error(str(e))
             try:
                 d = utils.get_persistent_data()
                 d['disable_account_creation'] = True
