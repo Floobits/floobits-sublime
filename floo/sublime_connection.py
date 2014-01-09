@@ -31,6 +31,7 @@ except ImportError:
     from view import View
     from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
 
+
 class SublimeConnection(floo_handler.FlooHandler):
     def tick(self):
         reported = set()

@@ -16,6 +16,7 @@ top_timeout_id = 0
 cancelled_timeouts = set()
 calling_timeouts = False
 
+
 def name():
     if sys.version_info < (3, 0):
         py_version = 2
@@ -36,7 +37,7 @@ def status_message(msg):
     print(msg)
 
 
-def platform():
+def _platform():
     return platform.platform()
 
 
@@ -79,6 +80,7 @@ def call_timeouts():
         del timeouts[k]
     calling_timeouts = False
 
+
 def open_file(file):
     pass
 
@@ -86,7 +88,7 @@ editor.name = name
 editor.ok_cancel_dialog = ok_cancel_dialog
 editor.error_message = error_message
 editor.status_message = status_message
-editor.platform = platform
+editor.platform = _platform
 editor.set_timeout = set_timeout
 editor.cancel_timeout = cancel_timeout
 editor.call_timeouts = call_timeouts
@@ -105,7 +107,8 @@ eventStream = event_emitter.EventEmitter()
 eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x))
 eventStream.on('from_floobits', lambda x: msg.log("from_floobits: " + x))
 
-#KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
+
+# KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
 class RemoteProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
     def __init__(self, *args, **kwargs):
@@ -114,6 +117,7 @@ class RemoteProtocol(floo_proto.FlooProtocol):
 
     def _handle(self, data):
         eventStream.emit('remote', data)
+
 
 class FlooConn(base.BaseHandler):
     PROTOCOL = RemoteProtocol
@@ -127,6 +131,7 @@ class FlooConn(base.BaseHandler):
     def on_connect(self):
         msg.log("have a remote conn!")
         eventStream.emit("remote_conn")
+
 
 class LocalProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
@@ -164,6 +169,7 @@ class LocalProtocol(floo_proto.FlooProtocol):
         else:
             self.to_proxy.append(data)
 
+
 class Server(base.BaseHandler):
     PROTOCOL = LocalProtocol
 
@@ -171,6 +177,7 @@ class Server(base.BaseHandler):
         msg.log("local conn!")
         self.conn = FlooConn(self)
         reactor.reactor.connect(self.conn, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+
 
 def main():
     msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['DEBUG'])

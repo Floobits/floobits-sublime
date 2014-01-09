@@ -15,6 +15,7 @@ BASE_FLOORC = '''# Floobits config
 
 '''
 
+
 class BaseHandler(event_emitter.EventEmitter):
     BASE_FLOORC = BASE_FLOORC
     PROTOCOL = None
