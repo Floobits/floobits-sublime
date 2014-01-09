@@ -151,7 +151,6 @@ class LocalProtocol(floo_proto.FlooProtocol):
         self.cleanup()
 
     def on_remote_conn(self):
-
         self.remote_conn = True
         while self.to_proxy:
             item = self.to_proxy.pop(0)
@@ -172,15 +171,7 @@ class Server(base.BaseHandler):
         reactor.reactor.connect(self.conn, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
 
 def main():
-    G.__VERSION__ = '0.03'
-    G.__PLUGIN_VERSION__ = '1.0'
-    utils.reload_settings()
-
-    floo_log_level = 'msg'
-    if G.DEBUG:
-        floo_log_level = 'debug'
-    msg.LOG_LEVEL = msg.LOG_LEVELS.get(floo_log_level.upper(), msg.LOG_LEVELS['MSG'])
-
+    msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['DEBUG'])
     proxy = Server()
     _, port = reactor.reactor.listen(proxy)
 

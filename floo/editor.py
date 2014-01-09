@@ -1,6 +1,9 @@
 import sys
 
-import sublime
+try:
+    import sublime
+except:
+    pass
 
 welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/#sublime-usage. \
 You must run \'Floobits - Complete Sign Up\' in the command palette before you can login to floobits.com.'
