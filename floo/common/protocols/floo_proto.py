@@ -76,7 +76,7 @@ class FlooProtocol(base.BaseProtocol):
         args = ('python', '-m', 'floo.proxy', self.host, str(self.port), str(int(self.secure)))
 
         self._proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        line = self._proc.stdout.readline()
+        line = self._proc.stdout.readline().decode('utf-8')
         print("Read line from proxy: %s" % line)
         match = re.search('Now listening on <(\d+)>', line)
         if not match:
