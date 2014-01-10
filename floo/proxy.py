@@ -110,12 +110,18 @@ eventStream.on('from_floobits', lambda x: msg.log("from_floobits: " + x))
 # KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
 class RemoteProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
+    MAX_RETRIES = -1
+
     def __init__(self, *args, **kwargs):
         super(RemoteProtocol, self).__init__(*args, **kwargs)
         eventStream.on('to_floobits', self._q.append)
 
     def _handle(self, data):
-        eventStream.emit('remote', data)
+        eventStream.emit('from_floobits', data)
+
+    def reconnect(self):
+        msg.error("Remote connection died")
+        sys.exit(1)
 
 
 class FlooConn(base.BaseHandler):
@@ -150,7 +156,7 @@ class LocalProtocol(floo_proto.FlooProtocol):
         self.connected = True
 
     def reconnect(self):
-        msg.error("client connection died")
+        msg.error("Client connection died")
         sys.exit(1)
 
     def stop(self):
@@ -181,7 +187,7 @@ class Server(base.BaseHandler):
 def main():
     msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['DEBUG'])
     proxy = Server()
-    _, port = reactor.reactor.listen(proxy, port=9999)
+    _, port = reactor.reactor.listen(proxy)
 
     def on_ready():
         print('Now listening on <%s>' % port)

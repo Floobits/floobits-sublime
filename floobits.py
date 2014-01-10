@@ -538,20 +538,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
             create_chat_view(cb)
 
-        def proxy(owner, workspace, host, port, secure):
-            print('1')
-            proc = Spawn()
-            print('2')
-            # proc.on("port", lambda p: run_agent(owner, workspace, 'localhost', 9999, False))
-            run_agent(owner, workspace, 'localhost', 9999, False)
-            try:
-                # reactor.spawn(proc, ('python', '-m', 'floo.proxy', host, str(port), str(int(secure))))
-                pass
-            except Exception as e:
-                message = "Error spawning SSL proxy: %s" % str(e)
-                msg.error(message)
-                sublime.error_message(message)
-
         def make_dir(d):
             d = os.path.realpath(os.path.expanduser(d))
 
@@ -566,7 +552,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
             G.PROJECT_PATH = d
             add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-            open_workspace_window(lambda: proxy(**result))
+            open_workspace_window(lambda: run_agent(**result))
 
         def run_agent(owner, workspace, host, port, secure):
             global on_room_info_waterfall
@@ -606,7 +592,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
             return self.window.show_input_panel('Save workspace in directory:', default_dir, make_dir, None, None)
 
-        open_workspace_window(lambda: proxy(**result))
+        open_workspace_window(lambda: run_agent(**result))
 
 
 class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
