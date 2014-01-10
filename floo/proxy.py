@@ -103,7 +103,7 @@ except (ImportError, ValueError):
     from .common.protocols import floo_proto
 
 eventStream = event_emitter.EventEmitter()
-eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x))
+eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x) and sys.stdout.flush())
 eventStream.on('from_floobits', lambda x: msg.log("from_floobits: " + x))
 
 
