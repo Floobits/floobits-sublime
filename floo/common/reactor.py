@@ -20,12 +20,6 @@ class _Reactor(object):
         self._protos = []
         self._handlers = []
 
-    def spawn(self, factory, *args):
-        proto = factory.build_protocol(*args)
-        self._protos.append(proto)
-        # proto.connect(conn)
-        self._handlers.append(factory)
-
     def connect(self, factory, host, port, secure, conn=None):
         proto = factory.build_protocol(host, port, secure)
         self._protos.append(proto)
