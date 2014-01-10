@@ -382,6 +382,6 @@ def has_browser():
         try:
             webbrowser.get(browser)
             return True
-        except Exception as e:
+        except Exception:
             continue
     return False
