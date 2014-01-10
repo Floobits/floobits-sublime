@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import sys
 import platform
-import subprocess
 from collections import defaultdict
 import time
 
@@ -182,10 +181,11 @@ class Server(base.BaseHandler):
 def main():
     msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['DEBUG'])
     proxy = Server()
-    _, port = reactor.reactor.listen(proxy)
+    _, port = reactor.reactor.listen(proxy, port=9999)
 
     def on_ready():
         print('Now listening on <%s>' % port)
+        sys.stdout.flush()
 
     utils.set_timeout(on_ready, 100)
 

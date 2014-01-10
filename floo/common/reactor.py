@@ -88,13 +88,7 @@ class _Reactor(object):
             if not fileno:
                 continue
             fd.fd_set(readable, writeable, errorable)
-            try:
-                isFileno = int(fileno)
-            except:
-                for f in fileno:
-                    fd_map[isFileno] = fd
-            else:
-                fd_map[fileno] = fd
+            fd_map[fileno] = fd
 
         if not readable and not writeable:
             return
