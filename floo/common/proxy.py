@@ -10,7 +10,9 @@ try:
     from .handlers import base
     from .protocols import floo_proto
 except (ImportError, ValueError):
-    import msg, shared as G, reactor
+    import msg
+    import shared as G
+    import reactor
     from handlers import base
     from protocols import floo_proto
 
@@ -20,6 +22,7 @@ class ProxiedProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
     def _handle(self, data):
         self.proxy(data)
+
 
 class FlooConn(base.BaseHandler):
     PROTOCOL = ProxiedProtocol
@@ -34,6 +37,7 @@ class FlooConn(base.BaseHandler):
     def on_connect(self):
         msg.log("have an conn!")
         self.proto.proxy = self.proxy
+
 
 class ProxyProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
@@ -52,12 +56,14 @@ class ProxyProtocol(floo_proto.FlooProtocol):
     def stop(self):
         self.cleanup()
 
+
 class ProxyServer(base.BaseHandler):
     PROTOCOL = ProxyProtocol
 
     def on_connect(self):
         msg.log("have an conn!")
         reactor.reactor.connect(FlooConn(self), G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+
 
 def main():
     G.__VERSION__ = '0.03'
