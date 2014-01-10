@@ -1,4 +1,3 @@
-import fcntl
 import sys
 import subprocess
 import re
@@ -15,12 +14,6 @@ try:
     assert ssl
 except ImportError:
     ssl = False
-
-try:
-    import sublime
-    ssl = False
-except (ImportError, ValueError):
-    pass
 
 try:
     from ... import editor
@@ -46,61 +39,6 @@ PY2 = sys.version_info < (3, 0)
 def sock_debug(*args, **kwargs):
     if G.SOCK_DEBUG:
         msg.log(*args, **kwargs)
-
-
-class Wrapper(base.BaseProtocol):
-    def __init__(self, proc):
-        try:
-            from .. import reactor
-        except (ImportError, ValueError):
-            from floo.common import reactor
-
-        self.proc = proc
-        fl = fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_GETFL)
-        fcntl.fcntl(self.proc.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
-        self._fileno = self.proc.stdout.fileno()
-
-        self.reactor = reactor.reactor
-        self.reactor._protos.append(self)
-
-    def fileno(self):
-        return self._fileno
-
-    def fd_set(self, readable, writeable, errorable):
-        readable.append(self._fileno)
-        errorable.append(self._fileno)
-
-    def cleanup(self):
-        self.reactor._protos.remove(self)
-        self.proc.kill()
-        msg.error("called cleanup?!")
-
-    def read(self):
-        buf = ''
-        print('reading')
-        while True:
-            try:
-                d = os.read(self.proc.stdout.fileno(), 4096)
-                if not d or d == '':
-                    break
-                buf += d
-            except (IOError, OSError) as e:
-                # if e.errno == 35:
-                #     continue
-                if buf:
-                    break
-        if buf:
-            msg.log("from proxy: %s" % buf)
-        return buf
-
-    def error(self):
-        self.cleanup()
-
-    def reconnect(self):
-        msg.log('called reconnect')
-
-    def stop(self):
-        self.cleanup()
 
 
 class FlooProtocol(base.BaseProtocol):
@@ -134,14 +72,12 @@ class FlooProtocol(base.BaseProtocol):
             self._secure = False
 
     def start_proxy(self):
+        # from threading import Thread
         args = ('python', '-m', 'floo.proxy', self.host, str(self.port), str(int(self.secure)))
-        self._proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        # line = self._proc.stdout.readline()
-        self.wrapper = Wrapper(self._proc)
-        line = ''
-        # line = self.wrapper.read()
-        line += self.wrapper.read()
-        print("read line: %s" % line)
+
+        self._proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        line = self._proc.stdout.readline()
+        print("Read line from proxy: %s" % line)
         match = re.search('Now listening on <(\d+)>', line)
         if not match:
             raise Exception("Couldn't find port in line from proxy: %s" % line)

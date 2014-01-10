@@ -179,13 +179,12 @@ class Server(base.BaseHandler):
     PROTOCOL = LocalProtocol
 
     def on_connect(self):
-        msg.log("local conn!")
         self.conn = FlooConn(self)
         reactor.reactor.connect(self.conn, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
 
 
 def main():
-    msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['DEBUG'])
+    msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['ERROR'])
     proxy = Server()
     _, port = reactor.reactor.listen(proxy)
 
