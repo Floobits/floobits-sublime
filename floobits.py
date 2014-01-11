@@ -8,7 +8,6 @@ import sys
 import os
 import re
 import hashlib
-import imp
 import json
 import uuid
 import binascii
@@ -35,27 +34,15 @@ elif sublime.platform() == 'osx':
     except Exception as e:
         print(e)
 
-
-try:
-    import ssl
-    assert ssl
-except ImportError:
-    ssl = False
-
-
 try:
     import urllib
-    urllib = imp.reload(urllib)
     from urllib import request
-    request = imp.reload(request)
     Request = request.Request
     urlopen = request.urlopen
     HTTPError = urllib.error.HTTPError
     URLError = urllib.error.URLError
-    assert Request and urlopen and HTTPError and URLError
-except ImportError:
+except (AttributeError, ImportError, ValueError):
     import urllib2
-    urllib2 = imp.reload(urllib2)
     Request = urllib2.Request
     urlopen = urllib2.urlopen
     HTTPError = urllib2.HTTPError
@@ -291,9 +278,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
-            if ssl is False:
-                # No ssl module (broken Sublime Text). Just behave as if the workspace exists.
-                return True
             try:
                 api.get_workspace_by_url(workspace_url)
             except HTTPError:
@@ -364,9 +348,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'owner': owner[0],
             })
 
-        if ssl is False:
-            return on_done([G.USERNAME])
-
         orgs = api.get_orgs_can_admin()
         orgs = json.loads(orgs.read().decode('utf-8'))
         if len(orgs) == 0:
@@ -388,8 +369,6 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
             return
-        if ssl is False:
-            return ssl_error_msg('create workspaces')
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name

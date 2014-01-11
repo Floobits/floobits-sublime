@@ -2,9 +2,11 @@
 
 from __future__ import print_function
 
-import sys
-import platform
 from collections import defaultdict
+import json
+import optparse
+import platform
+import sys
 import time
 
 import editor
@@ -94,13 +96,22 @@ editor.call_timeouts = call_timeouts
 editor.open_file = open_file
 
 try:
-    from common import msg, shared as G, utils, reactor, event_emitter
+    from common import api, msg, shared as G, utils, reactor, event_emitter
     from common.handlers import base
     from common.protocols import floo_proto
 except (ImportError, ValueError):
-    from .common import msg, shared as G, reactor, event_emitter
+    from .common import api, msg, shared as G, reactor, event_emitter
     from .common.handlers import base
     from .common.protocols import floo_proto
+
+
+def editor_log(msg):
+    print(msg)
+    sys.stdout.flush()
+
+msg.editor_log = editor_log
+
+utils.reload_settings()
 
 eventStream = event_emitter.EventEmitter()
 eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x) and sys.stdout.flush())
@@ -183,10 +194,53 @@ class Server(base.BaseHandler):
         reactor.reactor.connect(self.conn, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
 
 
+try:
+    import urllib
+    HTTPError = urllib.error.HTTPError
+    URLError = urllib.error.URLError
+except (AttributeError, ImportError, ValueError):
+    import urllib2
+    HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
+
+
 def main():
     msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['ERROR'])
+
+    usage = "Figure it out :P"
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option(
+        "--url",
+        dest="url",
+        default=None
+    )
+    parser.add_option(
+        "--data",
+        dest="data",
+        default=None
+    )
+
+    options, args = parser.parse_args()
+
+    if options.url:
+        data = None
+        err = False
+        if options.data:
+            data = json.parse(options.data)
+        try:
+            r = api.hit_url(options.url, data)
+        except HTTPError as e:
+            r = e
+        except URLError as e:
+            r = e
+            err = True
+
+        print(r.code)
+        print(r.read())
+        sys.exit(err)
+
     proxy = Server()
-    _, port = reactor.reactor.listen(proxy)
+    _, port = reactor.reactor.listen(proxy, port=int(G.PROXY_PORT))
 
     def on_ready():
         print('Now listening on <%s>' % port)

@@ -1,17 +1,33 @@
 import sys
 import base64
 import json
+import subprocess
 
 try:
-    from urllib.request import Request, urlopen
-    assert Request and urlopen
+    import ssl
 except ImportError:
+    ssl = False
+
+
+try:
+    str_instances = (str, basestring)
+except Exception:
+    str_instances = (str, )
+
+try:
+    import urllib
+    from urllib.request import Request, urlopen
+    HTTPError = urllib.error.HTTPError
+    URLError = urllib.error.URLError
+except (AttributeError, ImportError, ValueError):
+    import urllib2
     from urllib2 import Request, urlopen
+    HTTPError = urllib2.HTTPError
+    URLError = urllib2.URLError
 
 try:
     from .. import editor
     from . import shared as G, utils
-    assert G and utils
 except ImportError:
     import editor
     import shared as G
@@ -19,21 +35,61 @@ except ImportError:
 
 
 def get_basic_auth():
-    # TODO: use api_key if it exists
-    basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
+    secret = G.API_KEY or G.SECRET
+    basic_auth = ('%s:%s' % (G.USERNAME, secret)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
 
-def api_request(url, data=None):
+class APIResponse():
+    def __init__(self, r):
+        print("r: %s", r)
+        if isinstance(r, bytes):
+            r = r.decode('utf-8')
+        if isinstance(r, str_instances):
+            lines = r.split('\n')
+            self.code = int(lines[0])
+            self.body = json.loads('\n'.join(lines[1:]))
+        else:
+            self.code = r.code
+            self.body = json.loads(r.read())
+
+
+def proxy_api_request(url, data=None):
+    args = ('python', '-m', 'floo.proxy', '--url', url)
+    proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (stdout, stderr) = proc.communicate()
+    if stderr:
+        raise URLError(stderr)
+
+    if proc.poll() != 0:
+        raise URLError(stdout)
+    r = APIResponse(stdout)
+    return r
+
+
+def hit_url(url, data=None):
     if data:
         data = json.dumps(data).encode('utf-8')
     r = Request(url, data=data)
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
-    r.add_header('User-Agent', 'Floobits Plugin %s %s %s py-%s.%s' % (editor.name(), G.__PLUGIN_VERSION__, editor.platform(), sys.version_info[0], sys.version_info[1]))
+    r.add_header('User-Agent', 'Floobits Plugin %s %s %s py-%s.%s' % (
+        editor.name(),
+        G.__PLUGIN_VERSION__,
+        editor.platform(),
+        sys.version_info[0],
+        sys.version_info[1]
+    ))
     return urlopen(r, timeout=5)
+
+
+def api_request(url, data=None):
+    if ssl is False:
+        return proxy_api_request(url, data)
+    r = hit_url(url, data)
+    return APIResponse(r)
 
 
 def create_workspace(post_data):

@@ -72,16 +72,50 @@ class FlooProtocol(base.BaseProtocol):
             self._secure = False
 
     def start_proxy(self):
+        if G.PROXY_PORT:
+            self._port = int(G.PROXY_PORT)
+            msg.log("SSL proxy in debug mode: Port is set to %s", self._port)
+            return
         # from threading import Thread
         args = ('python', '-m', 'floo.proxy', self.host, str(self.port), str(int(self.secure)))
 
-        self._proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        line = self._proc.stdout.readline().decode('utf-8')
-        print("Read line from proxy: %s" % line)
+        self._proc = proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        line = proc.stdout.readline().decode('utf-8')
+        fd = proc.stdout.fileno()
+        import fcntl
+        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK | os.O_ASYNC)
+
+        buf = [b'']
+
+        def read_line():
+            data = b''
+            ready, _, _ = select.select([fd], [], [], 0)
+            if not ready:
+                utils.set_timeout(read_line, 100)
+                return
+            while True:
+                try:
+                    d = os.read(fd, 65535)
+                    if not d:
+                        break
+                    data += d
+                except IOError:
+                    break
+            buf[0] += data
+            if not data:
+                return
+            utils.set_timeout(read_line, 100)
+            lines = buf[0].decode('utf-8').split('\n')
+            buf[0] = lines[-1].encode('utf-8')
+            msg.debug("Floobits SSL proxy output: %s" % '\n'.join(lines[:-1]))
+
+        msg.log("Read line from Floobits SSL proxy: %s" % line)
         match = re.search('Now listening on <(\d+)>', line)
         if not match:
             raise Exception("Couldn't find port in line from proxy: %s" % line)
         self._port = int(match.group(1))
+        read_line()
 
     def _handle(self, data):
         self._buf += data
