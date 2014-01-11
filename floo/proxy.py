@@ -226,7 +226,7 @@ def main():
         data = None
         err = False
         if options.data:
-            data = json.parse(options.data)
+            data = json.loads(options.data)
         try:
             r = api.hit_url(options.url, data)
         except HTTPError as e:

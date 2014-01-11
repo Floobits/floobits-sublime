@@ -35,15 +35,13 @@ except ImportError:
 
 
 def get_basic_auth():
-    secret = G.API_KEY or G.SECRET
-    basic_auth = ('%s:%s' % (G.USERNAME, secret)).encode('utf-8')
+    basic_auth = ('%s:%s' % (G.API_KEY or G.USERNAME, G.SECRET)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
 
 class APIResponse():
     def __init__(self, r):
-        print("r: %s", r)
         if isinstance(r, bytes):
             r = r.decode('utf-8')
         if isinstance(r, str_instances):
@@ -56,14 +54,16 @@ class APIResponse():
 
 
 def proxy_api_request(url, data=None):
-    args = ('python', '-m', 'floo.proxy', '--url', url)
+    args = ['python', '-m', 'floo.proxy', '--url', url]
+    if data:
+        args += ["--data", json.dumps(data)]
     proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdout, stderr) = proc.communicate()
     if stderr:
-        raise URLError(stderr)
+        raise IOError(stderr)
 
     if proc.poll() != 0:
-        raise URLError(stdout)
+        raise IOError(stdout)
     r = APIResponse(stdout)
     return r
 
@@ -88,7 +88,10 @@ def hit_url(url, data=None):
 def api_request(url, data=None):
     if ssl is False:
         return proxy_api_request(url, data)
-    r = hit_url(url, data)
+    try:
+        r = hit_url(url, data)
+    except HTTPError as e:
+        r = e
     return APIResponse(r)
 
 
@@ -129,4 +132,3 @@ def send_error(data):
         return api_request(api_url, data)
     except Exception as e:
         print(e)
-    return None

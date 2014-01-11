@@ -35,20 +35,6 @@ elif sublime.platform() == 'osx':
         print(e)
 
 try:
-    import urllib
-    from urllib import request
-    Request = request.Request
-    urlopen = request.urlopen
-    HTTPError = urllib.error.HTTPError
-    URLError = urllib.error.URLError
-except (AttributeError, ImportError, ValueError):
-    import urllib2
-    Request = urllib2.Request
-    urlopen = urllib2.urlopen
-    HTTPError = urllib2.HTTPError
-    URLError = urllib2.URLError
-
-try:
     from .floo import version
     from .floo import sublime_utils as sutils
     from .floo.listener import Listener
@@ -56,7 +42,7 @@ try:
     from .floo.common import api, ignore, reactor, msg, shared as G, utils
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
-    assert HTTPError and api and G and ignore and msg and utils
+    assert api and G and ignore and msg and utils
 except (ImportError, ValueError):
     from floo import version
     from floo import sublime_utils as sutils
@@ -279,22 +265,22 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
         def find_workspace(workspace_url):
             try:
-                api.get_workspace_by_url(workspace_url)
-            except HTTPError:
-                try:
-                    result = utils.parse_url(workspace_url)
-                    d = utils.get_persistent_data()
-                    del d['workspaces'][result['owner']][result['name']]
-                    utils.update_persistent_data(d)
-                except Exception as e:
-                    msg.debug(unicode(e))
-                return False
-            except URLError:
+                r = api.get_workspace_by_url(workspace_url)
+            except IOError:
                 # Timeout or something bad. Just assume the workspace exists
                 return True
-            on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-            on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
-            return True
+            if r.code < 400:
+                on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
+                on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
+                return True
+            try:
+                result = utils.parse_url(workspace_url)
+                d = utils.get_persistent_data()
+                del d['workspaces'][result['owner']][result['name']]
+                utils.update_persistent_data(d)
+            except Exception as e:
+                msg.debug(unicode(e))
+            return False
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
@@ -348,12 +334,15 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'owner': owner[0],
             })
 
-        orgs = api.get_orgs_can_admin()
-        orgs = json.loads(orgs.read().decode('utf-8'))
-        if len(orgs) == 0:
+        try:
+            r = api.get_orgs_can_admin()
+        except IOError as e:
+            return sublime.error_message("Error getting org list: %s" % str(e))
+
+        if r.code >= 400 or len(r.body) == 0:
             return on_done([G.USERNAME])
 
-        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in orgs]
+        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in r.body]
         orgs.insert(0, [G.USERNAME, 'Create workspace under %s' % G.USERNAME])
         self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
@@ -386,46 +375,50 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             self.api_args['name'] = workspace_name
             self.api_args['owner'] = self.owner
             msg.debug(str(self.api_args))
-            api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
-            print('Created workspace %s' % workspace_url)
-        except HTTPError as e:
-            err_body = e.read()
-            msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            if e.code not in [400, 402, 409]:
-                return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            kwargs = {
-                'dir_to_share': self.dir_to_share,
-                'workspace_name': workspace_name,
-                'api_args': self.api_args,
-                'owner': self.owner,
-            }
-            if e.code == 400:
-                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
-                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
-            elif e.code == 402:
-                try:
-                    err_body = json.loads(err_body)
-                    err_body = err_body['detail']
-                except Exception:
-                    pass
-                return sublime.error_message('%s' % err_body)
-            else:
-                kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
-
-            return self.window.run_command('floobits_create_workspace', kwargs)
+            r = api.create_workspace(self.api_args)
         except Exception as e:
             msg.error('Unable to create workspace: %s' % unicode(e))
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+        print('Created workspace %s' % workspace_url)
 
-        self.window.run_command('floobits_join_workspace', {
-            'workspace_url': workspace_url,
-            'agent_conn_kwargs': {
-                'get_bufs': False
-            }
-        })
+        if r.code < 400:
+            add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+            return self.window.run_command('floobits_join_workspace', {
+                'workspace_url': workspace_url,
+                'agent_conn_kwargs': {
+                    'get_bufs': False
+                }
+            })
+
+        msg.error('Unable to create workspace: %s' % r.body)
+        if r.code not in [400, 402, 409]:
+            try:
+                r.body = r.body['detail']
+            except Exception:
+                pass
+            return sublime.error_message('Unable to create workspace: %s' % r.body)
+
+        kwargs = {
+            'dir_to_share': self.dir_to_share,
+            'workspace_name': workspace_name,
+            'api_args': self.api_args,
+            'owner': self.owner,
+        }
+        if r.code == 400:
+            kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
+            kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
+        elif r.code == 402:
+            try:
+                r.body = r.body['detail']
+            except Exception:
+                pass
+            return sublime.error_message('%s' % r.body)
+        else:
+            kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
+
+        return self.window.run_command('floobits_create_workspace', kwargs)
 
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
