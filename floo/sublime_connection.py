@@ -31,7 +31,6 @@ except ImportError:
 
 
 class SublimeConnection(floo_handler.FlooHandler):
-
     def tick(self):
         reported = set()
         while self.views_changed:

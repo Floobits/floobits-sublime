@@ -8,7 +8,6 @@ import sys
 import os
 import re
 import hashlib
-import imp
 import json
 import uuid
 import binascii
@@ -35,78 +34,6 @@ elif sublime.platform() == 'osx':
     except Exception as e:
         print(e)
 
-
-try:
-    import ssl
-    assert ssl
-except ImportError:
-    ssl = False
-
-if ssl is False and sublime.platform() == 'linux':
-    plugin_path = os.path.dirname(os.path.realpath(__file__))
-    if plugin_path in ('.', ''):
-        plugin_path = os.getcwd()
-    _ssl = None
-    ssl_versions = ['0.9.8', '1.0.0', '10', '1.0.1']
-    ssl_path = os.path.join(plugin_path, 'lib', 'linux')
-    lib_path = os.path.join(plugin_path, 'lib', 'linux-%s' % sublime.arch())
-    if not PY2:
-        ssl_path += '-py3'
-        lib_path += '-py3'
-
-    so_path = os.path.join(plugin_path, 'lib', 'custom')
-    try:
-        filename, path, desc = imp.find_module('_ssl', [so_path])
-        if filename:
-            _ssl = imp.load_module('_ssl', filename, path, desc)
-    except ImportError as e:
-        print('Failed loading custom _ssl module %s: %s' % (so_path, unicode(e)))
-
-    for version in ssl_versions:
-        if _ssl:
-            break
-        so_path = os.path.join(lib_path, 'libssl-%s' % version)
-        try:
-            filename, path, desc = imp.find_module('_ssl', [so_path])
-            if filename is None:
-                print('Module not found at %s' % so_path)
-                continue
-            _ssl = imp.load_module('_ssl', filename, path, desc)
-            break
-        except ImportError as e:
-            print('Failed loading _ssl module %s: %s' % (so_path, unicode(e)))
-    if _ssl:
-        print('Hooray! %s is a winner!' % so_path)
-        filename, path, desc = imp.find_module('ssl', [ssl_path])
-        if filename is None:
-            print('Couldn\'t find ssl module at %s' % ssl_path)
-        else:
-            try:
-                ssl = imp.load_module('ssl', filename, path, desc)
-            except ImportError as e:
-                print('Failed loading ssl module at: %s' % unicode(e))
-    else:
-        print('Couldn\'t find an _ssl shared lib that\'s compatible with your version of linux. Sorry :(')
-
-
-try:
-    import urllib
-    urllib = imp.reload(urllib)
-    from urllib import request
-    request = imp.reload(request)
-    Request = request.Request
-    urlopen = request.urlopen
-    HTTPError = urllib.error.HTTPError
-    URLError = urllib.error.URLError
-    assert Request and urlopen and HTTPError and URLError
-except ImportError:
-    import urllib2
-    urllib2 = imp.reload(urllib2)
-    Request = urllib2.Request
-    urlopen = urllib2.urlopen
-    HTTPError = urllib2.HTTPError
-    URLError = urllib2.URLError
-
 try:
     from .floo import version
     from .floo import sublime_utils as sutils
@@ -115,7 +42,7 @@ try:
     from .floo.common import api, ignore, reactor, msg, shared as G, utils
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
-    assert HTTPError and api and G and ignore and msg and utils
+    assert api and G and ignore and msg and utils
 except (ImportError, ValueError):
     from floo import version
     from floo import sublime_utils as sutils
@@ -337,26 +264,23 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
-            if ssl is False:
-                # No ssl module (broken Sublime Text). Just behave as if the workspace exists.
-                return True
             try:
-                api.get_workspace_by_url(workspace_url)
-            except HTTPError:
-                try:
-                    result = utils.parse_url(workspace_url)
-                    d = utils.get_persistent_data()
-                    del d['workspaces'][result['owner']][result['name']]
-                    utils.update_persistent_data(d)
-                except Exception as e:
-                    msg.debug(unicode(e))
-                return False
-            except URLError:
+                r = api.get_workspace_by_url(workspace_url)
+            except IOError:
                 # Timeout or something bad. Just assume the workspace exists
                 return True
-            on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-            on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
-            return True
+            if r.code < 400:
+                on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
+                on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
+                return True
+            try:
+                result = utils.parse_url(workspace_url)
+                d = utils.get_persistent_data()
+                del d['workspaces'][result['owner']][result['name']]
+                utils.update_persistent_data(d)
+            except Exception as e:
+                msg.debug(unicode(e))
+            return False
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
@@ -410,15 +334,15 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'owner': owner[0],
             })
 
-        if ssl is False:
+        try:
+            r = api.get_orgs_can_admin()
+        except IOError as e:
+            return sublime.error_message("Error getting org list: %s" % str(e))
+
+        if r.code >= 400 or len(r.body) == 0:
             return on_done([G.USERNAME])
 
-        orgs = api.get_orgs_can_admin()
-        orgs = json.loads(orgs.read().decode('utf-8'))
-        if len(orgs) == 0:
-            return on_done([G.USERNAME])
-
-        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in orgs]
+        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in r.body]
         orgs.insert(0, [G.USERNAME, 'Create workspace under %s' % G.USERNAME])
         self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
@@ -434,8 +358,6 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
     def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
             return
-        if ssl is False:
-            return ssl_error_msg('create workspaces')
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
@@ -453,46 +375,50 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             self.api_args['name'] = workspace_name
             self.api_args['owner'] = self.owner
             msg.debug(str(self.api_args))
-            api.create_workspace(self.api_args)
-            workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
-            print('Created workspace %s' % workspace_url)
-        except HTTPError as e:
-            err_body = e.read()
-            msg.error('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            if e.code not in [400, 402, 409]:
-                return sublime.error_message('Unable to create workspace: %s %s' % (unicode(e), err_body))
-            kwargs = {
-                'dir_to_share': self.dir_to_share,
-                'workspace_name': workspace_name,
-                'api_args': self.api_args,
-                'owner': self.owner,
-            }
-            if e.code == 400:
-                kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
-                kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
-            elif e.code == 402:
-                try:
-                    err_body = json.loads(err_body)
-                    err_body = err_body['detail']
-                except Exception:
-                    pass
-                return sublime.error_message('%s' % err_body)
-            else:
-                kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
-
-            return self.window.run_command('floobits_create_workspace', kwargs)
+            r = api.create_workspace(self.api_args)
         except Exception as e:
             msg.error('Unable to create workspace: %s' % unicode(e))
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+        print('Created workspace %s' % workspace_url)
 
-        self.window.run_command('floobits_join_workspace', {
-            'workspace_url': workspace_url,
-            'agent_conn_kwargs': {
-                'get_bufs': False
-            }
-        })
+        if r.code < 400:
+            add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+            return self.window.run_command('floobits_join_workspace', {
+                'workspace_url': workspace_url,
+                'agent_conn_kwargs': {
+                    'get_bufs': False
+                }
+            })
+
+        msg.error('Unable to create workspace: %s' % r.body)
+        if r.code not in [400, 402, 409]:
+            try:
+                r.body = r.body['detail']
+            except Exception:
+                pass
+            return sublime.error_message('Unable to create workspace: %s' % r.body)
+
+        kwargs = {
+            'dir_to_share': self.dir_to_share,
+            'workspace_name': workspace_name,
+            'api_args': self.api_args,
+            'owner': self.owner,
+        }
+        if r.code == 400:
+            kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
+            kwargs['prompt'] = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name:'
+        elif r.code == 402:
+            try:
+                r.body = r.body['detail']
+            except Exception:
+                pass
+            return sublime.error_message('%s' % r.body)
+        else:
+            kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
+
+        return self.window.run_command('floobits_create_workspace', kwargs)
 
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
@@ -528,6 +454,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW = workspace_window
             cb()
 
+        def create_chat_view(cb):
+            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
+                msgs_fd.write('')
+            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+
         def truncate_chat_view(chat_view, cb):
             if chat_view:
                 chat_view.set_read_only(False)
@@ -535,10 +466,11 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 chat_view.set_read_only(True)
             cb()
 
-        def create_chat_view(cb):
-            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
-                msgs_fd.write('')
-            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
+        def open_workspace_window(cb):
+            if PY2:
+                open_workspace_window2(cb)
+            else:
+                open_workspace_window3(cb)
 
         def open_workspace_window2(cb):
             if sublime.platform() == 'linux':
@@ -576,11 +508,21 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
             create_chat_view(cb)
 
-        def open_workspace_window(cb):
-            if PY2:
-                open_workspace_window2(cb)
-            else:
-                open_workspace_window3(cb)
+        def make_dir(d):
+            d = os.path.realpath(os.path.expanduser(d))
+
+            if not os.path.isdir(d):
+                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
+                if not make_dir:
+                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
+                try:
+                    utils.mkdir(d)
+                except Exception as e:
+                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
+
+            G.PROJECT_PATH = d
+            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+            open_workspace_window(lambda: run_agent(**result))
 
         def run_agent(owner, workspace, host, port, secure):
             global on_room_info_waterfall
@@ -598,22 +540,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 print(e)
                 tb = traceback.format_exc()
                 print(tb)
-
-        def make_dir(d):
-            d = os.path.realpath(os.path.expanduser(d))
-
-            if not os.path.isdir(d):
-                make_dir = sublime.ok_cancel_dialog('%s is not a directory. Create it?' % d)
-                if not make_dir:
-                    return self.window.show_input_panel('%s is not a directory. Enter an existing path:' % d, d, None, None, None)
-                try:
-                    utils.mkdir(d)
-                except Exception as e:
-                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
-
-            G.PROJECT_PATH = d
-            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
-            open_workspace_window(lambda: run_agent(**result))
 
         try:
             result = utils.parse_url(workspace_url)

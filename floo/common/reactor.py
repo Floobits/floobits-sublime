@@ -69,7 +69,7 @@ class _Reactor(object):
             self.tick(.05)
 
     def select(self, timeout=0):
-        if not self._handlers:
+        if not self._protos:
             return
 
         readable = []
@@ -82,7 +82,7 @@ class _Reactor(object):
             if not fileno:
                 continue
             fd.fd_set(readable, writeable, errorable)
-            fd_map[fd.fileno()] = fd
+            fd_map[fileno] = fd
 
         if not readable and not writeable:
             return
@@ -102,18 +102,18 @@ class _Reactor(object):
 
         for fileno in _out:
             fd = fd_map[fileno]
-            try:
-                fd.write()
-            except Exception as e:
-                msg.error('Couldn\'t write to socket: %s' % str(e))
-                return self._reconnect(fd, _in)
+            # try:
+            fd.write()
+            # except Exception as e:
+            #     msg.error('Couldn\'t write to socket: %s' % str(e))
+            #     return self._reconnect(fd, _in)
 
         for fileno in _in:
             fd = fd_map[fileno]
-            try:
-                fd.read()
-            except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str(e))
-                fd.reconnect()
+            # try:
+            fd.read()
+            # except Exception as e:
+            #     msg.error('Couldn\'t read from socket: %s' % str(e))
+            #     fd.reconnect()
 
 reactor = _Reactor()

@@ -21,7 +21,7 @@ BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 DEFAULT_HOST = 'floobits.com'
 DEFAULT_PORT = 3448
 SECURE = True
-
+PROXY_PORT = 0  # Random port
 
 SHARE_DIR = None
 COLAB_DIR = ''
