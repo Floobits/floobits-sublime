@@ -9,8 +9,6 @@ import platform
 import sys
 import time
 
-import editor
-
 # Monkey patch editor
 timeouts = defaultdict(list)
 top_timeout_id = 0
@@ -27,7 +25,7 @@ def name():
 
 
 def ok_cancel_dialog(dialog):
-    print("Dialog: ", dialog)
+    print('Dialog:', dialog)
 
 
 def error_message(msg):
@@ -85,6 +83,22 @@ def call_timeouts():
 def open_file(file):
     pass
 
+try:
+    from .common import api, msg, shared as G, utils, reactor, event_emitter
+    from .common.handlers import base
+    from .common.protocols import floo_proto
+    from . import editor
+except (ImportError, ValueError):
+    from common import api, msg, shared as G, utils, reactor, event_emitter
+    from common.handlers import base
+    from common.protocols import floo_proto
+    import editor
+
+
+def editor_log(msg):
+    print(msg)
+    sys.stdout.flush()
+
 editor.name = name
 editor.ok_cancel_dialog = ok_cancel_dialog
 editor.error_message = error_message
@@ -94,28 +108,22 @@ editor.set_timeout = set_timeout
 editor.cancel_timeout = cancel_timeout
 editor.call_timeouts = call_timeouts
 editor.open_file = open_file
-
-try:
-    from common import api, msg, shared as G, utils, reactor, event_emitter
-    from common.handlers import base
-    from common.protocols import floo_proto
-except (ImportError, ValueError):
-    from .common import api, msg, shared as G, reactor, event_emitter
-    from .common.handlers import base
-    from .common.protocols import floo_proto
-
-
-def editor_log(msg):
-    print(msg)
-    sys.stdout.flush()
-
 msg.editor_log = editor_log
 
 utils.reload_settings()
-
 eventStream = event_emitter.EventEmitter()
-eventStream.on('to_floobits', lambda x: msg.log("to_floobits: " + x) and sys.stdout.flush())
-eventStream.on('from_floobits', lambda x: msg.log("from_floobits: " + x))
+
+
+def conn_log(action, item):
+    try:
+        item = item.decode('utf-8')
+    except Exception:
+        pass
+    msg.log('%s: %s' % (action, item))
+    sys.stdout.flush()
+
+eventStream.on('to_floobits', lambda x: conn_log('to_floobits', x))
+eventStream.on('from_floobits', lambda x: conn_log('from_floobits', x))
 
 
 # KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
@@ -128,10 +136,10 @@ class RemoteProtocol(floo_proto.FlooProtocol):
         eventStream.on('to_floobits', self._q.append)
 
     def _handle(self, data):
-        eventStream.emit('from_floobits', data)
+        eventStream.emit('from_floobits', data.decode('utf-8'))
 
     def reconnect(self):
-        msg.error("Remote connection died")
+        msg.error('Remote connection died')
         sys.exit(1)
 
 
@@ -145,8 +153,8 @@ class FlooConn(base.BaseHandler):
         pass
 
     def on_connect(self):
-        msg.log("have a remote conn!")
-        eventStream.emit("remote_conn")
+        msg.log('have a remote conn!')
+        eventStream.emit('remote_conn')
 
 
 class LocalProtocol(floo_proto.FlooProtocol):
@@ -159,7 +167,7 @@ class LocalProtocol(floo_proto.FlooProtocol):
         eventStream.on('from_floobits', self._q.append)
         self.to_proxy = []
         self.remote_conn = False
-        eventStream.on("remote_conn", self.on_remote_conn)
+        eventStream.on('remote_conn', self.on_remote_conn)
 
     def connect(self, sock=None):
         self.emit('connect')
@@ -167,7 +175,7 @@ class LocalProtocol(floo_proto.FlooProtocol):
         self.connected = True
 
     def reconnect(self):
-        msg.error("Client connection died")
+        msg.error('Client connection died')
         sys.exit(1)
 
     def stop(self):
@@ -177,11 +185,11 @@ class LocalProtocol(floo_proto.FlooProtocol):
         self.remote_conn = True
         while self.to_proxy:
             item = self.to_proxy.pop(0)
-            eventStream.emit('to_floobits', item)
+            eventStream.emit('to_floobits', item.decode('utf-8'))
 
     def _handle(self, data):
         if self.remote_conn:
-            eventStream.emit('to_floobits', data)
+            eventStream.emit('to_floobits', data.decode('utf-8'))
         else:
             self.to_proxy.append(data)
 
@@ -205,18 +213,18 @@ except (AttributeError, ImportError, ValueError):
 
 
 def main():
-    msg.LOG_LEVEL = msg.LOG_LEVELS.get(msg.LOG_LEVELS['ERROR'])
+    msg.LOG_LEVEL = msg.LOG_LEVELS['ERROR']
 
-    usage = "Figure it out :P"
+    usage = 'Figure it out :P'
     parser = optparse.OptionParser(usage=usage)
     parser.add_option(
-        "--url",
-        dest="url",
+        '--url',
+        dest='url',
         default=None
     )
     parser.add_option(
-        "--data",
-        dest="data",
+        '--data',
+        dest='data',
         default=None
     )
 
@@ -251,7 +259,7 @@ def main():
     try:
         reactor.reactor.block()
     except KeyboardInterrupt:
-        print("ciao")
+        print('ciao')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

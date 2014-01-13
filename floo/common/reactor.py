@@ -102,18 +102,18 @@ class _Reactor(object):
 
         for fileno in _out:
             fd = fd_map[fileno]
-            try:
-                fd.write()
-            except Exception as e:
-                msg.error('Couldn\'t write to socket: %s' % str(e))
-                return self._reconnect(fd, _in)
+            # try:
+            fd.write()
+            # except Exception as e:
+            #     msg.error('Couldn\'t write to socket: %s' % str(e))
+            #     return self._reconnect(fd, _in)
 
         for fileno in _in:
             fd = fd_map[fileno]
-            try:
-                fd.read()
-            except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str(e))
-                fd.reconnect()
+            # try:
+            fd.read()
+            # except Exception as e:
+            #     msg.error('Couldn\'t read from socket: %s' % str(e))
+            #     fd.reconnect()
 
 reactor = _Reactor()
