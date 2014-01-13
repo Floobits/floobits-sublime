@@ -27,9 +27,10 @@ except (AttributeError, ImportError, ValueError):
 
 try:
     from .. import editor
-    from . import shared as G, utils
+    from . import msg, shared as G, utils
 except ImportError:
     import editor
+    import msg
     import shared as G
     import utils
 
@@ -57,6 +58,7 @@ def proxy_api_request(url, data=None):
     args = ['python', '-m', 'floo.proxy', '--url', url]
     if data:
         args += ["--data", json.dumps(data)]
+    msg.debug('Running %s' % ' '.join(args))
     proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdout, stderr) = proc.communicate()
     if stderr:

@@ -244,7 +244,7 @@ def main():
             err = True
 
         print(r.code)
-        print(r.read())
+        print(r.read().decode('utf-8'))
         sys.exit(err)
 
     proxy = Server()
