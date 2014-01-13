@@ -69,7 +69,7 @@ class _Reactor(object):
             self.tick(.05)
 
     def select(self, timeout=0):
-        if not self._handlers:
+        if not self._protos:
             return
 
         readable = []
