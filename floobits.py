@@ -24,7 +24,8 @@ PY2 = sys.version_info < (3, 0)
 
 
 if PY2 and sublime.platform() == 'windows':
-    sublime.error_message('Sorry, but the Windows version of Sublime Text 2 lacks Python’s select module, so the Floobits plugin won’t work. Please upgrade to Sublime Text 3. :(')
+    sublime.error_message('''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
+Please upgrade to Sublime Text 3. :(''')
 elif sublime.platform() == 'osx':
     try:
         p = subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -160,7 +161,8 @@ def create_or_link_account():
         agent = CreateAccountHandler()
 
     if not agent:
-        sublime.error_message('A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n\nWe\'re really sorry. This should never happen.')
+        sublime.error_message('''A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n
+We're really sorry. This should never happen.''')
         return
 
     try:
@@ -480,7 +482,8 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 settings = sublime.load_settings('Floobits.sublime-settings')
                 subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
                 if not os.path.exists(subl):
-                    return sublime.error_message('Can\'t find your Sublime Text executable at %s. Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text' % subl)
+                    return sublime.error_message('''Can't find your Sublime Text executable at %s.
+Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text''' % subl)
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
