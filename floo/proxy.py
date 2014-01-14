@@ -243,7 +243,10 @@ def main():
             r = e
             err = True
 
-        print(r.code)
+        try:
+            print(r.code)
+        except Exception:
+            err = True
         print(r.read().decode('utf-8'))
         sys.exit(err)
 
