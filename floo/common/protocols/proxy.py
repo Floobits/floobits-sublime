@@ -1,7 +1,11 @@
 import subprocess
 import re
-import fcntl
 import os.path
+
+try:
+    import fcntl
+except Exception:
+    pass
 
 try:
     from .. import event_emitter, msg, shared as G
