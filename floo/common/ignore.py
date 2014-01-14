@@ -151,6 +151,7 @@ class Ignore(object):
             return self.parent.is_ignored(path)
         return False
 
+
 def is_ignored(current_path, abs_path=None):
     abs_path = abs_path or current_path
     if not utils.is_shared(current_path):

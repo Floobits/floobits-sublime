@@ -260,7 +260,8 @@ class FlooHandler(base.BaseHandler):
 
         if 'patch' not in data['perms']:
             msg.log('No patch permission. Setting buffers to read-only')
-            should_send = yield self.ok_cancel_dialog, 'You don\'t have permission to edit this workspace. All files will be read-only.\n\nDo you want to request edit permission?'
+            should_send = yield self.ok_cancel_dialog, '''You don't have permission to edit this workspace. All files will be read-only.
+Do you want to request edit permission?'''
             if should_send:
                 self.send({'name': 'request_perms', 'perms': ['edit_room']})
 
@@ -449,9 +450,12 @@ class FlooHandler(base.BaseHandler):
                 ignored_cds.append(cd)
                 size -= cd.size
             if size > MAX_WORKSPACE_SIZE:
-                editor.error_message("Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file." % (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+                editor.error_message(
+                    'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
+                    (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
                 return
-            upload = yield self.ok_cancel_dialog, "Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s" % \
+            upload = yield self.ok_cancel_dialog, '''Maximum workspace size is %.2fMB.\n
+%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s''' % \
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
             if not upload:
                 return
