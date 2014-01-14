@@ -54,7 +54,7 @@ class ProxyProtocol(event_emitter.EventEmitter):
                 if not d:
                     break
                 data += d
-            except IOError:
+            except (IOError, OSError):
                 break
         self.buf[0] += data
         if not data:
