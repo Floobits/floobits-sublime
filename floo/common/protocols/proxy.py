@@ -1,6 +1,9 @@
 import subprocess
 import re
-import fcntl
+try:
+    import fcntl
+except Exception:
+    pass
 import os.path
 
 try:
