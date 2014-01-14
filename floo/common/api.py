@@ -36,7 +36,7 @@ except ImportError:
 
 
 def get_basic_auth():
-    basic_auth = ('%s:%s' % (G.API_KEY or G.USERNAME, G.SECRET)).encode('utf-8')
+    basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
