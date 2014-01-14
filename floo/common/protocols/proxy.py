@@ -1,7 +1,11 @@
 import subprocess
 import re
-import fcntl
 import os.path
+
+try:
+    import fcntl
+except Exception:
+    pass
 
 try:
     from .. import event_emitter, msg, shared as G
@@ -54,7 +58,7 @@ class ProxyProtocol(event_emitter.EventEmitter):
                 if not d:
                     break
                 data += d
-            except IOError:
+            except (IOError, OSError):
                 break
         self.buf[0] += data
         if not data:

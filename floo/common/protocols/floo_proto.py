@@ -174,6 +174,8 @@ class FlooProtocol(base.BaseProtocol):
             with open(self._cert_path, 'wb') as cert_fd:
                 cert_fd.write(cert.CA_CERT.encode('utf-8'))
         conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        if self.port != self._port or self.host != self._host:
+            conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
         msg.log(conn_msg)
         editor.status_message(conn_msg)
         self._connect()
