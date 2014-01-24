@@ -201,7 +201,7 @@ def get_full_path(p):
 
 
 def unfuck_path(p):
-    return os.path.normcase(os.path.normpath(p))
+    return os.path.normpath(p)
 
 
 def to_rel_path(p):
