@@ -504,42 +504,35 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             set_workspace_window(lambda: create_chat_view(cb))
 
         def open_workspace_window3(cb):
-            def finish():
+            def finish(w):
+                G.WORKSPACE_WINDOW = w
                 msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
                 G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
                 create_chat_view(cb)
 
-            G.WORKSPACE_WINDOW = get_workspace_window()
-            if G.WORKSPACE_WINDOW:
-                return finish()
-
             def get_empty_window():
                 for w in sublime.windows():
                     project_data = w.project_data()
-                    print('Project data is %s' % project_data)
-                    folders = project_data.get('folders', [])
-                    if len(folders) == 0 or not project_data.get('folders')[0].get('path'):
-                        # no project data. co-opt this window
-                        G.WORKSPACE_WINDOW = w
-                        print('found window %s' % (project_data))
-                        return w
+                    try:
+                        folders = project_data.get('folders', [])
+                        if len(folders) == 0 or not folders[0].get('path'):
+                            # no project data. co-opt this window
+                            return w
+                    except Exception as e:
+                        print(e)
 
             def wait_empty_window(i):
-                if i > 50:
+                if i > 10:
                     print('Too many failures trying to find an empty window. Using active window.')
-                    G.WORKSPACE_WINDOW = sublime.active_window()
-                    return finish()
-                try:
-                    get_empty_window()
-                except Exception as e:
-                    print(e)
-                if G.WORKSPACE_WINDOW:
-                    return finish()
+                    return finish(sublime.active_window())
+                w = get_empty_window()
+                if w:
+                    return finish(w)
                 return utils.set_timeout(wait_empty_window, 50, i + 1)
 
-            get_empty_window()
-            if G.WORKSPACE_WINDOW:
-                return finish()
+            w = get_workspace_window() or get_empty_window()
+            if w:
+                return finish(w)
 
             sublime.run_command('new_window')
             wait_empty_window(0)
