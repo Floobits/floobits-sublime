@@ -339,7 +339,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         try:
             r = api.get_orgs_can_admin()
         except IOError as e:
-            return sublime.error_message("Error getting org list: %s" % str(e))
+            return sublime.error_message('Error getting org list: %s' % str(e))
 
         if r.code >= 400 or len(r.body) == 0:
             return on_done([G.USERNAME])
@@ -504,12 +504,45 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             set_workspace_window(lambda: create_chat_view(cb))
 
         def open_workspace_window3(cb):
+            def finish():
+                msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
+                G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
+                create_chat_view(cb)
+
             G.WORKSPACE_WINDOW = get_workspace_window()
-            if not G.WORKSPACE_WINDOW:
-                G.WORKSPACE_WINDOW = sublime.active_window()
-            msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
-            G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-            create_chat_view(cb)
+            if G.WORKSPACE_WINDOW:
+                return finish()
+
+            def get_empty_window():
+                for w in sublime.windows():
+                    project_data = w.project_data()
+                    print('Project data is %s' % project_data)
+                    folders = project_data.get('folders', [])
+                    if len(folders) == 0 or not project_data.get('folders')[0].get('path'):
+                        # no project data. co-opt this window
+                        G.WORKSPACE_WINDOW = w
+                        print('found window %s' % (project_data))
+                        return w
+
+            def wait_empty_window(i):
+                if i > 50:
+                    print('Too many failures trying to find an empty window. Using active window.')
+                    G.WORKSPACE_WINDOW = sublime.active_window()
+                    return finish()
+                try:
+                    get_empty_window()
+                except Exception as e:
+                    print(e)
+                if G.WORKSPACE_WINDOW:
+                    return finish()
+                return utils.set_timeout(wait_empty_window, 50, i + 1)
+
+            get_empty_window()
+            if G.WORKSPACE_WINDOW:
+                return finish()
+
+            sublime.run_command('new_window')
+            wait_empty_window(0)
 
         def make_dir(d):
             d = os.path.realpath(os.path.expanduser(d))
@@ -535,7 +568,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 G.AGENT = None
             on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
             try:
-                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get("get_bufs", True))
+                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get('get_bufs', True))
                 reactor.connect(conn, host, port, secure)
                 conn.once('room_info', on_room_info_waterfall.call)
                 on_room_info_waterfall = utils.Waterfall()
@@ -800,9 +833,9 @@ class FloobitsFollowSplit(FloobitsBaseCommand):
         G.STALKER_MODE = True
         if self.window.num_groups() == 1:
             self.window.set_layout({
-                "cols": [0.0, 1.0],
-                "rows": [0.0, 0.5, 1.0],
-                "cells": [[0, 0, 1, 1], [0, 1, 1, 2]]
+                'cols': [0.0, 1.0],
+                'rows': [0.0, 0.5, 1.0],
+                'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
             })
 
 
@@ -948,7 +981,7 @@ def plugin_loaded():
     if called_plugin_loaded:
         return
     called_plugin_loaded = True
-    print("Floobits: Called plugin_loaded.")
+    print('Floobits: Called plugin_loaded.')
     sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
@@ -979,5 +1012,5 @@ if PY2:
 
     def warning():
         if not called_plugin_loaded:
-            print("Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.")
+            print('Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.')
     threading.Timer(20, warning).start()
