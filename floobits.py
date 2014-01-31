@@ -382,7 +382,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             msg.error('Unable to create workspace: %s' % unicode(e))
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
-        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+        workspace_url = 'https://%s/%s/%s/' % (G.DEFAULT_HOST, self.owner, workspace_name)
         print('Created workspace %s' % workspace_url)
 
         if r.code < 400:
