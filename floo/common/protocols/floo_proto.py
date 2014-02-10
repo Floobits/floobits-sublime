@@ -83,7 +83,7 @@ class FlooProtocol(base.BaseProtocol):
     def _handle(self, data):
         self._buf += data
         while True:
-            before, sep, after = self._buf.partition(self.NEWLINE)
+            before, sep, after = self._buf.partition(b'\n')
             if not sep:
                 return
             try:

@@ -6,7 +6,6 @@ except (ImportError, ValueError):
 
 class BaseProtocol(event_emitter.EventEmitter):
     ''' Base FD Interface'''
-    NEWLINE = '\n'.encode('utf-8')
 
     def __init__(self, host, port, secure=True):
         super(BaseProtocol, self).__init__()

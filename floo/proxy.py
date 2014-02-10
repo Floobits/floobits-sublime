@@ -136,7 +136,11 @@ class RemoteProtocol(floo_proto.FlooProtocol):
         eventStream.on('to_floobits', self._q.append)
 
     def _handle(self, data):
-        eventStream.emit('from_floobits', data.decode('utf-8'))
+        # Node.js sends invalid utf8 even though we're calling write(string, "utf8")
+        # Python 2 can figure it out, but python 3 hates it and will die here with some byte sequences
+        # Instead of crashing the plugin, we drop the data. Yes, this is horrible.
+        data = data.decode('utf-8', 'ignore')
+        eventStream.emit('from_floobits', data)
 
     def reconnect(self):
         msg.error('Remote connection died')

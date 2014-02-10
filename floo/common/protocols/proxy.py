@@ -63,9 +63,15 @@ class ProxyProtocol(event_emitter.EventEmitter):
         self.buf[0] += data
         if not data:
             return
-        lines = self.buf[0].decode('utf-8').split('\n')
-        self.buf[0] = lines[-1].encode('utf-8')
-        msg.debug("Floobits SSL proxy output: %s" % '\n'.join(lines[:-1]))
+        while True:
+            before, sep, after = self.buf[0].partition(b'\n')
+            if not sep:
+                break
+            self.buf[0] = after
+            try:
+                msg.debug("Floobits SSL proxy output: %s" % before.decode('utf-8', 'ignore'))
+            except Exception:
+                pass
 
     def error(self):
         self.cleanup()
