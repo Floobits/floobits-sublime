@@ -975,7 +975,7 @@ def plugin_loaded():
         return
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
-    sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW .run_command('floo_view_set_msg', {'data': d})
+    sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW.run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
 
