@@ -895,7 +895,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
     def _run(self, edit, selections, r, data, view=None):
         global ignore_modified_timeout
 
-        if not getattr(self, 'view', None):
+        if not hasattr(self, 'view'):
             return selections
 
         G.IGNORE_MODIFIED_EVENTS = True
