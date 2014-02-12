@@ -100,7 +100,7 @@ class FlooProtocol(base.BaseProtocol):
                 continue
             name = data.get('name')
             try:
-                msg.debug("got data " + name)
+                msg.debug("got data " + (name or "no name"))
                 self.emit("data", name, data)
             except Exception as e:
                 print(traceback.format_exc())
