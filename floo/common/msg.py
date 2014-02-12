@@ -51,6 +51,7 @@ class MSG(object):
             try:
                 fd = open(LOG_FILE, 'a+')
                 fd.write(msg)
+                fd.write('\n')
                 fd.close()
             except Exception as e:
                 print(unicode(e))
@@ -65,9 +66,9 @@ class MSG(object):
 
     def __unicode__(self):
         if self.username:
-            msg = '[{time}] <{user}> {msg}\n'
+            msg = '[{time}] <{user}> {msg}'
         else:
-            msg = '[{time}] {msg}\n'
+            msg = '[{time}] {msg}'
         return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
 
 
@@ -80,6 +81,7 @@ def msg_format(message, *args, **kwargs):
 
 def _log(message, level, *args, **kwargs):
     if level >= LOG_LEVEL:
+        # TODO: kill MSG class and just format and print the thing right away
         MSG(msg_format(message, *args, **kwargs), level=level).display()
 
 
