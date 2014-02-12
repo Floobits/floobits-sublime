@@ -19,10 +19,6 @@
         "command": "floobits_clear_highlights"
       },
       {
-        "caption": "Send Message",
-        "command": "floobits_prompt_msg"
-      },
-      {
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
       },

@@ -24,14 +24,6 @@
     "command": "floobits_prompt_join_workspace"
   },
   {
-    "caption": "Floobits - Send Message",
-    "command": "floobits_prompt_msg"
-  },
-  {
-    "caption": "Floobits - Open Messages View",
-    "command": "floobits_open_message_view"
-  },
-  {
     "caption": "Floobits - Open Workspace Settings (in Browser)",
     "command": "floobits_open_workspace_settings"
   },
