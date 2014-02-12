@@ -78,11 +78,6 @@ class Listener(sublime_plugin.EventListener):
     @if_connected
     def on_close(self, view, agent):
         msg.debug('close', self.name(view))
-        if G.CHAT_VIEW and view.file_name() == G.CHAT_VIEW.file_name():
-            G.CHAT_VIEW = None
-        # TODO: the view was closed, but maybe another one is open that shares the buffer_id
-        # if G.VIEW_TO_HASH.get(view.buffer_id()):
-        #     del G.VIEW_TO_HASH[view.buffer_id()]
 
     @if_connected
     def on_load(self, view, agent):
@@ -99,7 +94,7 @@ class Listener(sublime_plugin.EventListener):
 
     @if_connected
     def on_pre_save(self, view, agent):
-        if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+        if view.is_scratch():
             return
         p = view.name()
         if view.file_name():
@@ -119,7 +114,7 @@ class Listener(sublime_plugin.EventListener):
             i = self.between_save_events[view_buf_id]
             i[0] -= 1
 
-        if view == G.CHAT_VIEW or view.file_name() == G.CHAT_VIEW_PATH:
+        if view.is_scratch():
             return
 
         i = self.between_save_events[view_buf_id]

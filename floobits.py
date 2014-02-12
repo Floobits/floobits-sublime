@@ -15,7 +15,6 @@ import subprocess
 import traceback
 import webbrowser
 import threading
-from collections import defaultdict
 
 import sublime_plugin
 import sublime
@@ -86,56 +85,6 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     utils.update_persistent_data(d)
 
 
-def get_legacy_projects():
-    a = ['msgs.floobits.log', 'persistent.json']
-    owners = os.listdir(G.COLAB_DIR)
-    floorc_json = defaultdict(defaultdict)
-    for owner in owners:
-        if len(owner) > 0 and owner[0] == '.':
-            continue
-        if owner in a:
-            continue
-        workspaces_path = os.path.join(G.COLAB_DIR, owner)
-        try:
-            workspaces = os.listdir(workspaces_path)
-        except OSError:
-            continue
-        for workspace in workspaces:
-            workspace_path = os.path.join(workspaces_path, workspace)
-            workspace_path = os.path.realpath(workspace_path)
-            try:
-                fd = open(os.path.join(workspace_path, '.floo'), 'r')
-                url = json.loads(fd.read())['url']
-                fd.close()
-            except Exception:
-                url = utils.to_workspace_url({
-                    'port': 3448, 'secure': True, 'host': 'floobits.com', 'owner': owner, 'workspace': workspace
-                })
-            floorc_json[owner][workspace] = {
-                'path': workspace_path,
-                'url': url
-            }
-
-    return floorc_json
-
-
-def migrate_symlinks():
-    data = {}
-    old_path = os.path.join(G.COLAB_DIR, 'persistent.json')
-    if not os.path.exists(old_path):
-        return
-    old_data = utils.get_persistent_data(old_path)
-    data['workspaces'] = get_legacy_projects()
-    data['recent_workspaces'] = old_data.get('recent_workspaces')
-    utils.update_persistent_data(data)
-    try:
-        os.unlink(old_path)
-        os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
-    except Exception:
-        pass
-    print('migrated')
-
-
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
                           'This is a known issue on Linux builds of Sublime Text. '
@@ -197,30 +146,6 @@ def on_room_info_msg():
     _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
     # Workaround for horrible Sublime Text bug
     utils.set_timeout(sublime.message_dialog, 0, _msg)
-
-
-def get_or_create_chat(cb=None):
-    if G.DEBUG:
-        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
-
-    def return_view():
-        G.CHAT_VIEW_PATH = G.CHAT_VIEW.file_name()
-        G.CHAT_VIEW.set_read_only(True)
-        if cb:
-            return cb(G.CHAT_VIEW)
-
-    def open_view():
-        if not G.CHAT_VIEW:
-            p = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
-            G.CHAT_VIEW = G.WORKSPACE_WINDOW.open_file(p)
-        utils.set_timeout(return_view, 0)
-
-    # Can't call open_file outside main thread
-    if G.LOG_TO_CONSOLE:
-        if cb:
-            return cb(None)
-    else:
-        utils.set_timeout(open_view, 0)
 
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
@@ -456,18 +381,6 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             G.WORKSPACE_WINDOW = workspace_window
             cb()
 
-        def create_chat_view(cb):
-            with open(os.path.join(G.BASE_DIR, 'msgs.floobits.log'), 'a') as msgs_fd:
-                msgs_fd.write('')
-            get_or_create_chat(lambda chat_view: truncate_chat_view(chat_view, cb))
-
-        def truncate_chat_view(chat_view, cb):
-            if chat_view:
-                chat_view.set_read_only(False)
-                chat_view.run_command('floo_view_replace_region', {'r': [0, chat_view.size()], 'data': ''})
-                chat_view.set_read_only(True)
-            cb()
-
         def open_workspace_window(cb):
             if PY2:
                 open_workspace_window2(cb)
@@ -495,20 +408,19 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             command.append('--add')
             command.append(G.PROJECT_PATH)
 
-            # Maybe no msg view yet :(
-            print('command:', command)
+            msg.debug('command:', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
-            print('poll:', poll_result)
+            msg.debug('poll:', poll_result)
 
-            set_workspace_window(lambda: create_chat_view(cb))
+            set_workspace_window(cb)
 
         def open_workspace_window3(cb):
             def finish(w):
                 G.WORKSPACE_WINDOW = w
                 msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
                 G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
-                create_chat_view(cb)
+                cb()
 
             def get_empty_window():
                 for w in sublime.windows():
@@ -623,27 +535,6 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
             sublime.error_message('You are not joined to any workspace.')
 
 
-class FloobitsPromptMsgCommand(FloobitsBaseCommand):
-
-    def run(self, msg=''):
-        print(('msg', msg))
-        self.window.show_input_panel('msg:', msg, self.on_input, None, None)
-
-    def on_input(self, msg):
-        self.window.run_command('floobits_msg', {'msg': msg})
-
-
-class FloobitsMsgCommand(FloobitsBaseCommand):
-    def run(self, msg):
-        if not msg:
-            return
-        if G.AGENT:
-            G.AGENT.send_msg(msg)
-
-    def description(self):
-        return 'Send a message to the floobits workspace you are in (join a workspace first)'
-
-
 class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
     def run(self):
         G.AGENT.clear_highlights(self.window.active_view())
@@ -678,19 +569,6 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def is_enabled(self):
         return bool(len(self._get_recent_workspaces()) > 0)
-
-
-class FloobitsOpenMessageViewCommand(FloobitsBaseCommand):
-    def run(self, *args):
-        def print_msg(chat_view):
-            msg.log('Opened message view')
-            if not G.AGENT:
-                msg.log('Not joined to a workspace.')
-
-        get_or_create_chat(print_msg)
-
-    def description(self):
-        return 'Open the floobits messages view.'
 
 
 class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
@@ -769,7 +647,7 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
 
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
-        webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
+        webbrowser.open('https://floobits.com/help/plugins/sublime', new=2, autoraise=True)
 
     def is_visible(self):
         return True
@@ -841,26 +719,6 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
     def is_enabled(self):
         return False
-
-    def description(self):
-        return
-
-
-# The new ST3 plugin API sucks
-class FlooViewSetMsg(sublime_plugin.TextCommand):
-    def run(self, edit, data, *args, **kwargs):
-        size = self.view.size()
-        self.view.set_read_only(False)
-        self.view.insert(edit, size, data)
-        self.view.set_read_only(True)
-        # TODO: this scrolling is lame and centers text :/
-        self.view.show(size)
-
-    def is_visible(self):
-        return False
-
-    def is_enabled(self):
-        return True
 
     def description(self):
         return
@@ -975,7 +833,6 @@ def plugin_loaded():
         return
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
-    sublime.log = lambda d: G.CHAT_VIEW and G.CHAT_VIEW.run_command('floo_view_set_msg', {'data': d})
 
     utils.reload_settings()
 
@@ -985,8 +842,6 @@ def plugin_loaded():
         print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
         os.rename(old_colab_dir, G.BASE_DIR)
         os.symlink(G.BASE_DIR, old_colab_dir)
-
-    migrate_symlinks()
 
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)

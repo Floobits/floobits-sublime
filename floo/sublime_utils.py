@@ -25,7 +25,7 @@ def create_view(buf):
 
 
 def get_buf(view):
-    if not (G.AGENT and not view.is_scratch() and view.file_name() and view is not G.CHAT_VIEW):
+    if not (G.AGENT and not view.is_scratch() and view.file_name()):
         return
     return G.AGENT.get_buf_by_path(view.file_name())
 
