@@ -647,7 +647,7 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
 
 class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
-        webbrowser.open('https://floobits.com/help/plugins/#sublime-usage', new=2, autoraise=True)
+        webbrowser.open('https://floobits.com/help/plugins/sublime', new=2, autoraise=True)
 
     def is_visible(self):
         return True
