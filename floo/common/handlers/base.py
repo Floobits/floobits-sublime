@@ -44,13 +44,13 @@ class BaseHandler(event_emitter.EventEmitter):
         return editor.name()
 
     def _on_error(self, data):
-        message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
+        message = 'Error from server! Message: %s' % str(data.get('msg'))
         msg.error(message)
         if data.get('flash'):
-            editor.error_message('Floobits: %s' % str(data.get('msg')))
+            editor.error_message('Error from Floobits server: %s' % str(data.get('msg')))
 
     def _on_disconnect(self, data):
-        message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
+        message = 'Disconnected from server! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         editor.error_message(message)
         self.proto.stop()

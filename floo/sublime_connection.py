@@ -1,5 +1,4 @@
 import os
-import time
 import hashlib
 import sublime
 import collections
@@ -126,18 +125,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.views_changed = []
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
-        self.chat_deck = collections.deque(maxlen=10)
         self._status_timeout = 0
-
-    def send_msg(self, msg):
-        self.send({'name': 'msg', 'data': msg})
-        self.chat(self.username, time.time(), msg, True)
-
-    def chat(self, username, timestamp, message, self_msg=False):
-        envelope = msg.MSG(message, timestamp, username)
-        if not self_msg:
-            self.chat_deck.appendleft(envelope)
-        envelope.display()
 
     def prompt_join_hangout(self, hangout_url):
         hangout_client = None
@@ -150,18 +138,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             G.WORKSPACE_WINDOW.run_command('floobits_prompt_hangout', {'hangout_url': hangout_url})
 
     def on_msg(self, data):
-        message = data.get('data')
-        self.chat(data['username'], data['time'], message)
-        window = G.WORKSPACE_WINDOW
-
-        def cb(selected):
-            if selected == -1:
-                return
-            envelope = self.chat_deck[selected]
-            window.run_command('floobits_prompt_msg', {'msg': '%s: ' % envelope.username})
-
-        if G.ALERT_ON_MSG and message.find(self.username) >= 0:
-            window.show_quick_panel([str(x) for x in self.chat_deck], cb)
+        msg.MSG(data.get('data'), data['time'], data['username']).display()
 
     def get_username_by_id(self, user_id):
         try:
