@@ -76,15 +76,6 @@ def update_recent_workspaces(workspace):
     utils.update_persistent_data(d)
 
 
-def add_workspace_to_persistent_json(owner, name, url, path):
-    d = utils.get_persistent_data()
-    workspaces = d['workspaces']
-    if owner not in workspaces:
-        workspaces[owner] = {}
-    workspaces[owner][name] = {'url': url, 'path': path}
-    utils.update_persistent_data(d)
-
-
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
                           'This is a known issue on Linux builds of Sublime Text. '
@@ -245,7 +236,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     w.body['perms']['AnonymousUser'] = new_anon_perms
                     response = api.update_workspace(result['owner'], result['workspace'], w.body)
                     print(response.body)
-                add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
+                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
                 return self.window.run_command('floobits_join_workspace', {
                     'workspace_url': workspace_url,
                     'agent_conn_kwargs': {'get_bufs': False}})
@@ -322,7 +313,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         print('Created workspace %s' % workspace_url)
 
         if r.code < 400:
-            add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+            utils.add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
             return self.window.run_command('floobits_join_workspace', {
                 'workspace_url': workspace_url,
                 'agent_conn_kwargs': {
@@ -473,7 +464,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                     return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
 
             G.PROJECT_PATH = d
-            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+            utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
         def run_agent(owner, workspace, host, port, secure):
