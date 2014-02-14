@@ -76,15 +76,6 @@ def update_recent_workspaces(workspace):
     utils.update_persistent_data(d)
 
 
-def add_workspace_to_persistent_json(owner, name, url, path):
-    d = utils.get_persistent_data()
-    workspaces = d['workspaces']
-    if owner not in workspaces:
-        workspaces[owner] = {}
-    workspaces[owner][name] = {'url': url, 'path': path}
-    utils.update_persistent_data(d)
-
-
 def ssl_error_msg(action):
     sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
                           'This is a known issue on Linux builds of Sublime Text. '
@@ -191,15 +182,11 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
-            try:
-                r = api.get_workspace_by_url(workspace_url)
-            except IOError:
-                # Timeout or something bad. Just assume the workspace exists
-                return True
+            r = api.get_workspace_by_url(workspace_url)
             if r.code < 400:
                 on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
                 on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
-                return True
+                return r
             try:
                 result = utils.parse_url(workspace_url)
                 d = utils.get_persistent_data()
@@ -207,47 +194,66 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 utils.update_persistent_data(d)
             except Exception as e:
                 msg.debug(unicode(e))
-            return False
+            return
+
+        def join_workspace(workspace_url):
+            try:
+                w = find_workspace(workspace_url)
+            except Exception as e:
+                sublime.error_message('Error: %s' % str(e))
+                return False
+            if not w:
+                return False
+            msg.debug('workspace: %s', json.dumps(w.body))
+            # if self.api_args:
+            anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
+            new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
+            if set(anon_perms) != set(new_anon_perms):
+                msg.debug(str(anon_perms), str(new_anon_perms))
+                w.body['perms']['AnonymousUser'] = new_anon_perms
+                response = api.update_workspace(w.body['owner'], w.body['name'], w.body)
+                msg.debug(str(response.body))
+            utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
+            self.window.run_command('floobits_join_workspace', {
+                'workspace_url': workspace_url,
+                'agent_conn_kwargs': {'get_bufs': False}})
+            return True
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
             dir_to_share = os.path.dirname(dir_to_share)
-        else:
-            try:
-                utils.mkdir(dir_to_share)
-            except Exception:
-                return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
 
-            floo_file = os.path.join(dir_to_share, '.floo')
+        try:
+            utils.mkdir(dir_to_share)
+        except Exception:
+            return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
 
-            info = {}
-            try:
-                floo_info = open(floo_file, 'r').read()
-                info = json.loads(floo_info)
-            except (IOError, OSError):
-                pass
-            except Exception:
-                print('Couldn\'t read the floo_info file: %s' % floo_file)
+        floo_file = os.path.join(dir_to_share, '.floo')
 
-            workspace_url = info.get('url')
-            try:
-                result = utils.parse_url(workspace_url)
-            except Exception:
-                workspace_url = None
-            if workspace_url and find_workspace(workspace_url):
-                add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
-                return self.window.run_command('floobits_join_workspace', {
-                    'workspace_url': workspace_url,
-                    'agent_conn_kwargs': {'get_bufs': False}})
+        info = {}
+        try:
+            floo_info = open(floo_file, 'r').read()
+            info = json.loads(floo_info)
+        except (IOError, OSError):
+            pass
+        except Exception:
+            msg.error('Couldn\'t read the floo_info file: %s' % floo_file)
+
+        workspace_url = info.get('url')
+        try:
+            utils.parse_url(workspace_url)
+        except Exception:
+            workspace_url = None
+
+        if workspace_url and join_workspace(workspace_url):
+            return
 
         for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
             for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
-                    if find_workspace(workspace_url):
-                        return self.window.run_command('floobits_join_workspace', {
-                            'workspace_url': workspace_url,
-                            'agent_conn_kwargs': {'get_bufs': False}})
+                    if join_workspace(workspace_url):
+                        return
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
@@ -308,10 +314,10 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         workspace_url = 'https://%s/%s/%s/' % (G.DEFAULT_HOST, self.owner, workspace_name)
-        print('Created workspace %s' % workspace_url)
+        msg.log('Created workspace %s' % workspace_url)
 
         if r.code < 400:
-            add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
+            utils.add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
             return self.window.run_command('floobits_join_workspace', {
                 'workspace_url': workspace_url,
                 'agent_conn_kwargs': {
@@ -462,7 +468,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                     return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
 
             G.PROJECT_PATH = d
-            add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
+            utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
         def run_agent(owner, workspace, host, port, secure):

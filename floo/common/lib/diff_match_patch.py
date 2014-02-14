@@ -39,7 +39,8 @@ try:
 except ImportError:
     import urllib as parse
     unquote = lambda x: parse.unquote(x.encode('utf-8')).decode('utf-8')
-    str_instances = (str, basestring)
+    import __builtin__
+    str_instances = (str, __builtin__.basestring)
 
 
 class diff_match_patch:
