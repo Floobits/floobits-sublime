@@ -16,7 +16,10 @@
       {
         "id": "floobits_share_dir",
         "caption": "Share Directory (Public)",
-        "command": "floobits_share_dir"
+        "command": "floobits_share_dir",
+        "args": {
+          "api_args": {"perms": {"AnonymousUser": ["view_room"]}}
+        }
       },
       {
         "id": "floobits_share_dir_private",

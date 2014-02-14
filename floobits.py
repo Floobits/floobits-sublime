@@ -191,15 +191,11 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         print(G.COLAB_DIR, G.USERNAME, workspace_name)
 
         def find_workspace(workspace_url):
-            try:
-                r = api.get_workspace_by_url(workspace_url)
-            except IOError:
-                # Timeout or something bad. Just assume the workspace exists
-                return True
+            r = api.get_workspace_by_url(workspace_url)
             if r.code < 400:
                 on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
                 on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
-                return True
+                return r
             try:
                 result = utils.parse_url(workspace_url)
                 d = utils.get_persistent_data()
@@ -207,34 +203,48 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 utils.update_persistent_data(d)
             except Exception as e:
                 msg.debug(unicode(e))
-            return False
+            return
 
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
             dir_to_share = os.path.dirname(dir_to_share)
-        else:
-            try:
-                utils.mkdir(dir_to_share)
-            except Exception:
-                return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
 
-            floo_file = os.path.join(dir_to_share, '.floo')
+        try:
+            utils.mkdir(dir_to_share)
+        except Exception:
+            return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
 
-            info = {}
-            try:
-                floo_info = open(floo_file, 'r').read()
-                info = json.loads(floo_info)
-            except (IOError, OSError):
-                pass
-            except Exception:
-                print('Couldn\'t read the floo_info file: %s' % floo_file)
+        floo_file = os.path.join(dir_to_share, '.floo')
 
-            workspace_url = info.get('url')
+        info = {}
+        try:
+            floo_info = open(floo_file, 'r').read()
+            info = json.loads(floo_info)
+        except (IOError, OSError):
+            pass
+        except Exception:
+            print('Couldn\'t read the floo_info file: %s' % floo_file)
+
+        workspace_url = info.get('url')
+        try:
+            result = utils.parse_url(workspace_url)
+        except Exception:
+            workspace_url = None
+        if workspace_url:
             try:
-                result = utils.parse_url(workspace_url)
-            except Exception:
-                workspace_url = None
-            if workspace_url and find_workspace(workspace_url):
+                w = find_workspace(workspace_url)
+            except Exception as e:
+                return sublime.error_message('Error: %s' % str(e))
+            if w:
+                msg.debug('workspace: %s', json.dumps(w.body))
+                # if self.api_args:
+                anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
+                new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
+                if set(anon_perms) != set(new_anon_perms):
+                    print(anon_perms, new_anon_perms)
+                    w.body['perms']['AnonymousUser'] = new_anon_perms
+                    response = api.update_workspace(result['owner'], result['workspace'], w.body)
+                    print(response.body)
                 add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
                 return self.window.run_command('floobits_join_workspace', {
                     'workspace_url': workspace_url,
@@ -245,6 +255,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
                     if find_workspace(workspace_url):
+                        api.update_workspace(self.api_args)
                         return self.window.run_command('floobits_join_workspace', {
                             'workspace_url': workspace_url,
                             'agent_conn_kwargs': {'get_bufs': False}})
