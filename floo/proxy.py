@@ -231,6 +231,11 @@ def main():
         dest='data',
         default=None
     )
+    parser.add_option(
+        '--method',
+        dest='method',
+        default=None
+    )
 
     options, args = parser.parse_args()
 
@@ -240,7 +245,7 @@ def main():
         if options.data:
             data = json.loads(options.data)
         try:
-            r = api.hit_url(options.url, data)
+            r = api.hit_url(options.url, data, options.method)
         except HTTPError as e:
             r = e
         except URLError as e:
