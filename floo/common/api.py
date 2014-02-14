@@ -92,9 +92,11 @@ def hit_url(url, data, method):
     return urlopen(r, timeout=5)
 
 
-def api_request(url, data=None, method='GET'):
+def api_request(url, data=None, method=None):
     if data:
         method = method or 'POST'
+    else:
+        method = method or 'GET'
     if ssl is False:
         return proxy_api_request(url, data, method)
     try:
