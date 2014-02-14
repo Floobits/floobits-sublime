@@ -196,6 +196,29 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 msg.debug(unicode(e))
             return
 
+        def join_workspace(workspace_url):
+            try:
+                w = find_workspace(workspace_url)
+            except Exception as e:
+                sublime.error_message('Error: %s' % str(e))
+                return False
+            if not w:
+                return False
+            msg.debug('workspace: %s', json.dumps(w.body))
+            # if self.api_args:
+            anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
+            new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
+            if set(anon_perms) != set(new_anon_perms):
+                msg.debug(str(anon_perms), str(new_anon_perms))
+                w.body['perms']['AnonymousUser'] = new_anon_perms
+                response = api.update_workspace(w.body['owner'], w.body['name'], w.body)
+                msg.debug(str(response.body))
+            utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
+            self.window.run_command('floobits_join_workspace', {
+                'workspace_url': workspace_url,
+                'agent_conn_kwargs': {'get_bufs': False}})
+            return True
+
         if os.path.isfile(dir_to_share):
             file_to_share = dir_to_share
             dir_to_share = os.path.dirname(dir_to_share)
@@ -214,42 +237,23 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         except (IOError, OSError):
             pass
         except Exception:
-            print('Couldn\'t read the floo_info file: %s' % floo_file)
+            msg.error('Couldn\'t read the floo_info file: %s' % floo_file)
 
         workspace_url = info.get('url')
         try:
-            result = utils.parse_url(workspace_url)
+            utils.parse_url(workspace_url)
         except Exception:
             workspace_url = None
-        if workspace_url:
-            try:
-                w = find_workspace(workspace_url)
-            except Exception as e:
-                return sublime.error_message('Error: %s' % str(e))
-            if w:
-                msg.debug('workspace: %s', json.dumps(w.body))
-                # if self.api_args:
-                anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
-                new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
-                if set(anon_perms) != set(new_anon_perms):
-                    print(anon_perms, new_anon_perms)
-                    w.body['perms']['AnonymousUser'] = new_anon_perms
-                    response = api.update_workspace(result['owner'], result['workspace'], w.body)
-                    print(response.body)
-                utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, dir_to_share)
-                return self.window.run_command('floobits_join_workspace', {
-                    'workspace_url': workspace_url,
-                    'agent_conn_kwargs': {'get_bufs': False}})
+
+        if workspace_url and join_workspace(workspace_url):
+            return
 
         for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
             for name, workspace in workspaces.items():
                 if workspace['path'] == dir_to_share:
                     workspace_url = workspace['url']
-                    if find_workspace(workspace_url):
-                        api.update_workspace(self.api_args)
-                        return self.window.run_command('floobits_join_workspace', {
-                            'workspace_url': workspace_url,
-                            'agent_conn_kwargs': {'get_bufs': False}})
+                    if join_workspace(workspace_url):
+                        return
 
         # make & join workspace
         on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
@@ -310,7 +314,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             return sublime.error_message('Unable to create workspace: %s' % unicode(e))
 
         workspace_url = 'https://%s/%s/%s/' % (G.DEFAULT_HOST, self.owner, workspace_name)
-        print('Created workspace %s' % workspace_url)
+        msg.log('Created workspace %s' % workspace_url)
 
         if r.code < 400:
             utils.add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
