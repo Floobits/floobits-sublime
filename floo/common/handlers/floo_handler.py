@@ -244,14 +244,17 @@ class FlooHandler(base.BaseHandler):
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
+        action = 'removed'
         path = utils.get_full_path(data['path'])
-        try:
-            utils.rm(path)
-        except Exception:
-            pass
+        if data.get('delete', False):
+            action = 'deleted'
+            try:
+                utils.rm(path)
+            except Exception:
+                pass
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
-        msg.log('%s deleted %s' % (username, path))
+        msg.log('%s %s %s' % (username, action, path))
 
     @utils.inlined_callbacks
     def _on_room_info(self, data):

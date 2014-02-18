@@ -146,7 +146,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         except Exception:
             return ''
 
-    def delete_buf(self, path):
+    def delete_buf(self, path, unlink=False):
         if not utils.is_shared(path):
             msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
             return
@@ -170,6 +170,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         event = {
             'name': 'delete_buf',
             'id': buf_to_delete['id'],
+            'unlink': unlink,
         }
         self.send(event)
 
@@ -318,6 +319,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 del self.bufs[buf_id]
         except KeyError:
             msg.debug('KeyError deleting buf id %s' % buf_id)
+        # TODO: if data['delete'], add to ignore?
         super(self.__class__, self)._on_delete_buf(data)
 
     def _on_create_buf(self, data):
