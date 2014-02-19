@@ -282,8 +282,8 @@ def main():
         sys.exit(err)
 
     remote_host = options.host or remote_host
-    remote_port = options.port or remote_port
-    remote_ssl = options.ssl or remote_ssl
+    remote_port = int(options.port) or remote_port
+    remote_ssl = bool(options.ssl) or remote_ssl
 
     proxy = Server()
     _, port = reactor.reactor.listen(proxy, port=int(G.PROXY_PORT))
