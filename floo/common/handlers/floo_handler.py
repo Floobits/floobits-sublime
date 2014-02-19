@@ -246,7 +246,7 @@ class FlooHandler(base.BaseHandler):
     def _on_delete_buf(self, data):
         action = 'removed'
         path = utils.get_full_path(data['path'])
-        if data.get('delete', False):
+        if data.get('unlink', False):
             action = 'deleted'
             try:
                 utils.rm(path)
