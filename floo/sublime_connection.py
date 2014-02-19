@@ -160,7 +160,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                     if f[0] == '.':
                         msg.log('Not deleting buf for hidden file %s' % f_path)
                     else:
-                        self.delete_buf(f_path)
+                        self.delete_buf(f_path, unlink)
             return
         buf_to_delete = self.get_buf_by_path(path)
         if buf_to_delete is None:
