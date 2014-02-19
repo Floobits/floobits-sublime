@@ -302,24 +302,15 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def _on_delete_buf(self, data):
         # TODO: somehow tell the user about this
-        buf_id = data['id']
-        view = self.get_view(buf_id)
-        try:
-            if view:
+        view = self.get_view(data['id'])
+        if view:
+            try:
                 view = view.view
                 view.set_scratch(True)
                 G.WORKSPACE_WINDOW.focus_view(view)
                 G.WORKSPACE_WINDOW.run_command("close_file")
-        except Exception as e:
-            msg.debug('Error closing view: %s' % unicode(e))
-        try:
-            buf = self.bufs.get(buf_id)
-            if buf:
-                del self.paths_to_ids[buf['path']]
-                del self.bufs[buf_id]
-        except KeyError:
-            msg.debug('KeyError deleting buf id %s' % buf_id)
-        # TODO: if data['delete'], add to ignore?
+            except Exception as e:
+                msg.debug('Error closing view: %s' % unicode(e))
         super(self.__class__, self)._on_delete_buf(data)
 
     def _on_create_buf(self, data):
