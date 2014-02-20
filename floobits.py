@@ -594,20 +594,18 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
         return 'Add file or directory to currently-joined Floobits workspace.'
 
 
-class FloobitsDeleteFromWorkspaceCommand(FloobitsBaseCommand):
+class FloobitsRemoveFromWorkspaceCommand(FloobitsBaseCommand):
     def run(self, paths, current_file=False):
         if not self.is_enabled():
             return
 
-        confirm = bool(sublime.ok_cancel_dialog('This will delete your local copy as well. Are you sure you want do do this?', 'Delete'))
-        if not confirm:
-            return
+        unlink = bool(sublime.ok_cancel_dialog('Delete? Hit cancel to remove from the workspace without deleting.', 'Delete'))
 
         if paths is None and current_file:
             paths = [self.window.active_view().file_name()]
 
         for path in paths:
-            G.AGENT.delete_buf(path)
+            G.AGENT.delete_buf(path, unlink)
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'

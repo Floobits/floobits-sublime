@@ -198,12 +198,17 @@ class LocalProtocol(floo_proto.FlooProtocol):
             self.to_proxy.append(data)
 
 
+remote_host = G.DEFAULT_HOST
+remote_port = G.DEFAULT_PORT
+remote_ssl = True
+
+
 class Server(base.BaseHandler):
     PROTOCOL = LocalProtocol
 
     def on_connect(self):
         self.conn = FlooConn(self)
-        reactor.reactor.connect(self.conn, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+        reactor.reactor.connect(self.conn, remote_host, remote_port, remote_ssl)
 
 
 try:
@@ -217,6 +222,7 @@ except (AttributeError, ImportError, ValueError):
 
 
 def main():
+    global remote_host, remote_port, remote_ssl
     msg.LOG_LEVEL = msg.LOG_LEVELS['ERROR']
 
     usage = 'Figure it out :P'
@@ -234,6 +240,22 @@ def main():
     parser.add_option(
         '--method',
         dest='method',
+        default=None
+    )
+
+    parser.add_option(
+        '--host',
+        dest='host',
+        default=None
+    )
+    parser.add_option(
+        '--port',
+        dest='port',
+        default=None
+    )
+    parser.add_option(
+        '--ssl',
+        dest='ssl',
         default=None
     )
 
@@ -258,6 +280,10 @@ def main():
             err = True
         print(r.read().decode('utf-8'))
         sys.exit(err)
+
+    remote_host = options.host or remote_host
+    remote_port = int(options.port) or remote_port
+    remote_ssl = bool(options.ssl) or remote_ssl
 
     proxy = Server()
     _, port = reactor.reactor.listen(proxy, port=int(G.PROXY_PORT))

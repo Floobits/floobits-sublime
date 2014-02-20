@@ -6,7 +6,7 @@
       {"caption": "  Floobits", "command": "floobits_not_a", "args": {"paths": []}},
       {"caption": "-"},
       {"caption": "Add to workspace", "command": "floobits_add_to_workspace", "args": {"paths": []}},
-      {"caption": "Delete from workspace", "command": "floobits_delete_from_workspace", "args": {"paths": []}},
+      {"caption": "Remove from workspace", "command": "floobits_remove_from_workspace", "args": {"paths": []}},
       {"caption": "Share this (Public)", "command": "floobits_share_dir", "args": {
         "api_args": {"perms": {"AnonymousUser": ["view_room"]}},
         "paths": []

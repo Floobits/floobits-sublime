@@ -86,8 +86,8 @@
     }
   },
   {
-    "caption": "Floobits - Delete From Workspace",
-    "command": "floobits_delete_from_workspace",
+    "caption": "Floobits - Remove From Workspace",
+    "command": "floobits_remove_from_workspace",
     "args": {
         "paths": null,
         "current_file": true
