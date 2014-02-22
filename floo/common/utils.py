@@ -195,7 +195,7 @@ def to_workspace_url(r):
     if port != '':
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
-    workspace_url = '%s://%s%s/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
+    workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
 
 
