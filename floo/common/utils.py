@@ -199,6 +199,10 @@ def to_workspace_url(r):
     return workspace_url
 
 
+def normalize_url(workspace_url):
+    return to_workspace_url(parse_url(workspace_url))
+
+
 def get_full_path(p):
     full_path = os.path.join(G.PROJECT_PATH, p)
     return unfuck_path(full_path)
@@ -274,6 +278,18 @@ def update_persistent_data(data):
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
+
+
+# Cleans up URLs in persistent.json
+def normalize_persistent_data():
+    persistent_data = get_persistent_data()
+    for rw in persistent_data['recent_workspaces']:
+        rw['url'] = normalize_url(rw['url'])
+
+    for owner, workspaces in persistent_data['workspaces'].items():
+        for name, workspace in workspaces.items():
+            workspace['url'] = normalize_url(workspace['url'])
+    update_persistent_data(persistent_data)
 
 
 def add_workspace_to_persistent_json(owner, name, url, path):
