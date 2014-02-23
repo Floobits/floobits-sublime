@@ -849,6 +849,12 @@ def plugin_loaded():
         os.rename(old_colab_dir, G.BASE_DIR)
         os.symlink(G.BASE_DIR, old_colab_dir)
 
+    try:
+        utils.normalize_persistent_data()
+    except Exception as e:
+        print('Floobits: Error normalizing persistent data:', e)
+        # Keep on truckin' I guess
+
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
