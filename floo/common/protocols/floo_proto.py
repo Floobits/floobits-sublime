@@ -73,9 +73,9 @@ class FlooProtocol(base.BaseProtocol):
     def start_proxy(self):
         if G.PROXY_PORT:
             self._port = int(G.PROXY_PORT)
-            msg.log("SSL proxy in debug mode: Port is set to %s", self._port)
+            msg.log('SSL proxy in debug mode: Port is set to %s' % self._port)
             return
-        args = ('python', '-m', 'floo.proxy', self.host, str(self.port), str(int(self.secure)))
+        args = ('python', '-m', 'floo.proxy', '--host=%s' % self.host, '--port=%s' % str(self.port), '--ssl=%s' % str(bool(self.secure)))
 
         self._proc = proxy.ProxyProtocol()
         self._port = self._proc.connect(args)
@@ -100,8 +100,8 @@ class FlooProtocol(base.BaseProtocol):
                 continue
             name = data.get('name')
             try:
-                msg.debug("got data " + (name or "no name"))
-                self.emit("data", name, data)
+                msg.debug('got data ' + (name or 'no name'))
+                self.emit('data', name, data)
             except Exception as e:
                 print(traceback.format_exc())
                 msg.error('Error handling %s event (%s).' % (name, str(e)))
@@ -135,7 +135,7 @@ class FlooProtocol(base.BaseProtocol):
         self._q.clear()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.retries = self.MAX_RETRIES
-        self.emit("connect")
+        self.emit('connect')
         self.connected = True
 
     def __len__(self):
@@ -260,7 +260,7 @@ class FlooProtocol(base.BaseProtocol):
             return self.reconnect()
 
     def error(self):
-        raise NotImplementedError("error not implemented.")
+        raise NotImplementedError('error not implemented.')
 
     def stop(self):
         self.retries = -1

@@ -83,6 +83,7 @@ class ProxyProtocol(event_emitter.EventEmitter):
         self.cleanup()
 
     def connect(self, args):
+        msg.debug('Running proxy with args %s in %s' % (args, G.PLUGIN_PATH))
         self._proc = proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         line = proc.stdout.readline().decode('utf-8')
         self.fd = proc.stdout.fileno()

@@ -244,14 +244,26 @@ class FlooHandler(base.BaseHandler):
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
-        path = utils.get_full_path(data['path'])
+        buf_id = data['id']
         try:
-            utils.rm(path)
-        except Exception:
-            pass
+            buf = self.bufs.get(buf_id)
+            if buf:
+                del self.paths_to_ids[buf['path']]
+                del self.bufs[buf_id]
+        except KeyError:
+            msg.debug('KeyError deleting buf id %s' % buf_id)
+        # TODO: if data['unlink'] == True, add to ignore?
+        action = 'removed'
+        path = utils.get_full_path(data['path'])
+        if data.get('unlink', False):
+            action = 'deleted'
+            try:
+                utils.rm(path)
+            except Exception as e:
+                msg.debug('Error deleting %s: %s' % (path, str(e)))
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
-        msg.log('%s deleted %s' % (username, path))
+        msg.log('%s %s %s' % (username, action, path))
 
     @utils.inlined_callbacks
     def _on_room_info(self, data):
