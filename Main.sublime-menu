@@ -6,12 +6,15 @@
     "id": "floobitsmenu",
     "caption": "Floobits",
     "children": [
+          {
+        "id": "floobits_workspace_menu",
+        "caption": "Join Workspace",
+        "command": "floobits_prompt_join_workspace"
+      },
       {
-        "caption": "Request Edit Permission",
-        "command": "floobits_request_permission",
-        "args": {
-          "perms": ["edit_room"]
-        }
+        "id": "floobits_join_recent_workspace",
+        "caption": "Join Recent Workspace",
+        "command": "floobits_join_recent_workspace"
       },
       {
         "id": "floobits_share_dir",
@@ -30,33 +33,34 @@
         }
       },
       {
+        "id": "floobits_leave_workspace",
+        "caption": "Leave Workspace",
+        "command": "floobits_leave_workspace"
+      },
+      {
+        "caption": " ",
+        "command": "floobits_not_a"
+      },
+      {
+        "caption": "Request Edit Permission",
+        "command": "floobits_request_permission",
+        "args": {
+          "perms": ["edit_room"]
+        }
+      },
+      {
+        "caption": "Open Workspace Settings (in Browser)",
+        "command": "floobits_open_workspace_settings"
+      },
+      {
         "id": "floobits_create_hangout",
         "caption": "Open Workspace in a Google+ Hangout",
         "command": "floobits_create_hangout"
       },
       {
         "id": "floobits_open_web_editor",
-        "caption": "Open Workspace in web editor",
+        "caption": "Open Workspace in Web Editor",
         "command": "floobits_open_web_editor"
-      },
-      {
-        "id": "floobits_workspace_menu",
-        "caption": "Join Workspace",
-        "command": "floobits_prompt_join_workspace"
-      },
-      {
-        "id": "floobits_join_recent_workspace",
-        "caption": "Join Recent Workspace",
-        "command": "floobits_join_recent_workspace"
-      },
-      {
-        "id": "floobits_leave_workspace",
-        "caption": "Leave Workspace",
-        "command": "floobits_leave_workspace"
-      },
-      {
-        "caption": "Open Workspace Settings (in Browser)",
-        "command": "floobits_open_workspace_settings"
       },
       {
         "caption": " ",
