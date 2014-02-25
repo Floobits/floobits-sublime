@@ -365,6 +365,7 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                 floo_info = open(floo_file, 'r').read()
                 wurl = json.loads(floo_info).get('url')
                 utils.parse_url(wurl)
+                # TODO: check if workspace actually exists
                 workspace = wurl
                 break
             except Exception:
