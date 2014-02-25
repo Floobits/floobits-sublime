@@ -53,6 +53,7 @@ class FlooProtocol(base.BaseProtocol):
         self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
+        self._slice = bytes()
         self._buf_in = bytes()
         self._buf_out = bytes()
         self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
@@ -198,6 +199,7 @@ class FlooProtocol(base.BaseProtocol):
         except Exception:
             pass
         G.JOINED_WORKSPACE = False
+        self._slice = bytes()
         self._buf_in = bytes()
         self._buf_out = bytes()
         self._sock = None
@@ -229,24 +231,29 @@ class FlooProtocol(base.BaseProtocol):
         if self._needs_handshake and not self._do_ssl_handshake():
             return
 
+        total = 0
+        if not self._slice:
+            self._slice = self._buf_out[total:total + 65536]
         try:
-            sent = 0
             while True:
-                if self._buf_out:
-                    sent = self._sock.send(self._buf_out)
-                    sock_debug('sent %s bytes' % sent)
+                if total < len(self._buf_out) or self._slice:
+                    sent = self._sock.send(self._slice)
+                    sock_debug('Sent %s bytes. Last 10 bytes were %s' % (sent, self._slice[-10:]))
                     if not sent:
-                        return
-                    # TODO: don't slice this on every iteration
-                    self._buf_out = self._buf_out[sent:]
+                        raise IndexError('LOL')
+                    total += sent
+                    self._slice = self._buf_out[total:total + 65536]
                 else:
-                    item = self._q.popleft().encode('utf-8')
-                    self._buf_out += item
+                    self._buf_out = self._q.popleft().encode('utf-8')
+                    total = 0
+                    self._slice = self._buf_out[total:total + 65536]
         except IndexError:
-            sock_debug('Done writing for now')
+            pass
         except socket.error as e:
             if e.errno not in write_again_errno:
                 raise
+        self._buf_out = self._buf_out[total:]
+        sock_debug('Done writing for now')
 
     def read(self):
         sock_debug('Socket is readable')
