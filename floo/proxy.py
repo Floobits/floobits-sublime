@@ -119,7 +119,7 @@ def conn_log(action, item):
         item = item.decode('utf-8')
     except Exception:
         pass
-    msg.log('%s: %s' % (action, item))
+    # msg.debug('%s: %s' % (action, item))
     sys.stdout.flush()
 
 eventStream.on('to_floobits', lambda x: conn_log('to_floobits', x))
