@@ -675,9 +675,19 @@ class FloobitsHelpCommand(FloobitsBaseCommand):
         return True
 
 
+class FloobitsToggleStalkerModeCommand(FloobitsBaseCommand):
+    def run(self):
+        if G.STALKER_MODE:
+            self.window.run_command('floobits_disable_stalker_mode')
+        else:
+            self.window.run_command('floobits_enable_stalker_mode')
+
+
 class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = True
+        msg.log('Stalker mode enabled')
+        G.AGENT.update_status_msg()
         # TODO: go to most recent highlight
 
     def is_enabled(self):
@@ -688,6 +698,8 @@ class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
     def run(self):
         G.STALKER_MODE = False
         G.SPLIT_MODE = False
+        msg.log('Stalker mode disabled')
+        G.AGENT.update_status_msg('Stopped following changes. ')
 
     def is_enabled(self):
         return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
