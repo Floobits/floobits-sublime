@@ -395,12 +395,11 @@ Do you want to request edit permission?'''
         buf = self.bufs.get(buf_id)
         if not buf:
             return
-        if G.MIRRORED_SAVES:
-            view = self.get_view(data['id'])
-            if view:
-                self.save_view(view)
-            elif 'buf' in buf:
-                utils.save_buf(buf)
+        view = self.get_view(data['id'])
+        if view:
+            self.save_view(view)
+        elif 'buf' in buf:
+            utils.save_buf(buf)
         username = self.get_username_by_id(data['user_id'])
         msg.log('%s saved buffer %s' % (username, buf['path']))
 

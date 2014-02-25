@@ -359,6 +359,17 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace='https://floobits.com/'):
+        for d in self.window.folders():
+            floo_file = os.path.join(d, '.floo')
+            try:
+                floo_info = open(floo_file, 'r').read()
+                wurl = json.loads(floo_info).get('url')
+                utils.parse_url(wurl)
+                # TODO: check if workspace actually exists
+                workspace = wurl
+                break
+            except Exception:
+                pass
         self.window.show_input_panel('Workspace URL:', workspace, self.on_input, None, None)
 
     def on_input(self, workspace_url):
