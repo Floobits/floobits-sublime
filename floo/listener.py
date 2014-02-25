@@ -36,6 +36,7 @@ def is_view_loaded(view):
 
 
 class Listener(sublime_plugin.EventListener):
+    pending_commands = 0
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
@@ -207,3 +208,22 @@ class Listener(sublime_plugin.EventListener):
             msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
             self.on_modified(view)
             agent.selection_changed.append((view, buf, False))
+
+    def on_window_command(self, window, command_name, args):
+        print(command_name)
+        if command_name not in ("show_quick_panel", "show_input_panel"):
+            return
+        self.pending_commands += 1
+        if not G.AGENT:
+            return
+        G.AGENT.temp_disable_stalk = True
+        return (command_name, args)
+
+    def on_post_window_command(self, window, command_name, args):
+        print(command_name, 'left')
+        if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
+            return
+        self.pending_commands -= 1
+        if not G.AGENT or self.pending_commands > 0:
+            return
+        G.AGENT.temp_disable_stalk = True
