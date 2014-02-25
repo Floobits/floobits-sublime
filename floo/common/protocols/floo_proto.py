@@ -27,9 +27,11 @@ except (ImportError, ValueError):
 try:
     connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY, errno.WSAEINVAL)
     iscon_errno = errno.WSAEISCONN
+    write_again_errno = (errno.EWOULDBLOCK, errno.EAGAIN) + connect_errno
 except Exception:
     connect_errno = (errno.EINPROGRESS, errno.EALREADY)
     iscon_errno = errno.EISCONN
+    write_again_errno = (errno.EWOULDBLOCK, errno.EAGAIN) + connect_errno
 
 
 PY2 = sys.version_info < (3, 0)
@@ -51,7 +53,8 @@ class FlooProtocol(base.BaseProtocol):
         self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
-        self._buf = bytes()
+        self._buf_in = bytes()
+        self._buf_out = bytes()
         self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self._retries = self.MAX_RETRIES
         self._empty_reads = 0
@@ -81,9 +84,9 @@ class FlooProtocol(base.BaseProtocol):
         self._port = self._proc.connect(args)
 
     def _handle(self, data):
-        self._buf += data
+        self._buf_in += data
         while True:
-            before, sep, after = self._buf.partition(b'\n')
+            before, sep, after = self._buf_in.partition(b'\n')
             if not sep:
                 return
             try:
@@ -96,7 +99,7 @@ class FlooProtocol(base.BaseProtocol):
                 msg.error('Unable to parse json: %s' % str(e))
                 msg.error('Data: %s' % before)
                 # XXXX: THIS LOSES DATA
-                self._buf = after
+                self._buf_in = after
                 continue
             name = data.get('name')
             try:
@@ -108,7 +111,7 @@ class FlooProtocol(base.BaseProtocol):
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
                     self.stop()
-            self._buf = after
+            self._buf_in = after
 
     def _connect(self, attempts=0):
         if attempts > (self.proxy and 500 or 500):
@@ -133,6 +136,7 @@ class FlooProtocol(base.BaseProtocol):
             self._sock = ssl.wrap_socket(self._sock, ca_certs=self._cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
 
         self._q.clear()
+        self._buf_out = bytes()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.retries = self.MAX_RETRIES
         self.emit('connect')
@@ -153,7 +157,7 @@ class FlooProtocol(base.BaseProtocol):
 
         if self._needs_handshake:
             return writeable.append(fileno)
-        elif len(self) > 0:
+        elif len(self) > 0 or self._buf_out:
             writeable.append(fileno)
 
         readable.append(fileno)
@@ -194,7 +198,8 @@ class FlooProtocol(base.BaseProtocol):
         except Exception:
             pass
         G.JOINED_WORKSPACE = False
-        self._buf = bytes()
+        self._buf_in = bytes()
+        self._buf_out = bytes()
         self._sock = None
         self._needs_handshake = self._secure
         self.connected = False
@@ -223,14 +228,25 @@ class FlooProtocol(base.BaseProtocol):
         sock_debug('Socket is writeable')
         if self._needs_handshake and not self._do_ssl_handshake():
             return
+
         try:
+            sent = 0
             while True:
-                # TODO: use sock.send()
-                item = self._q.popleft()
-                sock_debug('sending patch', item)
-                self._sock.sendall(item.encode('utf-8'))
+                if self._buf_out:
+                    sent = self._sock.send(self._buf_out)
+                    sock_debug('sent %s bytes' % sent)
+                    if not sent:
+                        return
+                    # TODO: don't slice this on every iteration
+                    self._buf_out = self._buf_out[sent:]
+                else:
+                    item = self._q.popleft().encode('utf-8')
+                    self._buf_out += item
         except IndexError:
             sock_debug('Done writing for now')
+        except socket.error as e:
+            if e.errno not in write_again_errno:
+                raise
 
     def read(self):
         sock_debug('Socket is readable')
@@ -285,7 +301,7 @@ class FlooProtocol(base.BaseProtocol):
     def put(self, item):
         if not item:
             return
-        msg.debug('writing %s: %s' % (item.get('name', 'NO NAME'), item))
+        msg.debug('writing %s' % item.get('name', 'NO NAME'))
         self._q.append(json.dumps(item) + '\n')
         qsize = len(self._q)
         msg.debug('%s items in q' % qsize)
