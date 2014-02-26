@@ -521,7 +521,24 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         print('Project path is %s' % G.PROJECT_PATH)
 
         if not os.path.isdir(G.PROJECT_PATH):
-            default_dir = os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
+            default_dir = None
+            for w in sublime.windows():
+                if default_dir:
+                    break
+                for d in self.window.folders():
+                    floo_file = os.path.join(d, '.floo')
+                    try:
+                        floo_info = open(floo_file, 'r').read()
+                        wurl = json.loads(floo_info).get('url')
+                        if wurl == workspace_url:
+                            # TODO: check if workspace actually exists
+                            default_dir = d
+                            break
+                    except Exception:
+                        pass
+
+            default_dir = default_dir or os.path.realpath(os.path.join(G.COLAB_DIR, result['owner'], result['workspace']))
+
             return self.window.show_input_panel('Save workspace in directory:', default_dir, make_dir, None, None)
 
         open_workspace_window(lambda: run_agent(**result))
