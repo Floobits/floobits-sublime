@@ -558,7 +558,7 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
         print(username, secret)
         if not (username and secret):
             return sublime.error_message('You don\'t seem to have a Floobits account of any sort')
-        webbrowser.open('https://%s/%s/pinocchio/%s/' % (G.DEFAULT_HOST, username, secret))
+        webbrowser.open('https://%s/%s/pinocchio/%s' % (G.DEFAULT_HOST, username, secret))
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
