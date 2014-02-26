@@ -78,6 +78,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 'ranges': view.get_selections(),
                 'ping': summon,
                 'summon': summon,
+                'following': G.STALKER_MODE,
             }
             self.send(highlight_json)
 
@@ -91,7 +92,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             status += 'Following changes in'
         else:
             status += 'Connected to'
-        status += ' %s/%s' % (self.owner, self.workspace)
+        status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
     def ok_cancel_dialog(self, msg, cb=None):
@@ -134,6 +135,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
         self._status_timeout = 0
+        self.last_highlight = None
 
     def prompt_join_hangout(self, hangout_url):
         hangout_client = None
@@ -182,8 +184,20 @@ class SublimeConnection(floo_handler.FlooHandler):
         }
         self.send(event)
 
-    def highlight(self, buf_id, region_key, username, ranges, summon, clone):
-        buf_id = int(buf_id)
+    def highlight(self, data=None):
+        data = data or self.last_highlight
+        if not data:
+            msg.log('No recent highlight to replay.')
+            return
+        self._on_highlight(data)
+
+    def _on_highlight(self, data, clone=True):
+        self.last_highlight = data
+        region_key = 'floobits-highlight-%s' % (data['user_id'])
+        buf_id = int(data['id'])
+        username = data['username']
+        ranges = data['ranges']
+        summon = data.get('ping', False)
         msg.debug(str([buf_id, region_key, username, ranges, summon, clone]))
         buf = self.bufs.get(buf_id)
         if not buf:
@@ -200,14 +214,20 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.debug('ignoring command until temp_ignore_highlight is complete')
             return
 
-        do_stuff = summon or (G.STALKER_MODE and not self.temp_disable_stalk)
+        if G.STALKER_MODE:
+            if self.temp_disable_stalk or data.get('following'):
+                do_stuff = False
+            else:
+                do_stuff = True
+        else:
+            do_stuff = summon
 
         view = self.get_view(buf_id)
         if not view or view.is_loading():
             if do_stuff:
                 msg.debug('creating view')
                 create_view(buf)
-                self.on_load[buf_id] = lambda: self.highlight(buf_id, region_key, username, ranges, summon, False)
+                self.on_load[buf_id] = lambda: self._on_highlight(data, False)
             return
         view = view.view
         regions = []
@@ -338,7 +358,3 @@ class SublimeConnection(floo_handler.FlooHandler):
         for window in sublime.windows():
             for view in window.views():
                 view.erase_regions(region_key)
-
-    def _on_highlight(self, data):
-        region_key = 'floobits-highlight-%s' % (data['user_id'])
-        self.highlight(data['id'], region_key, data['username'], data['ranges'], data.get('ping', False), True)

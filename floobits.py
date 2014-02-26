@@ -688,7 +688,7 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         G.STALKER_MODE = True
         msg.log('Stalker mode enabled')
         G.AGENT.update_status_msg()
-        # TODO: go to most recent highlight
+        G.AGENT.highlight()
 
     def is_enabled(self):
         return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
