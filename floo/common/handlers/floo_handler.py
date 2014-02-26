@@ -1,5 +1,6 @@
 import os
 import sys
+import io
 import hashlib
 import base64
 from operator import attrgetter
@@ -313,18 +314,21 @@ Do you want to request edit permission?'''
             else:
                 try:
                     if buf['encoding'] == "utf8":
-                        buf_fd = open(buf_path, 'r')
+                        buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
+                        buf_buf = buf_fd.read()
+                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
                     else:
                         buf_fd = open(buf_path, 'rb')
-                    buf_buf = buf_fd.read()
-                    md5 = hashlib.md5(buf_buf).hexdigest()
+                        buf_buf = buf_fd.read()
+                        md5 = hashlib.md5(buf_buf).hexdigest()
                     if md5 == buf['md5']:
                         msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
                         buf['buf'] = buf_buf
                     elif self.should_get_bufs:
+                        msg.debug('md5 should not getting buffer %s' % buf['path'])
                         changed_bufs.append(buf_id)
                 except Exception as e:
-                    msg.debug('Error calculating md5:', e)
+                    msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                     missing_bufs.append(buf_id)
 
         if changed_bufs and self.should_get_bufs:
