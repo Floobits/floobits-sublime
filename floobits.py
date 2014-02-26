@@ -143,7 +143,7 @@ def on_room_info_msg():
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
     def is_visible(self):
-        return bool(self.is_enabled())
+        return True
 
     def is_enabled(self):
         return bool(G.AGENT and G.AGENT.is_ready())
@@ -707,6 +707,11 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         G.AGENT.update_status_msg()
         G.AGENT.highlight()
 
+    def is_visible(self):
+        if G.AGENT:
+            return self.is_enabled()
+        return True
+
     def is_enabled(self):
         return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
 
@@ -717,6 +722,9 @@ class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
         G.SPLIT_MODE = False
         msg.log('Stalker mode disabled')
         G.AGENT.update_status_msg('Stopped following changes. ')
+
+    def is_visible(self):
+        return self.is_enabled()
 
     def is_enabled(self):
         return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
