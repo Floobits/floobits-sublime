@@ -205,10 +205,20 @@ class Listener(sublime_plugin.EventListener):
             self.on_modified(view)
             agent.selection_changed.append((view, buf, False))
 
-    @if_connected
-    def on_window_command(window, command_name, args):
-        return None
+    # ST3 calls on_window_command, but not on_post_window_command
+    # resurrect when on_post_window_command works.
+    # def on_window_command(self, window, command_name, args):
+    #     if command_name not in ("show_quick_panel", "show_input_panel"):
+    #         return
+    #     self.pending_commands += 1
+    #     if not G.AGENT:
+    #         return
+    #     G.AGENT.temp_disable_stalk = True
 
-    @if_connected
-    def post_window_command(window, command_name, args):
-        return
+    # def on_post_window_command(self, window, command_name, args):
+    #     if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
+    #         return
+    #     self.pending_commands -= 1
+    #     if not G.AGENT or self.pending_commands > 0:
+    #         return
+    #     G.AGENT.temp_disable_stalk = False
