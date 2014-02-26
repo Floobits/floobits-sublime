@@ -16,7 +16,7 @@ except (ImportError, ValueError):
 
 WELCOME_MSG = """Welcome %s!\n\nYou are all set to collaborate.
 
-You may want to check out our docs at https://%s/help/plugins/"""
+You may want to check out our docs at https://%s/help/plugins"""
 
 
 class RequestCredentialsHandler(base.BaseHandler):
@@ -28,7 +28,7 @@ class RequestCredentialsHandler(base.BaseHandler):
 
     def build_protocol(self, *args):
         proto = super(RequestCredentialsHandler, self).build_protocol(*args)
-        webbrowser.open('https://%s/dash/link_editor/%s/' % (proto.host, self.token))
+        webbrowser.open('https://%s/dash/link_editor/%s' % (proto.host, self.token))
         return proto
 
     def is_ready(self):
@@ -50,7 +50,7 @@ class RequestCredentialsHandler(base.BaseHandler):
                 floorc_fd.write(floorc)
             utils.reload_settings()
             if not G.USERNAME or not G.SECRET:
-                editor.message_dialog('Something went wrong. See https://%s/help/floorc/ to complete the installation.' % self.proto.host)
+                editor.message_dialog('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
                 api.send_error({'message': 'No username or secret'})
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
