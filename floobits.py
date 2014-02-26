@@ -572,6 +572,9 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
         else:
             sublime.error_message('You are not joined to any workspace.')
 
+    def is_enabled(self):
+        return G.AGENT
+
 
 class FloobitsClearHighlightsCommand(FloobitsBaseCommand):
     def run(self):
