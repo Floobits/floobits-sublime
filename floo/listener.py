@@ -75,7 +75,7 @@ class Listener(sublime_plugin.EventListener):
 
     @if_connected
     def on_close(self, view, agent):
-        msg.debug('close', self.name(view))
+        msg.debug('Sublime closed view %s' % self.name(view))
 
     @if_connected
     def on_load(self, view, agent):
