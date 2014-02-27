@@ -8,6 +8,7 @@ import optparse
 import platform
 import sys
 import time
+import copy
 
 # Monkey patch editor
 timeouts = defaultdict(list)
@@ -69,14 +70,11 @@ def call_timeouts():
         return
     calling_timeouts = True
     now = time.time()
-    to_remove = []
-    for t, tos in timeouts.items():
+    for t, tos in copy.copy(timeouts).items():
         if now >= t:
             for timeout in tos:
                 timeout()
-            to_remove.append(t)
-    for k in to_remove:
-        del timeouts[k]
+            del timeouts[t]
     calling_timeouts = False
 
 
