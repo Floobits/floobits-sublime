@@ -99,7 +99,9 @@ def create_or_link_account():
     if account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
-    elif not utils.get_persistent_data().get('disable_account_creation'):
+    elif utils.get_persistent_data().get('disable_account_creation'):
+        print('persistent.json has disable_account_creation. Skipping CreateAccountHandler')
+    else:
         agent = CreateAccountHandler()
 
     if not agent:
