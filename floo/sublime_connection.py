@@ -294,7 +294,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 utils.set_timeout(win.focus_group, 0, 0)
                 try:
                     del self.temp_ignore_highlight[buf_id]
-                except:
+                except Exception:
                     pass
             utils.set_timeout(win.focus_group, 0, 0)
             poll_for_move()
