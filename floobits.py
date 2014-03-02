@@ -351,7 +351,9 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 r.body = r.body['detail']
             except Exception:
                 pass
-            return sublime.error_message('%s' % r.body)
+            if sublime.ok_cancel_dialog('%s' % r.body, 'Open billing settings'):
+                webbrowser.open('https://%s/%s/settings#billing' % (G.DEFAULT_HOST, self.owner))
+            return
         else:
             kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
 
