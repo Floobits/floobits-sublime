@@ -43,6 +43,10 @@ class BaseHandler(event_emitter.EventEmitter):
     def client(self):
         return editor.name()
 
+    @property
+    def codename(self):
+        return editor.codename()
+
     def _on_error(self, data):
         message = 'Error from server! Message: %s' % str(data.get('msg'))
         msg.error(message)

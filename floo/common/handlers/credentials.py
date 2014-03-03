@@ -28,7 +28,7 @@ class RequestCredentialsHandler(base.BaseHandler):
 
     def build_protocol(self, *args):
         proto = super(RequestCredentialsHandler, self).build_protocol(*args)
-        webbrowser.open('https://%s/dash/link_editor/%s' % (proto.host, self.token))
+        webbrowser.open('https://%s/dash/link_editor/%s/%s' % (proto.host, self.codename, self.token))
         return proto
 
     def is_ready(self):

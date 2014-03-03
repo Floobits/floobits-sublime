@@ -17,6 +17,10 @@ def name():
     return 'Sublime Text %s' % py_version
 
 
+def codename():
+    return 'sublime'
+
+
 def ok_cancel_dialog(dialog):
     return sublime.ok_cancel_dialog(dialog)
 
