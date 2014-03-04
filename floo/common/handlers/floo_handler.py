@@ -1,9 +1,13 @@
 import os
 import sys
-import io
 import hashlib
 import base64
 from operator import attrgetter
+
+try:
+    import io
+except ImportError:
+    io = None
 
 try:
     from . import base
@@ -314,8 +318,12 @@ Do you want to request edit permission?'''
             else:
                 try:
                     if buf['encoding'] == "utf8":
-                        buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
-                        buf_buf = buf_fd.read()
+                        if io:
+                            buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
+                            buf_buf = buf_fd.read()
+                        else:
+                            buf_fd = open(buf_path, 'rb')
+                            buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
                         md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
                     else:
                         buf_fd = open(buf_path, 'rb')
