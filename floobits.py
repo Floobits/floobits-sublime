@@ -829,7 +829,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         if stop - start > 10000:
             self.view.replace(edit, region, data)
             G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(sutils.get_text(self.view).encode('utf-8')).hexdigest()
-            return transform_selections(selections, start, stop - start)
+            return transform_selections(selections, stop, 0)
 
         existing = self.view.substr(region)
         i = 0
