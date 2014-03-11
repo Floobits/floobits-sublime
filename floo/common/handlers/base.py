@@ -23,6 +23,7 @@ class BaseHandler(event_emitter.EventEmitter):
     def __init__(self):
         super(BaseHandler, self).__init__()
         G.AGENT = self
+        self.reload_settings()
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
