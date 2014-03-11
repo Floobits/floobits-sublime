@@ -157,15 +157,18 @@ def parse_url(workspace_url):
     workspace_name = None
     parsed_url = urlparse(workspace_url)
     port = parsed_url.port
-    if parsed_url.scheme == 'http':
+    if G.DEBUG and parsed_url.scheme == 'http':
+        # Only obey http if we're debugging
         if not port:
             port = 3148
         secure = False
-    else:
-        if not port:
-            port = G.DEFAULT_PORT
+
+    if not port:
+        port = G.DEFAULT_PORT
+
     result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
     if not result:
+        # Old style URL
         result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:
