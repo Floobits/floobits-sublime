@@ -624,8 +624,17 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
         if paths is None and current_file:
             paths = [self.window.active_view().file_name()]
 
+        notshared = []
         for path in paths:
-            G.AGENT.upload(path)
+            if utils.is_shared(path):
+                G.AGENT.upload(path)
+            else:
+                notshared.append(path)
+
+        if notshared:
+            limit = 5
+            sublime.error_message("The following paths are not a child of\n\n%s\n\nand will not be shared for security reasons:\n\n%s%s." %
+                (G.PROJECT_PATH, ",\n".join(notshared[:limit]), len(notshared) > limit and ",\n..." or ""))
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
