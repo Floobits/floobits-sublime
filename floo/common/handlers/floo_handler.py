@@ -278,11 +278,14 @@ class FlooHandler(base.BaseHandler):
         G.PERMS = data['perms']
 
         if 'patch' not in data['perms']:
+            no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
             msg.log('No patch permission. Setting buffers to read-only')
-            should_send = yield self.ok_cancel_dialog, '''You don't have permission to edit this workspace. All files will be read-only.
-Do you want to request edit permission?'''
-            if should_send:
-                self.send({'name': 'request_perms', 'perms': ['edit_room']})
+            if 'request_perm' in data['perms']:
+                should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
+                if should_send:
+                    self.send({'name': 'request_perms', 'perms': ['edit_room']})
+            else:
+                editor.error_message(no_perms_msg)
 
         floo_json = {
             'url': utils.to_workspace_url({
