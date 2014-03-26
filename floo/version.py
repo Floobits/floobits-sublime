@@ -7,5 +7,5 @@ try:
 except ImportError:
     from common import shared as G
 
-G.__VERSION__ = '0.03'
+G.__VERSION__ = '0.11'
 G.__PLUGIN_VERSION__ = PLUGIN_VERSION
