@@ -639,7 +639,7 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
         if notshared:
             limit = 5
             sublime.error_message("The following paths are not a child of\n\n%s\n\nand will not be shared for security reasons:\n\n%s%s." %
-                (G.PROJECT_PATH, ",\n".join(notshared[:limit]), len(notshared) > limit and ",\n..." or ""))
+                                 (G.PROJECT_PATH, ",\n".join(notshared[:limit]), len(notshared) > limit and ",\n..." or ""))
 
     def description(self):
         return 'Add file or directory to currently-joined Floobits workspace.'
