@@ -173,7 +173,11 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 return sublime.error_message('Only one folder at a time, please. :(')
             return self.on_input(paths[0])
         if dir_to_share is None:
-            dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
+            folders = self.window.folders()
+            if folders:
+                dir_to_share = folders[0]
+            else:
+                dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
         on_room_info_waterfall = utils.Waterfall()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
