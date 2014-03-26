@@ -64,7 +64,7 @@ class Ignore(object):
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
-            except:
+            except Exception:
                 pass
 
         if recurse:

@@ -22,19 +22,20 @@ DEFAULT_HOST = 'floobits.com'
 DEFAULT_PORT = 3448
 SECURE = True
 
-
+PROXY_PORT = 0  # Random port
 SHARE_DIR = None
 COLAB_DIR = ''
 PROJECT_PATH = ''
+WORKSPACE_WINDOW = None
+
 JOINED_WORKSPACE = False
 PERMS = []
 STALKER_MODE = False
 SPLIT_MODE = False
-MIRRORED_SAVES = True
 
 AUTO_GENERATED_ACCOUNT = False
 PLUGIN_PATH = None
-WORKSPACE_WINDOW = None
+
 CHAT_VIEW = None
 CHAT_VIEW_PATH = None
 
@@ -43,6 +44,5 @@ AGENT = None
 
 IGNORE_MODIFIED_EVENTS = False
 VIEW_TO_HASH = {}
-
 
 FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))

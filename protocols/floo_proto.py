@@ -12,22 +12,26 @@ try:
     assert ssl
 except ImportError:
     ssl = False
+
 try:
     from ... import editor
     from .. import cert, msg, shared as G, utils
-    from . import base
-    assert cert and G and msg and utils
+    from . import base, proxy
+    assert cert and G and msg and proxy and utils
 except (ImportError, ValueError):
     from floo import editor
     from floo.common import cert, msg, shared as G, utils
     import base
+    import proxy
 
 try:
     connect_errno = (errno.WSAEWOULDBLOCK, errno.WSAEALREADY, errno.WSAEINVAL)
     iscon_errno = errno.WSAEISCONN
+    write_again_errno = (errno.EWOULDBLOCK, errno.EAGAIN) + connect_errno
 except Exception:
     connect_errno = (errno.EINPROGRESS, errno.EALREADY)
     iscon_errno = errno.EISCONN
+    write_again_errno = (errno.EWOULDBLOCK, errno.EAGAIN) + connect_errno
 
 
 PY2 = sys.version_info < (3, 0)
@@ -49,17 +53,41 @@ class FlooProtocol(base.BaseProtocol):
         self._needs_handshake = bool(secure)
         self._sock = None
         self._q = collections.deque()
-        self._buf = bytes()
+        self._slice = bytes()
+        self._buf_in = bytes()
+        self._buf_out = bytes()
         self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self._retries = self.MAX_RETRIES
         self._empty_reads = 0
         self._reconnect_timeout = None
         self._cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
 
+        self._host = host
+        self._port = port
+        self._secure = secure
+        self._proc = None
+        self.proxy = False
+        # Sublime Text has a busted SSL module on Linux. Spawn a proxy using OS Python.
+        if secure and ssl is False:
+            self.proxy = True
+            self._host = '127.0.0.1'
+            self._port = None
+            self._secure = False
+
+    def start_proxy(self):
+        if G.PROXY_PORT:
+            self._port = int(G.PROXY_PORT)
+            msg.log('SSL proxy in debug mode: Port is set to %s' % self._port)
+            return
+        args = ('python', '-m', 'floo.proxy', '--host=%s' % self.host, '--port=%s' % str(self.port), '--ssl=%s' % str(bool(self.secure)))
+
+        self._proc = proxy.ProxyProtocol()
+        self._port = self._proc.connect(args)
+
     def _handle(self, data):
-        self._buf += data
+        self._buf_in += data
         while True:
-            before, sep, after = self._buf.partition(self.NEWLINE)
+            before, sep, after = self._buf_in.partition(b'\n')
             if not sep:
                 return
             try:
@@ -72,29 +100,29 @@ class FlooProtocol(base.BaseProtocol):
                 msg.error('Unable to parse json: %s' % str(e))
                 msg.error('Data: %s' % before)
                 # XXXX: THIS LOSES DATA
-                self._buf = after
+                self._buf_in = after
                 continue
             name = data.get('name')
             try:
-                msg.debug("got data " + name)
-                self.emit("data", name, data)
+                msg.debug('got data ' + (name or 'no name'))
+                self.emit('data', name, data)
             except Exception as e:
                 print(traceback.format_exc())
                 msg.error('Error handling %s event (%s).' % (name, str(e)))
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
                     self.stop()
-            self._buf = after
+            self._buf_in = after
 
     def _connect(self, attempts=0):
-        if attempts > 500:
+        if attempts > (self.proxy and 500 or 500):
             msg.error('Connection attempt timed out.')
-            return self._reconnect()
+            return self.reconnect()
         if not self._sock:
             msg.debug('_connect: No socket')
             return
         try:
-            self._sock.connect((self.host, self.port))
+            self._sock.connect((self._host, self._port))
             select.select([self._sock], [self._sock], [], 0)
         except socket.error as e:
             if e.errno == iscon_errno:
@@ -103,15 +131,16 @@ class FlooProtocol(base.BaseProtocol):
                 return utils.set_timeout(self._connect, 20, attempts + 1)
             else:
                 msg.error('Error connecting:', e)
-                return self._reconnect()
-        if self.secure:
+                return self.reconnect()
+        if self._secure:
             sock_debug('SSL-wrapping socket')
             self._sock = ssl.wrap_socket(self._sock, ca_certs=self._cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
 
         self._q.clear()
+        self._buf_out = bytes()
         self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
         self.retries = self.MAX_RETRIES
-        self.emit("connect")
+        self.emit('connect')
         self.connected = True
 
     def __len__(self):
@@ -129,7 +158,7 @@ class FlooProtocol(base.BaseProtocol):
 
         if self._needs_handshake:
             return writeable.append(fileno)
-        elif len(self) > 0:
+        elif len(self) > 0 or self._buf_out:
             writeable.append(fileno)
 
         readable.append(fileno)
@@ -141,18 +170,17 @@ class FlooProtocol(base.BaseProtocol):
 
         self._empty_selects = 0
 
+        if self.proxy:
+            self.start_proxy()
+
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setblocking(False)
-        if self.secure:
-            if ssl:
-                with open(self._cert_path, 'wb') as cert_fd:
-                    cert_fd.write(cert.CA_CERT.encode('utf-8'))
-            else:
-                msg.log('No SSL module found. Connection will not be encrypted.')
-                self.secure = False
-                if self.port == G.DEFAULT_PORT:
-                    self.port = 3148  # plaintext port
+        if self._secure:
+            with open(self._cert_path, 'wb') as cert_fd:
+                cert_fd.write(cert.CA_CERT.encode('utf-8'))
         conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        if self.port != self._port or self.host != self._host:
+            conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
         msg.log(conn_msg)
         editor.status_message(conn_msg)
         self._connect()
@@ -166,11 +194,18 @@ class FlooProtocol(base.BaseProtocol):
             self._sock.close()
         except Exception:
             pass
+        try:
+            self._proc.cleanup()
+        except Exception:
+            pass
         G.JOINED_WORKSPACE = False
-        self._buf = bytes()
+        self._slice = bytes()
+        self._buf_in = bytes()
+        self._buf_out = bytes()
         self._sock = None
-        self._needs_handshake = self.secure
+        self._needs_handshake = self._secure
         self.connected = False
+        self._proc = None
 
     def _do_ssl_handshake(self):
         try:
@@ -195,14 +230,30 @@ class FlooProtocol(base.BaseProtocol):
         sock_debug('Socket is writeable')
         if self._needs_handshake and not self._do_ssl_handshake():
             return
+
+        total = 0
+        if not self._slice:
+            self._slice = self._buf_out[total:total + 65536]
         try:
             while True:
-                # TODO: use sock.send()
-                item = self._q.popleft()
-                sock_debug('sending patch', item)
-                self._sock.sendall(item.encode('utf-8'))
+                if total < len(self._buf_out) or self._slice:
+                    sent = self._sock.send(self._slice)
+                    sock_debug('Sent %s bytes. Last 10 bytes were %s' % (sent, self._slice[-10:]))
+                    if not sent:
+                        raise IndexError('LOL')
+                    total += sent
+                    self._slice = self._buf_out[total:total + 65536]
+                else:
+                    self._buf_out = self._q.popleft().encode('utf-8')
+                    total = 0
+                    self._slice = self._buf_out[total:total + 65536]
         except IndexError:
-            sock_debug('Done writing for now')
+            pass
+        except socket.error as e:
+            if e.errno not in write_again_errno:
+                raise
+        self._buf_out = self._buf_out[total:]
+        sock_debug('Done writing for now')
 
     def read(self):
         sock_debug('Socket is readable')
@@ -232,7 +283,7 @@ class FlooProtocol(base.BaseProtocol):
             return self.reconnect()
 
     def error(self):
-        raise NotImplementedError("error not implemented.")
+        raise NotImplementedError('error not implemented.')
 
     def stop(self):
         self.retries = -1
@@ -257,7 +308,7 @@ class FlooProtocol(base.BaseProtocol):
     def put(self, item):
         if not item:
             return
-        msg.debug('writing %s: %s' % (item.get('name', 'NO NAME'), item))
+        msg.debug('writing %s' % item.get('name', 'NO NAME'))
         self._q.append(json.dumps(item) + '\n')
         qsize = len(self._q)
         msg.debug('%s items in q' % qsize)

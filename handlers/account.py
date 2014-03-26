@@ -22,7 +22,7 @@ class CreateAccountHandler(base.BaseHandler):
     def on_connect(self):
         try:
             username = getpass.getuser()
-        except:
+        except Exception:
             username = ''
 
         self.send({

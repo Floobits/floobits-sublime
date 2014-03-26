@@ -69,7 +69,7 @@ class _Reactor(object):
             self.tick(.05)
 
     def select(self, timeout=0):
-        if not self._handlers:
+        if not self._protos:
             return
 
         readable = []
@@ -82,7 +82,7 @@ class _Reactor(object):
             if not fileno:
                 continue
             fd.fd_set(readable, writeable, errorable)
-            fd_map[fd.fileno()] = fd
+            fd_map[fileno] = fd
 
         if not readable and not writeable:
             return

@@ -90,6 +90,10 @@ def reload_settings():
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
     G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
+    if G.DEBUG == '1':
+        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
+    else:
+        msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
 
 
@@ -153,15 +157,18 @@ def parse_url(workspace_url):
     workspace_name = None
     parsed_url = urlparse(workspace_url)
     port = parsed_url.port
-    if parsed_url.scheme == 'http':
+    if G.DEBUG and parsed_url.scheme == 'http':
+        # Only obey http if we're debugging
         if not port:
             port = 3148
         secure = False
-    else:
-        if not port:
-            port = G.DEFAULT_PORT
+
+    if not port:
+        port = G.DEFAULT_PORT
+
     result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
     if not result:
+        # Old style URL
         result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:
@@ -191,8 +198,12 @@ def to_workspace_url(r):
     if port != '':
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
-    workspace_url = '%s://%s%s/%s/%s/' % (proto, host, port, r['owner'], r['workspace'])
+    workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
     return workspace_url
+
+
+def normalize_url(workspace_url):
+    return to_workspace_url(parse_url(workspace_url))
 
 
 def get_full_path(p):
@@ -201,7 +212,7 @@ def get_full_path(p):
 
 
 def unfuck_path(p):
-    return os.path.normcase(os.path.normpath(p))
+    return os.path.normpath(p)
 
 
 def to_rel_path(p):
@@ -272,6 +283,19 @@ def update_persistent_data(data):
         per.write(json.dumps(data, indent=2).encode('utf-8'))
 
 
+# Cleans up URLs in persistent.json
+def normalize_persistent_data():
+    persistent_data = get_persistent_data()
+    for rw in persistent_data['recent_workspaces']:
+        rw['url'] = normalize_url(rw['url'])
+
+    for owner, workspaces in persistent_data['workspaces'].items():
+        for name, workspace in workspaces.items():
+            workspace['url'] = normalize_url(workspace['url'])
+            workspace['path'] = unfuck_path(workspace['path'])
+    update_persistent_data(persistent_data)
+
+
 def add_workspace_to_persistent_json(owner, name, url, path):
     d = get_persistent_data()
     workspaces = d['workspaces']
@@ -281,12 +305,14 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     update_persistent_data(d)
 
 
-def get_workspace_by_path(path):
+def get_workspace_by_path(path, _filter):
+    path = unfuck_path(path)
     for owner, workspaces in get_persistent_data()['workspaces'].items():
         for name, workspace in workspaces.items():
-            if workspace['path'] == path:
-                workspace_url = workspace['url']
-                return workspace_url
+            if unfuck_path(workspace['path']) == path:
+                r = _filter(workspace['url'])
+                if r:
+                    return r
 
 
 def rm(path):

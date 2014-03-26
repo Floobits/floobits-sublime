@@ -23,6 +23,7 @@ class BaseHandler(event_emitter.EventEmitter):
     def __init__(self):
         super(BaseHandler, self).__init__()
         G.AGENT = self
+        self.reload_settings()
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
@@ -43,14 +44,18 @@ class BaseHandler(event_emitter.EventEmitter):
     def client(self):
         return editor.name()
 
+    @property
+    def codename(self):
+        return editor.codename()
+
     def _on_error(self, data):
-        message = 'Floobits: Error! Message: %s' % str(data.get('msg'))
+        message = 'Error from server! Message: %s' % str(data.get('msg'))
         msg.error(message)
         if data.get('flash'):
-            editor.error_message('Floobits: %s' % str(data.get('msg')))
+            editor.error_message('Error from Floobits server: %s' % str(data.get('msg')))
 
     def _on_disconnect(self, data):
-        message = 'Floobits: Disconnected! Reason: %s' % str(data.get('reason'))
+        message = 'Disconnected from server! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         editor.error_message(message)
         self.proto.stop()
