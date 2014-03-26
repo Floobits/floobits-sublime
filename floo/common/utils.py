@@ -277,7 +277,17 @@ def get_persistent_data(per_path=None):
 
 def update_persistent_data(data):
     seen = set()
-    data['recent_workspaces'] = [x for x in data['recent_workspaces'] if x['url'] not in seen and not seen.add(x['url'])]
+    recent_workspaces = []
+    for x in data['recent_workspaces']:
+        try:
+            if x['url'] in seen:
+                continue
+            seen.add(x['url'])
+            recent_workspaces.append(x)
+        except Exception as e:
+            msg.debug(str(e))
+
+    data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
     with open(per_path, 'wb') as per:
         per.write(json.dumps(data, indent=2).encode('utf-8'))
