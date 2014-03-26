@@ -467,6 +467,9 @@ class FlooHandler(base.BaseHandler):
     def _on_msg(self, data):
         self.on_msg(data)
 
+    def _on_ping(self, data):
+        self.send({'name': 'pong'})
+
     @utils.inlined_callbacks
     def upload(self, path, cb=None):
         ig = ignore.Ignore(None, path)

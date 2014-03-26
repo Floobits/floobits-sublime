@@ -1,3 +1,8 @@
+try:
+    unicode()
+except NameError:
+    unicode = str
+
 import sys
 import base64
 import json
@@ -148,3 +153,45 @@ def send_error(data):
         return api_request(api_url, data)
     except Exception as e:
         print(e)
+
+
+def prejoin_workspace(workspace_url, dir_to_share, api_args):
+    try:
+        result = utils.parse_url(workspace_url)
+    except Exception as e:
+        msg.error(unicode(e))
+        return False
+    try:
+        w = get_workspace_by_url(workspace_url)
+    except Exception as e:
+        editor.error_message('Error opening url %s: %s' % (workspace_url, str(e)))
+        return False
+
+    if w.code >= 400:
+        try:
+            d = utils.get_persistent_data()
+            try:
+                del d['workspaces'][result['owner']][result['name']]
+            except Exception:
+                pass
+            try:
+                del d['recent_workspaces'][workspace_url]
+            except Exception:
+                pass
+            utils.update_persistent_data(d)
+        except Exception as e:
+            msg.debug(unicode(e))
+        return False
+
+    msg.debug('workspace: %s', json.dumps(w.body))
+    anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
+    msg.debug('api args: %s' % api_args)
+    new_anon_perms = api_args.get('perms', {}).get('AnonymousUser', [])
+    # TODO: prompt/alert user if going from private to public
+    if set(anon_perms) != set(new_anon_perms):
+        msg.debug(str(anon_perms), str(new_anon_perms))
+        w.body['perms']['AnonymousUser'] = new_anon_perms
+        response = update_workspace(w.body['owner'], w.body['name'], w.body)
+        msg.debug(str(response.body))
+    utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
+    return result
