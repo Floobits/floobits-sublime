@@ -212,6 +212,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             # if self.api_args:
             anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
             new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
+            # TODO: warn user about making a private workspace public
             if set(anon_perms) != set(new_anon_perms):
                 msg.debug(str(anon_perms), str(new_anon_perms))
                 w.body['perms']['AnonymousUser'] = new_anon_perms
@@ -230,7 +231,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         try:
             utils.mkdir(dir_to_share)
         except Exception:
-            return sublime.error_message('The directory %s doesn\'t exist and I can\'t make it.' % dir_to_share)
+            return sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
 
         floo_file = os.path.join(dir_to_share, '.floo')
 
@@ -279,8 +280,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         if r.code >= 400 or len(r.body) == 0:
             return on_done([G.USERNAME])
 
-        orgs = [[org['name'], 'Create workspace under %s' % org['name']] for org in r.body]
-        orgs.insert(0, [G.USERNAME, 'Create workspace under %s' % G.USERNAME])
+        orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
+        orgs.insert(0, [G.USERNAME, 'Create workspace owned by %s' % G.USERNAME])
         self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
 
