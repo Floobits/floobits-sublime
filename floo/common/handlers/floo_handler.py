@@ -200,8 +200,7 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
-            msg.debug('No view. Saving buffer %s' % buf_id)
-            utils.save_buf(buf)
+            msg.debug('No view. Not saving buffer %s' % buf_id)
             return
 
         view.apply_patches(buf, t, data['username'])
