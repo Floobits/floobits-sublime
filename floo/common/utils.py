@@ -343,7 +343,7 @@ def mkdir(path):
             raise
 
 
-def save_buf(buf):
+def save_buf(buf, newline='\n'):
     path = get_full_path(buf['path'])
     mkdir(os.path.split(path)[0])
     with open(path, 'wb') as fd:

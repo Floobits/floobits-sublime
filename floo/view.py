@@ -51,14 +51,16 @@ class View(object):
         utils.set_timeout(self.view.erase_regions, 2000, region_key)
         self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
-    def update(self, buf):
+    def update(self, buf, message=True):
         self.buf = buf
-        msg.log('Floobits synced data for consistency: %s' % buf['path'])
+        if message:
+            msg.log('Floobits synced data for consistency: %s' % buf['path'])
         G.VIEW_TO_HASH[self.view.buffer_id()] = buf['md5']
         self.view.set_read_only(False)
         try:
             self.view.run_command('floo_view_replace_region', {'r': [0, self.view.size()], 'data': buf['buf']})
-            self.set_status('Floobits synced data for consistency.')
+            if message:
+                self.set_status('Floobits synced data for consistency.')
             utils.set_timeout(self.set_status, 5000, '')
         except Exception as e:
             msg.error('Exception updating view: %s' % e)

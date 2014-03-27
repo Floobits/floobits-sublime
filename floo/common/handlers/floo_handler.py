@@ -201,6 +201,12 @@ class FlooHandler(base.BaseHandler):
 
         if not view:
             msg.debug('No view. Not saving buffer %s' % buf_id)
+
+            def _on_load():
+                v = self.get_view(buf_id)
+                if v:
+                    v.update(buf, message=False)
+            self.on_load[buf_id]['patch'] = _on_load
             return
 
         view.apply_patches(buf, t, data['username'])

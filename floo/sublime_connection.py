@@ -125,7 +125,7 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def reset(self):
         super(self.__class__, self).reset()
-        self.on_load = {}
+        self.on_load = collections.defaultdict(dict)
         self.on_clone = {}
         self.create_buf_cbs = {}
         self.temp_disable_stalk = False
@@ -204,7 +204,8 @@ class SublimeConnection(floo_handler.FlooHandler):
             return
 
         # TODO: move this state machine into one variable
-        if buf_id in self.on_load:
+        b = self.on_load.get(buf_id)
+        if b and b.get('highlight'):
             msg.debug('ignoring command until on_load is complete')
             return
         if buf_id in self.on_clone:
@@ -227,7 +228,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             if do_stuff:
                 msg.debug('creating view')
                 create_view(buf)
-                self.on_load[buf_id] = lambda: self._on_highlight(data, False)
+                self.on_load[buf_id]['highlight'] = lambda: self._on_highlight(data, False)
             return
         view = view.view
         regions = []

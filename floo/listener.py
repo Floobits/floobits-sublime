@@ -88,11 +88,12 @@ class Listener(sublime_plugin.EventListener):
         if not buf:
             return
         buf_id = int(buf['id'])
-        f = agent.on_load.get(buf_id)
-        if not f:
+        d = agent.on_load.get(buf_id)
+        if not d:
             return
         del agent.on_load[buf_id]
-        f()
+        for _, f in d.items():
+            f()
 
     @if_connected
     def on_pre_save(self, view, agent):
