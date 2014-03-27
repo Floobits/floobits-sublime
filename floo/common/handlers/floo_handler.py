@@ -2,6 +2,7 @@ import os
 import sys
 import hashlib
 import base64
+import collections
 from operator import attrgetter
 
 try:
@@ -41,8 +42,6 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
-        self.bufs = {}
-        self.paths_to_ids = {}
 
     def _on_highlight(self, data):
         raise NotImplementedError("_on_highlight not implemented")
@@ -120,6 +119,7 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
         self.save_on_get_bufs = set()
+        self.on_load = collections.defaultdict(dict)
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -424,6 +424,9 @@ class FlooHandler(base.BaseHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
+        on_view_load = self.on_load.get(buf_id)
+        if on_view_load:
+            del on_view_load['patch']
         view = self.get_view(data['id'])
         if view:
             self.save_view(view)

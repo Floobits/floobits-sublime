@@ -343,14 +343,37 @@ def mkdir(path):
             raise
 
 
-def save_buf(buf, newline='\n'):
+def get_line_endings(path):
+    try:
+        with open(path, 'rb') as fd:
+            line = fd.readline()
+    except Exception:
+        return
+    if not line:
+        return
+    chunk = line[-2:]
+    if chunk == "\r\n":
+        return "\r\n"
+    if chunk[-1:] == "\n":
+        return "\n"
+
+
+def save_buf(buf):
     path = get_full_path(buf['path'])
     mkdir(os.path.split(path)[0])
-    with open(path, 'wb') as fd:
-        if buf['encoding'] == 'utf8':
-            fd.write(buf['buf'].encode('utf-8'))
-        else:
-            fd.write(buf['buf'])
+    if buf['encoding'] == 'utf8':
+        newline = get_line_endings(path) or editor.get_line_endings(path)
+    try:
+        with open(path, 'wb') as fd:
+            if buf['encoding'] == 'utf8':
+                out = buf['buf']
+                if newline != '\n':
+                    out = out.split('\n').join(newline)
+                fd.write(out.encode('utf-8'))
+            else:
+                fd.write(buf['buf'])
+    except Exception as e:
+        msg.error('Error saving buf: %s' % str(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):

@@ -125,7 +125,6 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def reset(self):
         super(self.__class__, self).reset()
-        self.on_load = collections.defaultdict(dict)
         self.on_clone = {}
         self.create_buf_cbs = {}
         self.temp_disable_stalk = False

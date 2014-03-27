@@ -1,4 +1,5 @@
 import sys
+import os
 
 try:
     import sublime
@@ -53,3 +54,12 @@ def open_file(file):
     win = sublime.active_window()
     if win:
         win.open_file(file)
+
+
+def get_line_endings(path=None):
+    ending = sublime.load_settings('Preferences.sublime-settings').get('default_line_ending')
+    if ending == 'system':
+        return os.linesep
+    if ending == 'windows':
+        return '\r\n'
+    return '\n'
