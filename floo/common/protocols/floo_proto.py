@@ -198,7 +198,6 @@ class FlooProtocol(base.BaseProtocol):
             self._proc.cleanup()
         except Exception:
             pass
-        G.JOINED_WORKSPACE = False
         self._slice = bytes()
         self._buf_in = bytes()
         self._buf_out = bytes()
@@ -206,6 +205,7 @@ class FlooProtocol(base.BaseProtocol):
         self._needs_handshake = self._secure
         self.connected = False
         self._proc = None
+        self.emit('cleanup')
 
     def _do_ssl_handshake(self):
         try:

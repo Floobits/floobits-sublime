@@ -123,7 +123,7 @@ def global_tick():
 
 
 def disconnect_dialog():
-    if G.AGENT and G.JOINED_WORKSPACE:
+    if G.AGENT and G.AGENT.joined_workspace:
         disconnect = sublime.ok_cancel_dialog('You can only be in one workspace at a time.', 'Leave %s/%s' % (G.AGENT.owner, G.AGENT.workspace))
         if disconnect:
             msg.debug('Stopping agent.')

@@ -25,7 +25,11 @@ def is_view_loaded(view):
     """returns a buf if the view is loaded in sublime and
     the buf is populated by us"""
 
-    if not G.AGENT and G.JOINED_WORKSPACE or view.is_loading():
+    if not G.AGENT:
+        return
+    if not G.AGENT.joined_workspace:
+        return
+    if view.is_loading():
         return
 
     buf = get_buf(view)

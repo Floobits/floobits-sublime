@@ -226,7 +226,7 @@ def to_scheme(secure):
 
 
 def is_shared(p):
-    if not G.JOINED_WORKSPACE:
+    if not G.AGENT or not G.AGENT.joined_workspace:
         return False
     p = unfuck_path(p)
     try:

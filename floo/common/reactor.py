@@ -33,13 +33,23 @@ class _Reactor(object):
         self._handlers.append(listener_factory)
         return proto.sockname()
 
+    def stop_handler(self, handler):
+        try:
+            handler.proto.stop()
+        except Exception as e:
+            msg.warn('Error stopping connection: %s' % str(e))
+        self._handlers.remove(handler)
+        self._protos.remove(handler.proto)
+        if not self._handlers and not self._protos:
+            self.stop()
+
     def stop(self):
         for _conn in self._protos:
             _conn.stop()
 
         self._protos = []
         self._handlers = []
-        msg.log('Disconnected.')
+        msg.log('Reactor shut down.')
         editor.status_message('Disconnected.')
 
     def is_ready(self):

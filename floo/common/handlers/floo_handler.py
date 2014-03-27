@@ -53,6 +53,14 @@ class FlooHandler(base.BaseHandler):
     def get_view(self, buf_id):
         raise NotImplementedError("get_view not implemented")
 
+    def build_protocol(self, *args):
+        self.proto = super(FlooHandler, self).build_protocol(*args)
+
+        def f():
+            self.joined_workspace = False
+        self.proto.on("cleanup", f)
+        return self.proto
+
     def get_username_by_id(self, user_id):
         try:
             return self.workspace_info['users'][str(user_id)]['username']
@@ -273,7 +281,7 @@ class FlooHandler(base.BaseHandler):
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
-        G.JOINED_WORKSPACE = True
+        self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
 
