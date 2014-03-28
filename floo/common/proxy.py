@@ -67,7 +67,7 @@ class ProxyServer(base.BaseHandler):
 
 
 def main():
-    G.__VERSION__ = '0.03'
+    G.__VERSION__ = '0.11'
     G.__PLUGIN_VERSION__ = '1.0'
     utils.reload_settings()
 
