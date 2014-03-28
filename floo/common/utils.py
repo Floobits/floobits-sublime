@@ -368,7 +368,8 @@ def save_buf(buf):
             if buf['encoding'] == 'utf8':
                 out = buf['buf']
                 if newline != '\n':
-                    out = out.split('\n').join(newline)
+                    out = out.split('\n')
+                    out = newline.join(out)
                 fd.write(out.encode('utf-8'))
             else:
                 fd.write(buf['buf'])
