@@ -95,6 +95,36 @@ class SublimeConnection(floo_handler.FlooHandler):
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
+    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+        editor.message_dialog('The workspace is out of sync.')
+
+        def pluralize(arg):
+            return len(arg) > 1 and 's' or ''
+
+        overwrite_local = ''
+        overwrite_remote = ''
+        if changed_bufs:
+            overwrite_local += 'Update %s' % (len(changed_bufs))
+            overwrite_remote += 'Update %s' % (len(changed_bufs))
+            if missing_bufs:
+                overwrite_local += ' and fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+                overwrite_remote += ' and remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+            else:
+                overwrite_remote += ' file%s.' % pluralize(changed_bufs)
+                overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
+        elif missing_bufs:
+            overwrite_local += 'Fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+            overwrite_remote += 'Remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+
+        diffs = changed_bufs + missing_bufs
+
+        opts = [
+            ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
+            ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
+            ['Cancel', 'Disconnect and resolve conflict manually.'],
+        ]
+        G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
+
     def ok_cancel_dialog(self, msg, cb=None):
         res = sublime.ok_cancel_dialog(msg)
         return (cb and cb(res) or res)

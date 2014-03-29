@@ -365,38 +365,11 @@ class FlooHandler(base.BaseHandler):
 
         stomp_local = self.should_get_bufs
         if stomp_local and (changed_bufs or missing_bufs):
-            editor.message_dialog('The workspace is out of sync.')
-
-            def pluralize(arg):
-                return len(arg) > 1 and 's' or ''
-
-            overwrite_local = ''
-            overwrite_remote = ''
-            if changed_bufs:
-                overwrite_local += 'Update %s' % (len(changed_bufs))
-                overwrite_remote += 'Update %s' % (len(changed_bufs))
-                if missing_bufs:
-                    overwrite_local += ' and fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                    overwrite_remote += ' and remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                else:
-                    overwrite_remote += ' file%s.' % pluralize(changed_bufs)
-                    overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
-            elif missing_bufs:
-                overwrite_local += 'Fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                overwrite_remote += 'Remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-
-            diffs = changed_bufs + missing_bufs
-
-            opts = [
-                ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
-                ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
-                ['Cancel', 'Disconnect and resolve conflict manually.'],
-            ]
-            val = yield G.WORKSPACE_WINDOW.show_quick_panel, opts
-            if val == 2 or val == -1:
+            choice = yield self.stomp_prompt, changed_bufs, missing_bufs
+            if choice not in [0, 1]:
                 self.stop()
                 return
-            stomp_local = bool(val)
+            stomp_local = bool(choice)
 
         for buf_id in changed_bufs:
             buf = self.bufs[buf_id]
@@ -500,7 +473,7 @@ class FlooHandler(base.BaseHandler):
             'name': 'perms',
             'action': confirm and 'add' or 'reject',
             'user_id': user_id,
-            'perms': perms
+            'perms': perms,
         })
 
     def _on_perms(self, data):
