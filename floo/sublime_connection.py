@@ -102,22 +102,35 @@ class SublimeConnection(floo_handler.FlooHandler):
         def pluralize(arg):
             return len(arg) > 1 and 's' or ''
 
+        diffs = changed_bufs + missing_bufs
         overwrite_local = ''
         overwrite_remote = ''
+
         if changed_bufs:
-            overwrite_local += 'Update %s' % (len(changed_bufs))
-            overwrite_remote += 'Update %s' % (len(changed_bufs))
-            if missing_bufs:
-                overwrite_local += ' and fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                overwrite_remote += ' and remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+            if len(diffs) < 5:
+                changed = ', '.join([buf['path'] for buf in changed_bufs])
             else:
+                changed = len(changed_bufs)
+            overwrite_local += 'Fetch %s' % changed
+            overwrite_remote += 'Upload %s' % changed
+
+            if missing_bufs:
+                if len(diffs) < 5:
+                    missing = ', '.join([buf['path'] for buf in missing_bufs])
+                else:
+                    missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+                overwrite_local += ' and fetch %s' % missing
+                overwrite_remote += ' and remove %s' % missing
+            elif len(diffs) >= 5:
                 overwrite_remote += ' file%s.' % pluralize(changed_bufs)
                 overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
         elif missing_bufs:
-            overwrite_local += 'Fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-            overwrite_remote += 'Remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-
-        diffs = changed_bufs + missing_bufs
+            if len(diffs) < 5:
+                missing = ', '.join([buf['path'] for buf in missing_bufs])
+            else:
+                missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+            overwrite_local += 'Fetch %s.' % missing
+            overwrite_remote += 'Remove %s.' % missing
 
         opts = [
             ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],

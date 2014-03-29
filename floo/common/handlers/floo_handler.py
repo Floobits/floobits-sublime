@@ -365,6 +365,8 @@ class FlooHandler(base.BaseHandler):
 
         stomp_local = self.should_get_bufs
         if stomp_local and (changed_bufs or missing_bufs):
+            changed_bufs = [self.bufs[buf_id] for buf_id in changed_bufs]
+            missing_bufs = [self.bufs[buf_id] for buf_id in missing_bufs]
             choice = yield self.stomp_prompt, changed_bufs, missing_bufs
             if choice not in [0, 1]:
                 self.stop()
