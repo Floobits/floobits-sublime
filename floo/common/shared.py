@@ -11,6 +11,8 @@ API_KEY = ''
 DEBUG = False
 SOCK_DEBUG = False
 
+EXPERT_MODE = False
+
 ALERT_ON_MSG = True
 LOG_TO_CONSOLE = False
 

@@ -96,7 +96,8 @@ class SublimeConnection(floo_handler.FlooHandler):
         editor.status_message(status)
 
     def stomp_prompt(self, changed_bufs, missing_bufs, cb):
-        editor.message_dialog('The workspace is out of sync.')
+        if not G.EXPERT_MODE:
+            editor.message_dialog('The workspace is out of sync.')
 
         def pluralize(arg):
             return len(arg) > 1 and 's' or ''
