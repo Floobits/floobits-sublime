@@ -88,6 +88,10 @@ class FlooHandler(base.BaseHandler):
         if view:
             view.set_read_only(True)
             view.set_status('Floobits locked this file until it is synced.')
+            try:
+                del G.VIEW_TO_HASH[view.native_id]
+            except Exception:
+                pass
 
     def save_view(self, view):
         view.save()
@@ -325,12 +329,14 @@ class FlooHandler(base.BaseHandler):
             if view and not view.is_loading() and buf['encoding'] == 'utf8':
                 view_text = view.get_text()
                 view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                buf['buf'] = view_text
+                buf['view'] = view
+                G.VIEW_TO_HASH[view.native_id] = view_md5
                 if view_md5 == buf['md5']:
                     msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
-                    buf['buf'] = view_text
-                    G.VIEW_TO_HASH[view.native_id] = view_md5
-                elif self.should_get_bufs:
+                else:
                     changed_bufs.append(buf_id)
+                    buf['md5'] = view_md5
             else:
                 try:
                     if buf['encoding'] == "utf8":
@@ -345,36 +351,71 @@ class FlooHandler(base.BaseHandler):
                         buf_fd = open(buf_path, 'rb')
                         buf_buf = buf_fd.read()
                         md5 = hashlib.md5(buf_buf).hexdigest()
+                    buf_fd.close()
+                    buf['buf'] = buf_buf
                     if md5 == buf['md5']:
                         msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
-                        buf['buf'] = buf_buf
-                    elif self.should_get_bufs:
-                        msg.debug('md5 should not getting buffer %s' % buf['path'])
+                    else:
+                        msg.debug('md5 differs. possibly getting buffer later %s' % buf['path'])
                         changed_bufs.append(buf_id)
+                        buf['md5'] = md5
                 except Exception as e:
                     msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                     missing_bufs.append(buf_id)
 
-        if changed_bufs and self.should_get_bufs:
-            if len(changed_bufs) > 4:
-                prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(changed_bufs)
-            else:
-                prompt = 'Overwrite the following local files?\n'
-                for buf_id in changed_bufs:
-                    prompt += '\n%s' % self.bufs[buf_id]['path']
+        stomp_local = self.should_get_bufs
+        if stomp_local and (changed_bufs or missing_bufs):
+            editor.message_dialog('The workspace is out of sync.')
 
-            stomp_local = yield self.ok_cancel_dialog, prompt
-            for buf_id in changed_bufs:
-                if stomp_local:
-                    self.get_buf(buf_id)
-                    self.save_on_get_bufs.add(buf_id)
+            def pluralize(arg):
+                return len(arg) > 1 and 's' or ''
+
+            overwrite_local = ''
+            overwrite_remote = ''
+            if changed_bufs:
+                overwrite_local += 'Update %s' % (len(changed_bufs))
+                overwrite_remote += 'Update %s' % (len(changed_bufs))
+                if missing_bufs:
+                    overwrite_local += ' and fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+                    overwrite_remote += ' and remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
                 else:
-                    buf = self.bufs[buf_id]
-                    # TODO: this is inefficient. we just read the file 20 lines ago
-                    self.upload(utils.get_full_path(buf['path']))
+                    overwrite_remote += ' file%s.' % pluralize(changed_bufs)
+                    overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
+            elif missing_bufs:
+                overwrite_local += 'Fetch %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+                overwrite_remote += 'Remove %s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
+
+            diffs = changed_bufs + missing_bufs
+
+            opts = [
+                ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
+                ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
+                ['Cancel', 'Disconnect and resolve conflict manually.'],
+            ]
+            val = yield G.WORKSPACE_WINDOW.show_quick_panel, opts
+            if val == 2 or val == -1:
+                self.stop()
+                return
+            stomp_local = bool(val)
+
+        for buf_id in changed_bufs:
+            buf = self.bufs[buf_id]
+            if stomp_local:
+                self.get_buf(buf_id, buf.get('view'))
+                self.save_on_get_bufs.add(buf_id)
+            else:
+                self._upload(utils.get_full_path(buf['path']), buf['buf'])
 
         for buf_id in missing_bufs:
-            self.get_buf(buf_id)
+            buf = self.bufs[buf_id]
+            if stomp_local:
+                self.get_buf(buf_id, buf.get('view'))
+                self.save_on_get_bufs.add(buf_id)
+            else:
+                self.send({
+                    'name': 'delete_buf',
+                    'id': buf['id'],
+                })
 
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
