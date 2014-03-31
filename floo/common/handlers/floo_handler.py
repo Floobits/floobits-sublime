@@ -551,25 +551,28 @@ class FlooHandler(base.BaseHandler):
     def _upload(self, path, text=None):
         size = 0
         try:
-            if text:
+            if text is None:
+                with open(path, 'rb') as buf_fd:
+                    buf = buf_fd.read()
+            else:
                 try:
                     # work around python 3 encoding issue
                     buf = text.encode('utf8')
                 except Exception as e:
                     msg.debug('Error encoding buf %s: %s' % (str(e)))
+                    # We're probably in python 2 so it's ok to do this
                     buf = text
-            else:
-                with open(path, 'rb') as buf_fd:
-                    buf = buf_fd.read()
             size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = self.get_buf_by_path(path)
             if existing_buf:
-                buf_md5 = hashlib.md5(buf).hexdigest()
-                if text is None and existing_buf['md5'] == buf_md5:
-                    msg.log('%s already exists and has the same md5. Skipping.' % path)
-                    return size
+                if text is None:
+                    buf_md5 = hashlib.md5(buf).hexdigest()
+                    if existing_buf['md5'] == buf_md5:
+                        msg.log('%s already exists and has the same md5. Skipping.' % path)
+                        return size
+                    existing_buf['md5'] = buf_md5
                 msg.log('Setting buffer ', rel_path)
 
                 try:
@@ -580,7 +583,6 @@ class FlooHandler(base.BaseHandler):
 
                 existing_buf['buf'] = buf
                 existing_buf['encoding'] = encoding
-                existing_buf['md5'] = buf_md5
 
                 self.send({
                     'name': 'set_buf',
