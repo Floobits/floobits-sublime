@@ -567,7 +567,7 @@ class FlooHandler(base.BaseHandler):
             existing_buf = self.get_buf_by_path(path)
             if existing_buf:
                 buf_md5 = hashlib.md5(buf).hexdigest()
-                if existing_buf['md5'] == buf_md5:
+                if text is None and existing_buf['md5'] == buf_md5:
                     msg.log('%s already exists and has the same md5. Skipping.' % path)
                     return size
                 msg.log('Setting buffer ', rel_path)
