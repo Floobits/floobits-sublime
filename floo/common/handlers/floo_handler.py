@@ -552,8 +552,12 @@ class FlooHandler(base.BaseHandler):
         size = 0
         try:
             if text:
-                # TODO: possible encoding issues with python 3
-                buf = text
+                try:
+                    # work around python 3 encoding issue
+                    buf = text.encode('utf8')
+                except Exception as e:
+                    msg.debug('Error encoding buf %s: %s' % (str(e)))
+                    buf = text
             else:
                 with open(path, 'rb') as buf_fd:
                     buf = buf_fd.read()
