@@ -588,7 +588,7 @@ class FlooHandler(base.BaseHandler):
                     'name': 'set_buf',
                     'id': existing_buf['id'],
                     'buf': buf,
-                    'md5': buf_md5,
+                    'md5': existing_buf['md5'],
                     'encoding': encoding,
                 })
                 return size
