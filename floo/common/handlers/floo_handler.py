@@ -559,7 +559,7 @@ class FlooHandler(base.BaseHandler):
                     # work around python 3 encoding issue
                     buf = text.encode('utf8')
                 except Exception as e:
-                    msg.debug('Error encoding buf %s: %s' % (str(e)))
+                    msg.debug('Error encoding buf %s: %s' % (path, str(e)))
                     # We're probably in python 2 so it's ok to do this
                     buf = text
             size = len(buf)
