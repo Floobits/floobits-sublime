@@ -22,6 +22,7 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 LOG_FILE = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
 
 
+
 try:
     fd = open(LOG_FILE, 'w')
     fd.close()
@@ -29,9 +30,22 @@ except Exception as e:
     pass
 
 
+def safe_print(msg):
+    # Some environments can have trouble printing unicode:
+    #    "When print() is not outputting to the terminal (being redirected to
+    #    a file, for instance), print() decides that it does not know what
+    #    locale to use for that file and so it tries to convert to ASCII instead."
+    # See: https://pythonhosted.org/kitchen/unicode-frustrations.html#frustration-3-inconsistent-treatment-of-output
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode('utf-8'))
+
+
+
 # Overridden by each editor
 def editor_log(msg):
-    print(msg)
+    safe_print(msg)
 
 
 class MSG(object):
@@ -54,8 +68,8 @@ class MSG(object):
                 fd.write('\n')
                 fd.close()
             except Exception as e:
-                print(unicode(e))
-            print(msg)
+                safe_print(unicode(e))
+            safe_print(msg)
         else:
             editor_log(msg)
 
@@ -69,13 +83,21 @@ class MSG(object):
             msg = '[{time}] <{user}> {msg}'
         else:
             msg = '[{time}] {msg}'
-        return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
+        try:
+            return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg)
+        except UnicodeEncodeError:
+            return unicode(msg).format(user=self.username, time=time.ctime(self.timestamp), msg=self.msg.encode(
+                'utf-8'))
 
 
 def msg_format(message, *args, **kwargs):
-    message += ' '.join([unicode(x) for x in args])
+    for arg in args:
+        try:
+            message += unicode(arg)
+        except UnicodeEncodeError:
+            message += arg
     if kwargs:
-        message = unicode(message).format(**kwargs)
+        message = message.format(**kwargs)
     return message
 
 
