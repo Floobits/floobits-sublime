@@ -22,7 +22,6 @@ LOG_LEVEL = LOG_LEVELS['MSG']
 LOG_FILE = os.path.join(G.BASE_DIR, 'msgs.floobits.log')
 
 
-
 try:
     fd = open(LOG_FILE, 'w')
     fd.close()
@@ -40,7 +39,6 @@ def safe_print(msg):
         print(msg)
     except UnicodeEncodeError:
         print(msg.encode('utf-8'))
-
 
 
 # Overridden by each editor
