@@ -61,9 +61,13 @@ class MSG(object):
         if G.LOG_TO_CONSOLE or G.CHAT_VIEW is None:
             # TODO: ridiculously inefficient
             try:
-                fd = open(LOG_FILE, 'a+')
+                fd = open(LOG_FILE, 'ab')
+                try:
+                    msg = msg.encode('utf-8')
+                except Exception:
+                    pass
                 fd.write(msg)
-                fd.write('\n')
+                fd.write(b'\n')
                 fd.close()
             except Exception as e:
                 safe_print(unicode(e))
