@@ -62,11 +62,12 @@ class MSG(object):
             # TODO: ridiculously inefficient
             try:
                 fd = open(LOG_FILE, 'ab')
+                fmsg = msg
                 try:
-                    msg = msg.encode('utf-8')
+                    fmsg = fmsg.encode('utf-8')
                 except Exception:
                     pass
-                fd.write(msg)
+                fd.write(fmsg)
                 fd.write(b'\n')
                 fd.close()
             except Exception as e:
