@@ -137,7 +137,10 @@ class SublimeConnection(floo_handler.FlooHandler):
             ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
             ['Cancel', 'Disconnect and resolve conflict manually.'],
         ]
-        G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
+        # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
+        # G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
+        w = sublime.active_window() or G.WORKSPACE_WINDOW
+        w.show_quick_panel(opts, cb)
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = sublime.ok_cancel_dialog(msg)
