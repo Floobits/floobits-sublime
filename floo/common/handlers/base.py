@@ -59,6 +59,9 @@ class BaseHandler(event_emitter.EventEmitter):
         message = 'Disconnected from server! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         editor.error_message(message)
+        self.stop()
+
+    def stop(self):
         from .. import reactor
         reactor.reactor.stop_handler(self)
 
