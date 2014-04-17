@@ -78,6 +78,16 @@ def proxy_api_request(url, data, method):
     return r
 
 
+def user_agent():
+    return 'Floobits Plugin %s %s %s py-%s.%s' % (
+        editor.name(),
+        G.__PLUGIN_VERSION__,
+        editor.platform(),
+        sys.version_info[0],
+        sys.version_info[1]
+    )
+
+
 def hit_url(url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
@@ -87,13 +97,7 @@ def hit_url(url, data, method):
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
-    r.add_header('User-Agent', 'Floobits Plugin %s %s %s py-%s.%s' % (
-        editor.name(),
-        G.__PLUGIN_VERSION__,
-        editor.platform(),
-        sys.version_info[0],
-        sys.version_info[1]
-    ))
+    r.add_header('User-Agent', user_agent())
     return urlopen(r, timeout=5)
 
 
@@ -148,6 +152,7 @@ def get_orgs_can_admin():
 
 
 def send_error(data):
+    data['client'] = user_agent()
     try:
         api_url = 'https://%s/api/error' % (G.DEFAULT_HOST)
         return api_request(api_url, data)
