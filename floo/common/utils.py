@@ -134,7 +134,7 @@ def set_timeout(func, timeout, *args, **kwargs):
         set_timeout._top_timeout_id += 1
 
     try:
-        from .. import api
+        from . import api
     except ImportError:
         import api
 
