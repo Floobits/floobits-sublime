@@ -168,7 +168,7 @@ def send_error(description=None, exception=None):
     if exception:
         data['exception'] = {
             'msg': str(exception),
-            'traceback': traceback.format_exc(exception)
+            'stack': traceback.format_exc(exception)
         }
         msg.log('Floobits plugin error! Sending exception report: %s' % data['exception'])
     try:
@@ -184,7 +184,7 @@ def send_errors(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
         try:
-            return f()
+            return f(*args, **kwargs)
         except Exception as e:
             send_error(None, e)
     return wrapped
