@@ -161,8 +161,13 @@ def send_error(description=None, exception=None):
     data = {
         'jsondump': {
             'error_count': G.ERROR_COUNT
-        }
+        },
+        'username': G.USERNAME,
+        'dir': G.COLAB_DIR,
     }
+    if G.AGENT:
+        data['owner'] = G.AGENT.owner
+        data['workspace'] = G.AGENT.workspace
     if description:
         data['description'] = description
     if exception:
