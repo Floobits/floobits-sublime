@@ -8,6 +8,7 @@ import base64
 import json
 import subprocess
 import traceback
+from functools import wraps
 
 try:
     import ssl
@@ -177,6 +178,16 @@ def send_error(description=None, exception=None):
         return r
     except Exception as e:
         print(e)
+
+
+def send_errors(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        try:
+            return f()
+        except Exception as e:
+            send_error(None, e)
+    return wrapped
 
 
 def prejoin_workspace(workspace_url, dir_to_share, api_args):

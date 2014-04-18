@@ -19,7 +19,7 @@ try:
     assert cert and G and msg and proxy and utils
 except (ImportError, ValueError):
     from floo import editor
-    from floo.common import cert, msg, shared as G, utils
+    from floo.common import api, cert, msg, shared as G, utils
     import base
     import proxy
 

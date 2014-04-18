@@ -2,14 +2,14 @@ import socket
 import select
 
 try:
-    from . import msg
+    from . import api, msg
     from .. import editor
     from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
     from floo.common.handlers import tcp_server
+    from floo.common import api, msg
     from floo import editor
-    import msg
 
 reactor = None
 
@@ -68,6 +68,7 @@ class _Reactor(object):
                 pass
         fd.reconnect()
 
+    @api.send_errors
     def tick(self, timeout=0):
         for factory in self._handlers:
             factory.tick()
