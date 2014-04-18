@@ -133,6 +133,12 @@ def set_timeout(func, timeout, *args, **kwargs):
     else:
         set_timeout._top_timeout_id += 1
 
+    try:
+        from .. import api
+    except ImportError:
+        import api
+
+    @api.send_errors
     def timeout_func():
         timeout_ids.discard(timeout_id)
         if timeout_id in cancelled_timeouts:
