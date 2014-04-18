@@ -171,11 +171,11 @@ def send_error(description=None, exception=None):
     if description:
         data['description'] = description
     if exception:
-        data['exception'] = {
+        data['message'] = {
             'msg': str(exception),
             'stack': traceback.format_exc(exception)
         }
-        msg.log('Floobits plugin error! Sending exception report: %s' % data['exception'])
+        msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
     try:
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
         r = api_request(api_url, data)
@@ -192,6 +192,7 @@ def send_errors(f):
             return f(*args, **kwargs)
         except Exception as e:
             send_error(None, e)
+            raise
     return wrapped
 
 
