@@ -7,6 +7,7 @@ import sys
 import base64
 import json
 import subprocess
+import traceback
 
 try:
     import ssl
@@ -151,11 +152,29 @@ def get_orgs_can_admin():
     return api_request(api_url)
 
 
-def send_error(data):
-    data['client'] = user_agent()
+def send_error(description=None, exception=None):
+    G.ERROR_COUNT += 1
+    if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
+        msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
+        return
+    data = {
+        'jsondump': {
+            'error_count': G.ERROR_COUNT
+        }
+    }
+    if description:
+        data['description'] = description
+    if exception:
+        data['exception'] = {
+            'msg': str(exception),
+            'traceback': traceback.format_exc(exception)
+        }
+        msg.log('Floobits plugin error! Sending exception report: %s' % data['exception'])
     try:
-        api_url = 'https://%s/api/error' % (G.DEFAULT_HOST)
-        return api_request(api_url, data)
+        api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
+        r = api_request(api_url, data)
+        G.ERRORS_SENT += 1
+        return r
     except Exception as e:
         print(e)
 

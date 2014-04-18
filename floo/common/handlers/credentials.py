@@ -51,7 +51,7 @@ class RequestCredentialsHandler(base.BaseHandler):
             utils.reload_settings()
             if not G.USERNAME or not G.SECRET:
                 editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
-                api.send_error({'message': 'No username or secret'})
+                api.send_error('No username or secret')
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'w') as fd:
