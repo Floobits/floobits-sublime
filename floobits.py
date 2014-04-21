@@ -41,15 +41,15 @@ try:
     from .floo import sublime_utils as sutils
     from .floo.listener import Listener
     from .floo.sublime_connection import SublimeConnection
-    from .floo.common import api, ignore, reactor, msg, shared as G, utils
+    from .floo.common import api, reactor, msg, shared as G, utils
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
-    assert api and G and ignore and msg and utils
+    assert api and G and msg and utils
 except (ImportError, ValueError):
     from floo import version
     from floo import sublime_utils as sutils
     from floo.listener import Listener
-    from floo.common import api, ignore, reactor, msg, shared as G, utils
+    from floo.common import api, reactor, msg, shared as G, utils
     from floo.common.handlers.account import CreateAccountHandler
     from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.sublime_connection import SublimeConnection
@@ -59,22 +59,6 @@ assert Listener and version
 reactor = reactor.reactor
 
 ignore_modified_timeout = None
-
-
-def update_recent_workspaces(workspace):
-    d = utils.get_persistent_data()
-    recent_workspaces = d.get('recent_workspaces', [])
-    recent_workspaces.insert(0, workspace)
-    recent_workspaces = recent_workspaces[:100]
-    seen = set()
-    new = []
-    for r in recent_workspaces:
-        string = json.dumps(r)
-        if string not in seen:
-            new.append(r)
-            seen.add(string)
-    d['recent_workspaces'] = new
-    utils.update_persistent_data(d)
 
 
 def ssl_error_msg(action):

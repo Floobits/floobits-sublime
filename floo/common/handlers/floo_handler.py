@@ -300,6 +300,7 @@ class FlooHandler(base.BaseHandler):
                 if d not in ig.children:
                     break
                 ig = ig.children[d]
+            ignore.create_flooignore(ig.path)
             for p in ig.list_paths():
                 files.add(p)
 
@@ -380,6 +381,7 @@ class FlooHandler(base.BaseHandler):
             })
         }
         utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
+        utils.update_recent_workspaces(self.workspace_url)
 
         changed_bufs = []
         missing_bufs = []

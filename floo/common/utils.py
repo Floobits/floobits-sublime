@@ -308,6 +308,22 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     update_persistent_data(d)
 
 
+def update_recent_workspaces(workspace_url):
+    d = get_persistent_data()
+    recent_workspaces = d.get('recent_workspaces', [])
+    recent_workspaces.insert(0, {'url': workspace_url})
+    recent_workspaces = recent_workspaces[:100]
+    seen = set()
+    new = []
+    for r in recent_workspaces:
+        string = json.dumps(r)
+        if string not in seen:
+            new.append(r)
+            seen.add(string)
+    d['recent_workspaces'] = new
+    update_persistent_data(d)
+
+
 def get_workspace_by_path(path, _filter):
     path = unfuck_path(path)
     for owner, workspaces in get_persistent_data()['workspaces'].items():

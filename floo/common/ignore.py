@@ -24,18 +24,6 @@ DEFAULT_IGNORES = ['extern', 'node_modules', 'tmp', 'vendor']
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
-def create_flooignore(path):
-    flooignore = os.path.join(path, '.flooignore')
-    # A very short race condition, but whatever.
-    if os.path.exists(flooignore):
-        return
-    try:
-        with open(flooignore, 'w') as fd:
-            fd.write('\n'.join(DEFAULT_IGNORES))
-    except Exception as e:
-        msg.error('Error creating default .flooignore: %s' % str(e))
-
-
 class Ignore(object):
     def __init__(self, parent, path, recurse=True):
         self.parent = parent
@@ -151,6 +139,18 @@ class Ignore(object):
         if self.parent:
             return self.parent.is_ignored(path)
         return False
+
+
+def create_flooignore(path):
+    flooignore = os.path.join(path, '.flooignore')
+    # A very short race condition, but whatever.
+    if os.path.exists(flooignore):
+        return
+    try:
+        with open(flooignore, 'w') as fd:
+            fd.write('\n'.join(DEFAULT_IGNORES))
+    except Exception as e:
+        msg.error('Error creating default .flooignore: %s' % str(e))
 
 
 def is_ignored(current_path, abs_path=None):
