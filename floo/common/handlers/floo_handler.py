@@ -307,6 +307,7 @@ class FlooHandler(base.BaseHandler):
             files.discard(buf['path'])
             self.send({'name': 'delete_buf', 'id': buf['id']})
 
+        # TODO: pace ourselves
         for buf in changed_bufs:
             files.discard(buf['path'])
             self.send({
