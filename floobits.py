@@ -58,7 +58,6 @@ assert Listener and version
 
 reactor = reactor.reactor
 
-on_room_info_waterfall = utils.Waterfall()
 ignore_modified_timeout = None
 
 
@@ -192,8 +191,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         def find_workspace(workspace_url):
             r = api.get_workspace_by_url(workspace_url)
             if r.code < 400:
-                on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-                on_room_info_waterfall.add(lambda: G.AGENT.upload(dir_to_share, on_room_info_msg))
                 return r
             try:
                 result = utils.parse_url(workspace_url)
@@ -223,9 +220,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 response = api.update_workspace(w.body['owner'], w.body['name'], w.body)
                 msg.debug(str(response.body))
             utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
-            self.window.run_command('floobits_join_workspace', {
-                'workspace_url': workspace_url,
-                'agent_conn_kwargs': {'get_bufs': False}})
+            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url, 'upload': dir_to_share})
             return True
 
         if os.path.isfile(dir_to_share):
@@ -264,14 +259,11 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     if join_workspace(workspace_url):
                         return
 
-        # make & join workspace
-        on_room_info_waterfall.add(ignore.create_flooignore, dir_to_share)
-        on_room_info_waterfall.add(lambda: G.AGENT.upload(file_to_share or dir_to_share, on_room_info_msg))
-
         def on_done(owner):
             self.window.run_command('floobits_create_workspace', {
                 'workspace_name': workspace_name,
                 'dir_to_share': dir_to_share,
+                'upload': file_to_share or dir_to_share,
                 'api_args': self.api_args,
                 'owner': owner[0],
             })
@@ -297,13 +289,14 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
-    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None, upload=None):
         if not disconnect_dialog():
             return
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
         self.api_args = api_args or {}
+        self.upload = upload
         if workspace_name and dir_to_share and prompt == 'Workspace name:':
             return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
@@ -329,9 +322,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             utils.add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
             return self.window.run_command('floobits_join_workspace', {
                 'workspace_url': workspace_url,
-                'agent_conn_kwargs': {
-                    'get_bufs': False
-                }
+                'upload': dir_to_share
             })
 
         msg.error('Unable to create workspace: %s' % r.body)
@@ -347,6 +338,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             'workspace_name': workspace_name,
             'api_args': self.api_args,
             'owner': self.owner,
+            'upload': self.upload
         }
         if r.code == 400:
             kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
@@ -390,7 +382,7 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
 class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, workspace_url, agent_conn_kwargs=None):
+    def run(self, workspace_url, agent_conn_kwargs=None, upload=None):
         agent_conn_kwargs = agent_conn_kwargs or {}
 
         def get_workspace_window():
@@ -491,22 +483,19 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 except Exception as e:
                     return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
 
-            G.PROJECT_PATH = d
+            result['upload'] = d
             utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
-        def run_agent(owner, workspace, host, port, secure):
+        def run_agent(owner, workspace, host, port, secure, upload):
             global on_room_info_waterfall
             if G.AGENT:
                 msg.debug('Stopping agent.')
                 reactor.stop()
                 G.AGENT = None
-            on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
             try:
-                conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get('get_bufs', True))
+                conn = SublimeConnection(owner, workspace, upload)
                 reactor.connect(conn, host, port, secure)
-                conn.once('room_info', on_room_info_waterfall.call)
-                on_room_info_waterfall = utils.Waterfall()
             except Exception as e:
                 print(e)
                 tb = traceback.format_exc()
@@ -550,7 +539,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
 
             return self.window.show_input_panel('Save workspace in directory:', default_dir, make_dir, None, None)
 
-        open_workspace_window(lambda: run_agent(**result))
+        open_workspace_window(lambda: run_agent(upload=upload, **result))
 
 
 class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):

@@ -386,23 +386,25 @@ def save_buf(buf):
 def _unwind_generator(gen_expr, cb=None, res=None):
     try:
         while True:
-            arg0 = res
+            maybe_func = res
             args = []
             if type(res) == tuple:
-                arg0 = res[0]
-                args = list(res[1:])
-            if not callable(arg0):
+                maybe_func = len(res) and res[0]
+
+            if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:
                     res = gen_expr.send(res)
-            else:
-                def f(*args):
-                    return _unwind_generator(gen_expr, cb, args)
-                args.append(f)
-                return arg0(*args)
+                continue
+
+            def f(*args):
+                return _unwind_generator(gen_expr, cb, args)
+            args = list(res)[1:]
+            args.append(f)
+            return maybe_func(*args)
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
     except StopIteration:
         pass

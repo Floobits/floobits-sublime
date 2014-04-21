@@ -6,11 +6,6 @@ import collections
 from operator import attrgetter
 
 try:
-    import io
-except ImportError:
-    io = None
-
-try:
     from . import base
     from ..reactor import reactor
     from ..lib import DMP
@@ -30,17 +25,23 @@ try:
 except NameError:
     unicode = str
 
+try:
+    import io
+except ImportError:
+    io = None
+
+
 MAX_WORKSPACE_SIZE = 50000000  # 50MB
 
 
 class FlooHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
 
-    def __init__(self, owner, workspace, get_bufs=True):
+    def __init__(self, owner, workspace, upload=None):
         super(FlooHandler, self).__init__()
         self.owner = owner
         self.workspace = workspace
-        self.should_get_bufs = get_bufs
+        self.upload = upload and utils.unfuck_path(upload)
         self.reset()
 
     def _on_highlight(self, data):
@@ -287,6 +288,68 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
+    def initialUpload(self, changed_bufs, missing_bufs, cb):
+        ig = ignore.Ignore(None, G.PROJECT_PATH)
+        files = set()
+
+        if not os.path.isdir(self.upload):
+            files.add(self.upload)
+        else:
+            split = os.path.abspath(utils.to_rel_path(self.upload)).split(os.sep)
+            for d in split:
+                if d not in ig.children:
+                    break
+                ig = ig.children[d]
+            for p in ig.list_paths():
+                files.add(p)
+
+        for buf in missing_bufs:
+            files.discard(buf['path'])
+            self.send({'name': 'delete_buf', 'id': buf['id']})
+
+        for buf in changed_bufs:
+            files.discard(buf['path'])
+            self.send({
+                'name': 'set_buf',
+                'id': buf['id'],
+                'buf': buf,
+                'md5': buf['md5'],
+                'encoding': buf['encoding'],
+            })
+
+        for p in files:
+            self._upload(p)
+        cb()
+
+    @utils.inlined_callbacks
+    def handleConflicts(self, changed_bufs, missing_bufs, cb):
+        stomp_local = True
+        if stomp_local and (changed_bufs or missing_bufs):
+            choice = yield self.stomp_prompt, changed_bufs, missing_bufs
+            if choice not in [0, 1]:
+                self.stop()
+                return
+            stomp_local = bool(choice)
+
+        for buf in changed_bufs:
+            if stomp_local:
+                self.get_buf(buf['id'], buf.get('view'))
+                self.save_on_get_bufs.add(buf['id'])
+            else:
+                self._upload(utils.get_full_path(buf['path']), buf['buf'])
+
+        for buf in missing_bufs:
+            if stomp_local:
+                self.get_buf(buf['id'], buf.get('view'))
+                self.save_on_get_bufs.add(buf['id'])
+            else:
+                self.send({
+                    'name': 'delete_buf',
+                    'id': buf['id'],
+                })
+        print(3)
+        cb()
+
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
@@ -294,7 +357,9 @@ class FlooHandler(base.BaseHandler):
         self.workspace_info = data
         G.PERMS = data['perms']
 
+        readOnly = False
         if 'patch' not in data['perms']:
+            readOnly = True
             no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
             msg.log('No patch permission. Setting buffers to read-only')
             if 'request_perm' in data['perms']:
@@ -335,63 +400,38 @@ class FlooHandler(base.BaseHandler):
                 if view_md5 == buf['md5']:
                     msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
                 else:
-                    changed_bufs.append(buf_id)
+                    changed_bufs.append(buf)
                     buf['md5'] = view_md5
-            else:
-                try:
-                    if buf['encoding'] == "utf8":
-                        if io:
-                            buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
-                            buf_buf = buf_fd.read()
-                        else:
-                            buf_fd = open(buf_path, 'rb')
-                            buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
-                        md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                continue
+            try:
+                if buf['encoding'] == "utf8":
+                    if io:
+                        buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
+                        buf_buf = buf_fd.read()
                     else:
                         buf_fd = open(buf_path, 'rb')
-                        buf_buf = buf_fd.read()
-                        md5 = hashlib.md5(buf_buf).hexdigest()
-                    buf_fd.close()
-                    buf['buf'] = buf_buf
-                    if md5 == buf['md5']:
-                        msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
-                    else:
-                        msg.debug('md5 differs. possibly getting buffer later %s' % buf['path'])
-                        changed_bufs.append(buf_id)
-                        buf['md5'] = md5
-                except Exception as e:
-                    msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
-                    missing_bufs.append(buf_id)
+                        buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
+                    md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                else:
+                    buf_fd = open(buf_path, 'rb')
+                    buf_buf = buf_fd.read()
+                    md5 = hashlib.md5(buf_buf).hexdigest()
+                buf_fd.close()
+                buf['buf'] = buf_buf
+                if md5 == buf['md5']:
+                    msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                else:
+                    msg.debug('md5 differs. possibly getting buffer later %s' % buf['path'])
+                    changed_bufs.append(buf)
+                    buf['md5'] = md5
+            except Exception as e:
+                msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
+                missing_bufs.append(buf)
 
-        stomp_local = self.should_get_bufs
-        if stomp_local and (changed_bufs or missing_bufs):
-            changed = [self.bufs[buf_id] for buf_id in changed_bufs]
-            missing = [self.bufs[buf_id] for buf_id in missing_bufs]
-            choice = yield self.stomp_prompt, changed, missing
-            if choice not in [0, 1]:
-                self.stop()
-                return
-            stomp_local = bool(choice)
-
-        for buf_id in changed_bufs:
-            buf = self.bufs[buf_id]
-            if stomp_local:
-                self.get_buf(buf_id, buf.get('view'))
-                self.save_on_get_bufs.add(buf_id)
-            else:
-                self._upload(utils.get_full_path(buf['path']), buf['buf'])
-
-        for buf_id in missing_bufs:
-            buf = self.bufs[buf_id]
-            if stomp_local:
-                self.get_buf(buf_id, buf.get('view'))
-                self.save_on_get_bufs.add(buf_id)
-            else:
-                self.send({
-                    'name': 'delete_buf',
-                    'id': buf['id'],
-                })
-
+        if self.upload and not readOnly:
+            yield self.initialUpload, changed_bufs, missing_bufs
+        else:
+            yield self.handleConflicts, changed_bufs, missing_bufs
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
         editor.status_message(success_msg)

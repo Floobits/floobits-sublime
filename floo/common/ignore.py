@@ -40,7 +40,7 @@ class Ignore(object):
     def __init__(self, parent, path, recurse=True):
         self.parent = parent
         self.size = 0
-        self.children = []
+        self.children = {}
         self.files = []
         self.ignores = {
             '/TOO_BIG/': []
@@ -54,6 +54,7 @@ class Ignore(object):
                 msg.error('Error listing path %s: %s' % (path, unicode(e)))
                 return
             self.path = os.path.dirname(self.path)
+            #KANS: wtf is this doing ??
             self.add_file(os.path.basename(path))
             return
         except Exception as e:
@@ -87,7 +88,7 @@ class Ignore(object):
             return
         if stat.S_ISDIR(s.st_mode):
             ig = Ignore(self, p_path)
-            self.children.append(ig)
+            self.children[p] = ig
             self.size += ig.size
             return
         elif stat.S_ISREG(s.st_mode):
@@ -114,7 +115,7 @@ class Ignore(object):
     def list_paths(self):
         for f in self.files:
             yield os.path.join(self.path, f)
-        for c in self.children:
+        for c in self.children.values():
             for p in c.list_paths():
                 yield p
 
