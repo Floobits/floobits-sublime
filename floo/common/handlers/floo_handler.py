@@ -288,7 +288,7 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
-    def initialUpload(self, changed_bufs, missing_bufs, cb):
+    def initial_upload(self, changed_bufs, missing_bufs, cb):
         ig = ignore.Ignore(None, G.PROJECT_PATH)
         files = set()
 
@@ -324,7 +324,7 @@ class FlooHandler(base.BaseHandler):
         cb()
 
     @utils.inlined_callbacks
-    def handleConflicts(self, changed_bufs, missing_bufs, cb):
+    def handle_conflicts(self, changed_bufs, missing_bufs, cb):
         stomp_local = True
         if stomp_local and (changed_bufs or missing_bufs):
             choice = yield self.stomp_prompt, changed_bufs, missing_bufs
@@ -349,7 +349,6 @@ class FlooHandler(base.BaseHandler):
                     'name': 'delete_buf',
                     'id': buf['id'],
                 })
-        print(3)
         cb()
 
     @utils.inlined_callbacks
@@ -359,9 +358,9 @@ class FlooHandler(base.BaseHandler):
         self.workspace_info = data
         G.PERMS = data['perms']
 
-        readOnly = False
+        read_only = False
         if 'patch' not in data['perms']:
-            readOnly = True
+            read_only = True
             no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
             msg.log('No patch permission. Setting buffers to read-only')
             if 'request_perm' in data['perms']:
@@ -431,10 +430,10 @@ class FlooHandler(base.BaseHandler):
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
 
-        if self.upload and not readOnly:
-            yield self.initialUpload, changed_bufs, missing_bufs
+        if self.upload and not read_only:
+            yield self.initial_upload, changed_bufs, missing_bufs
         else:
-            yield self.handleConflicts, changed_bufs, missing_bufs
+            yield self.handle_conflicts, changed_bufs, missing_bufs
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
         editor.status_message(success_msg)

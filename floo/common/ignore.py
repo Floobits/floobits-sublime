@@ -41,8 +41,8 @@ class Ignore(object):
             if e.errno != errno.ENOTDIR:
                 msg.error('Error listing path %s: %s' % (path, unicode(e)))
                 return
+            # path is a file
             self.path = os.path.dirname(self.path)
-            #KANS: wtf is this doing ??
             self.add_file(os.path.basename(path))
             return
         except Exception as e:

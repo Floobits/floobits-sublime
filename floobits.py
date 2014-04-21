@@ -146,7 +146,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
-        global on_room_info_waterfall
         self.api_args = api_args
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
@@ -161,7 +160,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 dir_to_share = folders[0]
             else:
                 dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
-        on_room_info_waterfall = utils.Waterfall()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
     def on_input(self, dir_to_share):
@@ -472,7 +470,6 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             open_workspace_window(lambda: run_agent(**result))
 
         def run_agent(owner, workspace, host, port, secure, upload):
-            global on_room_info_waterfall
             if G.AGENT:
                 msg.debug('Stopping agent.')
                 reactor.stop()
