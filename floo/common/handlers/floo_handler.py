@@ -31,7 +31,7 @@ except ImportError:
     io = None
 
 
-MAX_WORKSPACE_SIZE = 50000000  # 50MB
+MAX_WORKSPACE_SIZE = 100000000  # 100MB
 
 
 class FlooHandler(base.BaseHandler):
@@ -41,7 +41,7 @@ class FlooHandler(base.BaseHandler):
         super(FlooHandler, self).__init__()
         self.owner = owner
         self.workspace = workspace
-        self.upload = upload and utils.unfuck_path(upload)
+        self.upload_path = upload and utils.unfuck_path(upload)
         self.reset()
 
     def _on_highlight(self, data):
@@ -292,10 +292,10 @@ class FlooHandler(base.BaseHandler):
         ig = ignore.Ignore(None, G.PROJECT_PATH)
         files = set()
 
-        if not os.path.isdir(self.upload):
-            files.add(self.upload)
+        if not os.path.isdir(self.upload_path):
+            files.add(self.upload_path)
         else:
-            split = os.path.abspath(utils.to_rel_path(self.upload)).split(os.sep)
+            split = os.path.abspath(utils.to_rel_path(self.upload_path)).split(os.sep)
             for d in split:
                 if d not in ig.children:
                     break
@@ -314,13 +314,13 @@ class FlooHandler(base.BaseHandler):
             self.send({
                 'name': 'set_buf',
                 'id': buf['id'],
-                'buf': buf,
+                'buf': buf['buf'],
                 'md5': buf['md5'],
                 'encoding': buf['encoding'],
             })
 
         for p in files:
-            self._upload(p)
+            self._upload(p, buf['buf'])
         cb()
 
     @utils.inlined_callbacks
@@ -430,7 +430,7 @@ class FlooHandler(base.BaseHandler):
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
 
-        if self.upload and not read_only:
+        if self.upload_path and not read_only:
             yield self.initial_upload, changed_bufs, missing_bufs
         else:
             yield self.handle_conflicts, changed_bufs, missing_bufs
