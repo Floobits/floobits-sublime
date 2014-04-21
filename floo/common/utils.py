@@ -68,19 +68,6 @@ class FlooPatch(object):
         }
 
 
-class Waterfall(object):
-    def __init__(self):
-        self.chain = []
-
-    def add(self, f, *args, **kwargs):
-        self.chain.append(lambda: f(*args, **kwargs))
-
-    def call(self):
-        res = [f() for f in self.chain]
-        self.chain = []
-        return res
-
-
 def reload_settings():
     floorc_settings = load_floorc()
     for name, val in floorc_settings.items():
