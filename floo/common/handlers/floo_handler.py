@@ -442,7 +442,10 @@ class FlooHandler(base.BaseHandler):
             return
         on_view_load = self.on_load.get(buf_id)
         if on_view_load:
-            del on_view_load['patch']
+            try:
+                del on_view_load['patch']
+            except KeyError:
+                pass
         view = self.get_view(data['id'])
         if view:
             self.save_view(view)
