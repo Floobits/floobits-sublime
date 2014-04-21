@@ -168,14 +168,14 @@ def send_error(description=None, exception=None):
     if G.AGENT:
         data['owner'] = G.AGENT.owner
         data['workspace'] = G.AGENT.workspace
-    if description:
-        data['description'] = description
     if exception:
         data['message'] = {
-            'msg': str(exception),
+            'description': str(exception),
             'stack': traceback.format_exc(exception)
         }
         msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+    if description:
+        data['description'] = description
     try:
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
         r = api_request(api_url, data)
