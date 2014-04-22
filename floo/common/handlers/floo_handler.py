@@ -32,7 +32,6 @@ except ImportError:
 
 
 MAX_WORKSPACE_SIZE = 100000000  # 100MB
-
 TOO_BIG_TEXT = '''Maximum workspace size is %.2fMB.\n
 %s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s'''
 
@@ -318,7 +317,6 @@ class FlooHandler(base.BaseHandler):
         def upload(relpath):
             self._upload(utils.get_full_path(relpath), self.bufs[relpath]['buf'])
         self._rate_limited_upload(iter(files), size, upload_func=upload)
-
         cb()
 
     @utils.inlined_callbacks
