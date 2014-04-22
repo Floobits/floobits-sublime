@@ -155,13 +155,14 @@ def get_orgs_can_admin():
 
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
-    if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
+    if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
         msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
         return
     data = {
         'jsondump': {
             'error_count': G.ERROR_COUNT
         },
+        'message': {},
         'username': G.USERNAME,
         'dir': G.COLAB_DIR,
     }
@@ -173,9 +174,11 @@ def send_error(description=None, exception=None):
             'description': str(exception),
             'stack': traceback.format_exc(exception)
         }
-        msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
     if description:
-        data['description'] = description
+        data['message']['description'] = description
+
+    msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+
     try:
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
         r = api_request(api_url, data)

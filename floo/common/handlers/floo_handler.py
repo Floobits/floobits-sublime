@@ -31,7 +31,10 @@ except ImportError:
     io = None
 
 
-MAX_WORKSPACE_SIZE = 50000000  # 50MB
+MAX_WORKSPACE_SIZE = 100000000  # 100MB
+
+TOO_BIG_TEXT = '''Maximum workspace size is %.2fMB.\n
+%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s'''
 
 
 class FlooHandler(base.BaseHandler):
@@ -41,7 +44,7 @@ class FlooHandler(base.BaseHandler):
         super(FlooHandler, self).__init__()
         self.owner = owner
         self.workspace = workspace
-        self.upload = upload and utils.unfuck_path(upload)
+        self.upload_path = upload and utils.unfuck_path(upload)
         self.reset()
 
     def _on_highlight(self, data):
@@ -288,21 +291,13 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
-    def initialUpload(self, changed_bufs, missing_bufs, cb):
-        ig = ignore.Ignore(None, G.PROJECT_PATH)
-        files = set()
-
-        if not os.path.isdir(self.upload):
-            files.add(self.upload)
-        else:
-            split = os.path.abspath(utils.to_rel_path(self.upload)).split(os.sep)
-            for d in split:
-                if d not in ig.children:
-                    break
-                ig = ig.children[d]
-            ignore.create_flooignore(ig.path)
-            for p in ig.list_paths():
-                files.add(p)
+    @utils.inlined_callbacks
+    def initial_upload(self, changed_bufs, missing_bufs, cb):
+        not_ignored_stuff = yield self.get_files, self.upload_path
+        print(not_ignored_stuff)
+        if not (not_ignored_stuff):
+            return
+        files, size = not_ignored_stuff
 
         for buf in missing_bufs:
             files.discard(buf['path'])
@@ -314,17 +309,20 @@ class FlooHandler(base.BaseHandler):
             self.send({
                 'name': 'set_buf',
                 'id': buf['id'],
-                'buf': buf,
+                'buf': buf['buf'],
                 'md5': buf['md5'],
                 'encoding': buf['encoding'],
             })
+        self._delete_ignored_bufs(self.upload_path, files)
 
-        for p in files:
-            self._upload(p)
+        def upload(relpath):
+            self._upload(utils.get_full_path(relpath), self.bufs[relpath]['buf'])
+        self._rate_limited_upload(iter(files), size, upload_func=upload)
+
         cb()
 
     @utils.inlined_callbacks
-    def handleConflicts(self, changed_bufs, missing_bufs, cb):
+    def handle_conflicts(self, changed_bufs, missing_bufs, cb):
         stomp_local = True
         if stomp_local and (changed_bufs or missing_bufs):
             choice = yield self.stomp_prompt, changed_bufs, missing_bufs
@@ -349,7 +347,6 @@ class FlooHandler(base.BaseHandler):
                     'name': 'delete_buf',
                     'id': buf['id'],
                 })
-        print(3)
         cb()
 
     @utils.inlined_callbacks
@@ -359,9 +356,9 @@ class FlooHandler(base.BaseHandler):
         self.workspace_info = data
         G.PERMS = data['perms']
 
-        readOnly = False
+        read_only = False
         if 'patch' not in data['perms']:
-            readOnly = True
+            read_only = True
             no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
             msg.log('No patch permission. Setting buffers to read-only')
             if 'request_perm' in data['perms']:
@@ -406,6 +403,7 @@ class FlooHandler(base.BaseHandler):
                     changed_bufs.append(buf)
                     buf['md5'] = view_md5
                 continue
+
             try:
                 if buf['encoding'] == "utf8":
                     if io:
@@ -431,13 +429,19 @@ class FlooHandler(base.BaseHandler):
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
 
-        if self.upload and not readOnly:
-            yield self.initialUpload, changed_bufs, missing_bufs
+        if self.upload_path and not read_only:
+            yield self.initial_upload, changed_bufs, missing_bufs
         else:
-            yield self.handleConflicts, changed_bufs, missing_bufs
+            yield self.handle_conflicts, changed_bufs, missing_bufs
+
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
         editor.status_message(success_msg)
+
+        data = utils.get_persistent_data()
+        data['recent_workspaces'].insert(0, {"url": self.workspace_url})
+        utils.update_persistent_data(data)
+        utils.add_workspace_to_persistent_json(self.owner, self.workspace, self.workspace_url, G.PROJECT_PATH)
 
         temp_data = data.get('temp_data', {})
         hangout = temp_data.get('hangout', {})
@@ -445,10 +449,6 @@ class FlooHandler(base.BaseHandler):
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
 
-        data = utils.get_persistent_data()
-        data['recent_workspaces'].insert(0, {"url": self.workspace_url})
-        utils.update_persistent_data(data)
-        utils.add_workspace_to_persistent_json(self.owner, self.workspace, self.workspace_url, G.PROJECT_PATH)
         self.emit("room_info")
 
     def _on_user_info(self, data):
@@ -485,7 +485,10 @@ class FlooHandler(base.BaseHandler):
             return
         on_view_load = self.on_load.get(buf_id)
         if on_view_load:
-            del on_view_load['patch']
+            try:
+                del on_view_load['patch']
+            except KeyError:
+                pass
         view = self.get_view(data['id'])
         if view:
             self.save_view(view)
@@ -545,39 +548,82 @@ class FlooHandler(base.BaseHandler):
     def _on_ping(self, data):
         self.send({'name': 'pong'})
 
-    @utils.inlined_callbacks
-    def upload(self, path, cb=None):
-        ig = ignore.Ignore(None, path)
-        if ig.size > MAX_WORKSPACE_SIZE:
-            size = ig.size
-            child_dirs = sorted(ig.children, key=attrgetter("size"))
-            ignored_cds = []
-            while size > MAX_WORKSPACE_SIZE and child_dirs:
-                cd = child_dirs.pop()
-                ignored_cds.append(cd)
-                size -= cd.size
-            if size > MAX_WORKSPACE_SIZE:
-                editor.error_message(
-                    'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
-                    (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
-                return
-            upload = yield self.ok_cancel_dialog, '''Maximum workspace size is %.2fMB.\n
-%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s''' % \
-                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0, "\n".join([x.path for x in ignored_cds]))
-            if not upload:
-                return
-            ig.children = child_dirs
-        self._uploader(ig.list_paths(), cb, ig.size)
+    def delete_ignored_bufs(self, root_path, files):
+        for p, buf_id in self.paths_to_ids.items():
+            rel_path = os.path.relpath(p, root_path).replace(os.sep, '/')
+            if rel_path.find('../') == 0:
+                continue
+            if p in files:
+                continue
+            self.send({
+                'name': 'delete_buf',
+                'id': buf_id,
+            })
 
-    def _uploader(self, paths_iter, cb, total_bytes, bytes_uploaded=0.0):
+    @utils.inlined_callbacks
+    def get_files_from_ignore(self, path, cb):
+        if not utils.is_shared(path):
+            return cb([])
+
+        if not os.path.is_dir(path):
+            return cb([path])
+        ig = ignore.Ignore(G.PROJECT_PATH)
+        split = os.path.abspath(utils.to_rel_path(self.upload_path)).split(os.sep)
+        for d in split:
+            if d not in ig.children:
+                break
+            ig = ig.children[d]
+
+        ignore.create_flooignore(ig.path)
+        dirs = ig.get_children()
+        dirs.append(ig)
+        dirs = sorted(dirs, key=attrgetter("size"))
+        size = starting_size = reduce(lambda c: c.size, dirs, 0)
+        too_big = []
+        while size > MAX_WORKSPACE_SIZE and dirs:
+            cd = too_big.pop()
+            size -= cd.size
+            too_big.append(cd)
+        if size > MAX_WORKSPACE_SIZE:
+            editor.error_message(
+                'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
+                (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
+            return cb([])
+        if too_big:
+            txt = TOO_BIG_TEXT % (MAX_WORKSPACE_SIZE / 1000000.0, path, starting_size / 1000000.0, "\n".join([x.path for x in too_big]))
+            upload = yield self.ok_cancel_dialog, txt
+            if not upload:
+                return cb([])
+        files = set()
+        for ig in dirs:
+            files += set([utils.to_rel_path(x) for x in ig.files])
+        return cb((files, size))
+
+    @utils.inlined_callbacks
+    def upload(self, path):
+        if not utils.is_shared(path):
+            return
+        if not os.path.is_dir(path):
+            files = [path]
+            size = 1
+        else:
+            not_ignored_stuff = yield self.get_files, self.upload_path
+            print(not_ignored_stuff)
+            if not (not_ignored_stuff):
+                return
+            files, size = not_ignored_stuff
+        self._rate_limited_upload(iter(files), size)
+
+    def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None):
         reactor.tick()
+        upload_func = upload_func or (lambda x: self._upload(utils.get_full_path(x)))
         if len(self.proto) > 0:
-            return utils.set_timeout(self._uploader, 10, paths_iter, cb, total_bytes, bytes_uploaded)
+            return utils.set_timeout(self._rate_limited_upload, 10, paths_iter, total_bytes, bytes_uploaded, upload_func)
 
         bar_len = 20
         try:
             p = next(paths_iter)
-            size = self._upload(p)
+            size = upload_func(p)
             bytes_uploaded += size
             try:
                 percent = (bytes_uploaded / total_bytes)
@@ -588,8 +634,8 @@ class FlooHandler(base.BaseHandler):
         except StopIteration:
             editor.status_message('Uploading... 100% ' + ('|' * bar_len) + '| complete')
             msg.log('All done uploading')
-            return cb and cb()
-        return utils.set_timeout(self._uploader, 50, paths_iter, cb, total_bytes, bytes_uploaded)
+            return
+        return utils.set_timeout(self._rate_limited_upload, 50, paths_iter, total_bytes, bytes_uploaded, upload_func)
 
     def _upload(self, path, text=None):
         size = 0

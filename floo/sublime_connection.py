@@ -157,6 +157,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
+
         for v in G.WORKSPACE_WINDOW.views():
             if not v.file_name():
                 continue

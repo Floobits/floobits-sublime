@@ -25,7 +25,7 @@ MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
 class Ignore(object):
-    def __init__(self, parent, path, recurse=True):
+    def __init__(self, path, parent=None, recurse=True):
         self.parent = parent
         self.size = 0
         self.children = {}
@@ -40,10 +40,6 @@ class Ignore(object):
         except OSError as e:
             if e.errno != errno.ENOTDIR:
                 msg.error('Error listing path %s: %s' % (path, unicode(e)))
-                return
-            self.path = os.path.dirname(self.path)
-            #KANS: wtf is this doing ??
-            self.add_file(os.path.basename(path))
             return
         except Exception as e:
             msg.error('Error listing path %s: %s' % (path, unicode(e)))
@@ -75,9 +71,9 @@ class Ignore(object):
             msg.error('Error stat()ing path %s: %s' % (p_path, unicode(e)))
             return
         if stat.S_ISDIR(s.st_mode):
-            ig = Ignore(self, p_path)
+            ig = Ignore(p_path, self)
             self.children[p] = ig
-            self.size += ig.size
+            # self.size += ig.size
             return
         elif stat.S_ISREG(s.st_mode):
             if s.st_size > (MAX_FILE_SIZE):
@@ -99,6 +95,12 @@ class Ignore(object):
                 continue
             msg.debug('Adding %s to ignore patterns' % ignore)
             self.ignores[ignore_file].append(ignore)
+
+    def get_children(self):
+        children = self.children.values()
+        for c in children:
+            children += c.get_all_children()
+        return children
 
     def list_paths(self):
         for f in self.files:
@@ -163,7 +165,7 @@ def is_ignored(current_path, abs_path=None):
         return False
 
     base_path, file_name = os.path.split(current_path)
-    ig = Ignore(None, base_path, recurse=False)
+    ig = Ignore(base_path, recurse=False)
     if ig.is_ignored(abs_path):
         return True
 
