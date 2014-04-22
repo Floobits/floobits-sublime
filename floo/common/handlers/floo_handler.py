@@ -292,17 +292,15 @@ class FlooHandler(base.BaseHandler):
 
     @utils.inlined_callbacks
     def initial_upload(self, changed_bufs, missing_bufs, cb):
-        not_ignored_stuff = yield self.get_files, self.upload_path
-        print(not_ignored_stuff)
-        if not (not_ignored_stuff):
+        files, size = yield self.get_files_from_ignore, self.upload_path
+        print(files)
+        if not (files):
             return
-        files, size = not_ignored_stuff
-
         for buf in missing_bufs:
             files.discard(buf['path'])
             self.send({'name': 'delete_buf', 'id': buf['id']})
 
-        # TODO: pace ourselves
+        # TODO: pace ourselves (send through the uploader...)
         for buf in changed_bufs:
             files.discard(buf['path'])
             self.send({
@@ -312,10 +310,12 @@ class FlooHandler(base.BaseHandler):
                 'md5': buf['md5'],
                 'encoding': buf['encoding'],
             })
-        self._delete_ignored_bufs(self.upload_path, files)
+        self.delete_ignored_bufs(self.upload_path, files)
 
         def upload(relpath):
-            self._upload(utils.get_full_path(relpath), self.bufs[relpath]['buf'])
+            buf_id = self.paths_to_ids.get(relpath)
+            text = self.bufs.get(buf_id, {}).get("buf")
+            return self._upload(utils.get_full_path(relpath), text)
         self._rate_limited_upload(iter(files), size, upload_func=upload)
         cb()
 
@@ -560,11 +560,17 @@ class FlooHandler(base.BaseHandler):
 
     @utils.inlined_callbacks
     def get_files_from_ignore(self, path, cb):
+        files = set()
+        ret = [files, 0]
         if not utils.is_shared(path):
-            return cb([])
+            cb(ret)
+            return
 
-        if not os.path.is_dir(path):
-            return cb([path])
+        if not os.path.isdir(path):
+            files.add(path)
+            cb(ret)
+            return
+
         ig = ignore.Ignore(G.PROJECT_PATH)
         split = os.path.abspath(utils.to_rel_path(self.upload_path)).split(os.sep)
         for d in split:
@@ -576,7 +582,7 @@ class FlooHandler(base.BaseHandler):
         dirs = ig.get_children()
         dirs.append(ig)
         dirs = sorted(dirs, key=attrgetter("size"))
-        size = starting_size = reduce(lambda c: c.size, dirs, 0)
+        size = starting_size = reduce(lambda x, c: x + c.size, dirs, 0)
         too_big = []
         while size > MAX_WORKSPACE_SIZE and dirs:
             cd = too_big.pop()
@@ -586,30 +592,26 @@ class FlooHandler(base.BaseHandler):
             editor.error_message(
                 'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
-            return cb([])
+            cb(ret)
+            return
         if too_big:
             txt = TOO_BIG_TEXT % (MAX_WORKSPACE_SIZE / 1000000.0, path, starting_size / 1000000.0, "\n".join([x.path for x in too_big]))
             upload = yield self.ok_cancel_dialog, txt
             if not upload:
-                return cb([])
+                cb(ret)
+                return
         files = set()
         for ig in dirs:
-            files += set([utils.to_rel_path(x) for x in ig.files])
-        return cb((files, size))
+            files = files.union(set([utils.to_rel_path(x) for x in ig.files]))
+        ret[1] = size
+        cb(ret)
 
     @utils.inlined_callbacks
     def upload(self, path):
-        if not utils.is_shared(path):
+        files, size = yield self.get_files_from_ignore, path
+        print(files)
+        if not (files):
             return
-        if not os.path.is_dir(path):
-            files = [path]
-            size = 1
-        else:
-            not_ignored_stuff = yield self.get_files, self.upload_path
-            print(not_ignored_stuff)
-            if not (not_ignored_stuff):
-                return
-            files, size = not_ignored_stuff
         self._rate_limited_upload(iter(files), size)
 
     def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None):

@@ -81,7 +81,7 @@ class Ignore(object):
                 msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
             else:
                 self.size += s.st_size
-                self.files.append(p)
+                self.files.append(p_path)
 
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'r') as fd:
@@ -99,7 +99,7 @@ class Ignore(object):
     def get_children(self):
         children = self.children.values()
         for c in children:
-            children += c.get_all_children()
+            children += c.get_children()
         return children
 
     def list_paths(self):
