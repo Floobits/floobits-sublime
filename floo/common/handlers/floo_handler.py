@@ -293,16 +293,14 @@ class FlooHandler(base.BaseHandler):
     @utils.inlined_callbacks
     def initial_upload(self, changed_bufs, missing_bufs, cb):
         files, size = yield self.get_files_from_ignore, self.upload_path
-        print(files)
         if not (files):
             return
+
         for buf in missing_bufs:
-            files.discard(buf['path'])
             self.send({'name': 'delete_buf', 'id': buf['id']})
 
         # TODO: pace ourselves (send through the uploader...)
         for buf in changed_bufs:
-            files.discard(buf['path'])
             self.send({
                 'name': 'set_buf',
                 'id': buf['id'],
@@ -310,12 +308,18 @@ class FlooHandler(base.BaseHandler):
                 'md5': buf['md5'],
                 'encoding': buf['encoding'],
             })
+
+        # we already looked at every buf so remove those from the set
+        for buf_id, buf in self.bufs.items():
+            files.discard(buf['path'])
+
         self.delete_ignored_bufs(self.upload_path, files)
 
         def upload(relpath):
             buf_id = self.paths_to_ids.get(relpath)
             text = self.bufs.get(buf_id, {}).get("buf")
             return self._upload(utils.get_full_path(relpath), text)
+
         self._rate_limited_upload(iter(files), size, upload_func=upload)
         cb()
 
@@ -426,7 +430,7 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
-
+        print(missing_bufs, changed_bufs)
         if self.upload_path and not read_only:
             yield self.initial_upload, changed_bufs, missing_bufs
         else:
@@ -560,15 +564,13 @@ class FlooHandler(base.BaseHandler):
 
     @utils.inlined_callbacks
     def get_files_from_ignore(self, path, cb):
-        files = set()
-        ret = [files, 0]
+        print path, cb
         if not utils.is_shared(path):
-            cb(ret)
+            cb([set(), 0])
             return
 
         if not os.path.isdir(path):
-            files.add(path)
-            cb(ret)
+            cb(set[path], 0)
             return
 
         ig = ignore.Ignore(G.PROJECT_PATH)
@@ -592,24 +594,30 @@ class FlooHandler(base.BaseHandler):
             editor.error_message(
                 'Maximum workspace size is %.2fMB.\n\n%s is too big (%.2fMB) to upload. Consider adding stuff to the .flooignore file.' %
                 (MAX_WORKSPACE_SIZE / 1000000.0, path, ig.size / 1000000.0))
-            cb(ret)
+            cb([set(), 0])
             return
         if too_big:
             txt = TOO_BIG_TEXT % (MAX_WORKSPACE_SIZE / 1000000.0, path, starting_size / 1000000.0, "\n".join([x.path for x in too_big]))
             upload = yield self.ok_cancel_dialog, txt
             if not upload:
-                cb(ret)
+                cb([set(), 0])
                 return
         files = set()
         for ig in dirs:
             files = files.union(set([utils.to_rel_path(x) for x in ig.files]))
-        ret[1] = size
-        cb(ret)
+        cb([files, size])
+
+    @utils.inlined_callbacks
+    def sync(self, paths):
+        for p in paths:
+            files, size = yield self.get_files_from_ignore, p
+            if files:
+                G.AGENT._rate_limited_upload(iter(files), size)
+                G.AGENT.delete_ignored_bufs(p, files)
 
     @utils.inlined_callbacks
     def upload(self, path):
         files, size = yield self.get_files_from_ignore, path
-        print(files)
         if not (files):
             return
         self._rate_limited_upload(iter(files), size)

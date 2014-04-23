@@ -618,6 +618,20 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
         return 'Add file or directory to currently-joined Floobits workspace.'
 
 
+class FloobitsSync(FloobitsBaseCommand):
+    def run(self, paths):
+        if not self.is_enabled():
+            return
+
+        if not paths:
+            paths = [self.window.active_view().file_name()]
+
+        G.AGENT.sync(paths)
+
+    def description(self):
+        return "Remove ignored files and add files that aren't."
+
+
 class FloobitsRemoveFromWorkspaceCommand(FloobitsBaseCommand):
     def run(self, paths, current_file=False):
         if not self.is_enabled():
