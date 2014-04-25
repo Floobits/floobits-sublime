@@ -430,7 +430,6 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
-        print(missing_bufs, changed_bufs)
         if self.upload_path and not read_only:
             yield self.initial_upload, changed_bufs, missing_bufs
         else:
