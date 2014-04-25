@@ -319,6 +319,8 @@ class FlooHandler(base.BaseHandler):
         def upload(relpath):
             buf_id = self.paths_to_ids.get(relpath)
             text = self.bufs.get(buf_id, {}).get("buf")
+            if text is None:
+                return msg.warn("%s is not populated but I was told to upload it!" % relpath)
             return self._upload(utils.get_full_path(relpath), text)
 
         self._rate_limited_upload(iter(files), size, upload_func=upload)
@@ -344,7 +346,12 @@ class FlooHandler(base.BaseHandler):
         else:
             for buf in missing_bufs:
                 self.send({'name': 'delete_buf', 'id': buf['id']})
-            upload = lambda buf: self._upload(utils.get_full_path(buf['path']), buf['buf'])
+
+            def upload(buf):
+                text = buf.get('buf')
+                if text is None:
+                    return msg.warn("%s is not populated but I was told to upload it!" % buf['path'])
+                self._upload(utils.get_full_path(buf['path']), text)
             size = reduce(lambda a, b: len(b['buf']) + a, changed_bufs, 0)
             self._rate_limited_upload(iter(changed_bufs), size, upload_func=upload)
 
