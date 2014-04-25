@@ -127,6 +127,7 @@ class FlooHandler(base.BaseHandler):
         self.paths_to_ids = {}
         self.save_on_get_bufs = set()
         self.on_load = collections.defaultdict(dict)
+        self.upload_timeout = None
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -623,7 +624,8 @@ class FlooHandler(base.BaseHandler):
         reactor.tick()
         upload_func = upload_func or (lambda x: self._upload(utils.get_full_path(x)))
         if len(self.proto) > 0:
-            return utils.set_timeout(self._rate_limited_upload, 10, paths_iter, total_bytes, bytes_uploaded, upload_func)
+            self.upload_timeout = utils.set_timeout(self._rate_limited_upload, 10, paths_iter, total_bytes, bytes_uploaded, upload_func)
+            return
 
         bar_len = 20
         try:
@@ -640,7 +642,7 @@ class FlooHandler(base.BaseHandler):
             editor.status_message('Uploading... 100% ' + ('|' * bar_len) + '| complete')
             msg.log('All done uploading')
             return
-        return utils.set_timeout(self._rate_limited_upload, 50, paths_iter, total_bytes, bytes_uploaded, upload_func)
+        self.upload_timeout = utils.set_timeout(self._rate_limited_upload, 50, paths_iter, total_bytes, bytes_uploaded, upload_func)
 
     def _upload(self, path, text=None):
         size = 0
@@ -706,3 +708,10 @@ class FlooHandler(base.BaseHandler):
         except Exception as e:
             msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
         return size
+
+    def stop(self):
+        if self.upload_timeout is not None:
+            utils.cancel_timeout(self.upload_timeout)
+            self.upload_timeout = None
+
+        super(FlooHandler, self).stop()
