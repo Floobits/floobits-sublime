@@ -333,22 +333,20 @@ class FlooHandler(base.BaseHandler):
                 return
             stomp_local = bool(choice)
 
-        for buf in changed_bufs:
-            if stomp_local:
+        if stomp_local:
+            for buf in changed_bufs:
                 self.get_buf(buf['id'], buf.get('view'))
                 self.save_on_get_bufs.add(buf['id'])
-            else:
-                self._upload(utils.get_full_path(buf['path']), buf['buf'])
+            for buf in missing_bufs:
+                self.get_buf(buf['id'], buf.get('view'))
+                self.save_on_get_bufs.add(buf['id'])
+        else:
+            for buf in missing_bufs:
+                self.send({'name': 'delete_buf', 'id': buf['id']})
+            upload = lambda buf: self._upload(utils.get_full_path(buf['path']), buf['buf'])
+            size = reduce(lambda a, b: len(b['buf']) + a, changed_bufs, 0)
+            self._rate_limited_upload(iter(changed_bufs), size, upload_func=upload)
 
-        for buf in missing_bufs:
-            if stomp_local:
-                self.get_buf(buf['id'], buf.get('view'))
-                self.save_on_get_bufs.add(buf['id'])
-            else:
-                self.send({
-                    'name': 'delete_buf',
-                    'id': buf['id'],
-                })
         cb()
 
     @utils.inlined_callbacks
