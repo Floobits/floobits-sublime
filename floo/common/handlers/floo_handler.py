@@ -360,7 +360,7 @@ class FlooHandler(base.BaseHandler):
                         changed_bufs.append(buf_id)
                         buf['md5'] = md5
                 except Exception as e:
-                    msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
+                    msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str(e)))
                     missing_bufs.append(buf_id)
 
         stomp_local = self.should_get_bufs
