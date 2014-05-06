@@ -302,7 +302,10 @@ class FlooHandler(base.BaseHandler):
                 if should_send:
                     self.send({'name': 'request_perms', 'perms': ['edit_room']})
             else:
-                editor.error_message(no_perms_msg)
+                if G.EXPERT_MODE:
+                    editor.status_message(no_perms_msg)
+                else:
+                    editor.error_message(no_perms_msg)
 
         floo_json = {
             'url': utils.to_workspace_url({
