@@ -48,7 +48,7 @@ class RequestCredentialsHandler(base.BaseHandler):
     def on_data(self, name, data):
         if name == 'credentials':
             try:
-                floo_json = {'preferences': {}}
+                floo_json = {}
                 floo_json['auth'] = {G.DEFAULT_HOST: data['credentials']}
                 with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
                     data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)

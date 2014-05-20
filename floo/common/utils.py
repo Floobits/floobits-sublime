@@ -89,7 +89,9 @@ def get_hosts():
 
 def load_preferences():
     floobits_settings = load_floorc()
-    for name, val in floobits_settings['preferences'].items():
+    for name, val in floobits_settings.items():
+        if name == "auth":
+            continue
         setattr(G, name.upper(), val)
 
     if G.SHARE_DIR:

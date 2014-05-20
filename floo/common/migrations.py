@@ -98,15 +98,13 @@ def migrate_floorc():
         return
     floorc = __load_floorc()
     floo_auth = {}
-    preferences = {}
     data = {}
     for key, val in floorc.items():
         if key in ("USERNAME", "SECRET", "API_KEY"):
             floo_auth[key.lower()] = val
         else:
-            preferences[key.lower()] = val
+            data[key.lower()] = val
     data['auth'] = {'floobits.com': floo_auth}
-    data['preferences'] = preferences
     with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
         fd.write(json.dumps(data, indent=4, sort_keys=True))
 
@@ -115,12 +113,12 @@ def migrate_floorc():
 #     'preferences': {
 #         'staging.floobits.com': {
 #             'username': 'blah',
-#             'password': 'blah2',
+#             'secret': 'blah',
 #             'api_key': ''
 #         },
 #         'default': {
 #             'username': 'blah2',
-#             'password': 'blah',
+#             'secret': 'blah',
 #             'api_key': 'eohudoeu'
 #         }
 #     }
@@ -128,16 +126,11 @@ def migrate_floorc():
 
 
 # {
-#     'preferences': {
+#     'auth': {
 #         'blah.floobits-enterprise.com': {
 #             'username': 'blah',
-#             'password': 'blah2',
+#             'secret': 'blah2',
 #             'api_key': ''
 #         },
-#         'default': {
-#             'username': 'blah2',
-#             'password': 'blah',
-#             'api_key': 'eohudoeu'
-#         }
 #     }
 # }
