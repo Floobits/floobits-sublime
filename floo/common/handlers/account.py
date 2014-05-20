@@ -39,7 +39,7 @@ class CreateAccountHandler(base.BaseHandler):
             del data['name']
             try:
                 floo_json = {'preferences': {}}
-                floo_json['auth'] = {'floobits.com': data}
+                floo_json['auth'] = {G.DEFAULT_HOST: data}
                 with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
                     data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)
                     fd.write(data_as_string)
