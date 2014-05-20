@@ -1,11 +1,12 @@
 import os
 import sys
 import json
+import traceback
 import webbrowser
 
 try:
     from . import base
-    from .. import api, shared as G, utils
+    from .. import msg, api, shared as G, utils
     from ... import editor
     from ..protocols import floo_proto
     assert api and G and utils
@@ -13,7 +14,7 @@ except (ImportError, ValueError):
     import base
     from floo import editor
     from floo.common.protocols import floo_proto
-    from .. import api, shared as G, utils
+    from .. import msg, api, shared as G, utils
 
 WELCOME_MSG = """Welcome %s!\n\nYou are all set to collaborate.
 
@@ -64,6 +65,7 @@ class RequestCredentialsHandler(base.BaseHandler):
                     fd.write(text)
                 editor.open_file(p)
             except Exception as e:
-                print(e)
+                msg.debug(traceback.format_exc())
+                msg.error(str(e))
             finally:
                 self.proto.stop()
