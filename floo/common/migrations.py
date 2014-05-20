@@ -66,3 +66,46 @@ def migrate_symlinks():
         os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
     except Exception:
         pass
+
+
+def __load_floorc():
+    """try to read settings out of the .floorc file"""
+    s = {}
+    try:
+        fd = open(G.FLOORC_PATH, 'r')
+    except IOError as e:
+        if e.errno == 2:
+            return s
+        raise
+
+    default_settings = fd.read().split('\n')
+    fd.close()
+
+    for setting in default_settings:
+        # TODO: this is horrible
+        if len(setting) == 0 or setting[0] == '#':
+            continue
+        try:
+            name, value = setting.split(' ', 1)
+        except IndexError:
+            continue
+        s[name.upper()] = value
+    return s
+
+
+def migrate_floorc():
+    if os.path.exists(G.FLOOBITS_JSON_PATH):
+        return
+    floorc = __load_floorc()
+    floo_auth = {}
+    preferences = {}
+    data = {}
+    for key, val in floorc.items():
+        if key in ("USERNAME", "SECRET", "API_KEY"):
+            floo_auth[key.lower()] = val
+        else:
+            preferences[key.lower()] = val
+    data['auth'] = {'floobits.com': floo_auth}
+    data['preferences'] = preferences
+    with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
+        fd.write(json.dumps(data, indent=4, sort_keys=True))

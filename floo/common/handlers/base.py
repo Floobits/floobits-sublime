@@ -69,7 +69,7 @@ class BaseHandler(event_emitter.EventEmitter):
         return self.joined_workspace
 
     def reload_settings(self):
-        utils.reload_settings()
+        utils.reload_settings(G.DEFAULT_HOST)
         self.username = G.USERNAME
         self.secret = G.SECRET
         self.api_key = G.API_KEY

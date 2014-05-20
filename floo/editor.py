@@ -63,3 +63,21 @@ def get_line_endings(path=None):
     if ending == 'windows':
         return '\r\n'
     return '\n'
+
+
+def select_account(*args):
+    window, hosts, cb = args
+    if len(hosts) == 1:
+        return cb(hosts[0])
+
+    if len(hosts) > 1:
+        def on_account(index):
+            if index == -1:
+                return cb(None)
+            return cb(hosts[index])
+        #  TODO: add usernames to dialog
+        opts = [[h, "Use %s account." % h] for h in hosts]
+        opts.reverse()
+        return window.show_quick_panel(opts, on_account)
+
+    return cb()

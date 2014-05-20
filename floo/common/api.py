@@ -154,6 +154,8 @@ def get_orgs_can_admin():
 
 
 def send_error(description=None, exception=None):
+    print(description, exception)
+    return
     G.ERROR_COUNT += 1
     if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
         msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)

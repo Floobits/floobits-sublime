@@ -81,10 +81,17 @@ class Waterfall(object):
         return res
 
 
-def reload_settings():
+def get_hosts():
     floorc_settings = load_floorc()
-    for name, val in floorc_settings.items():
-        setattr(G, name, val)
+    auth = floorc_settings['auth']
+    return list(auth.keys())
+
+
+def load_preferences():
+    floobits_settings = load_floorc()
+    for name, val in floobits_settings['preferences'].items():
+        setattr(G, name.upper(), val)
+
     if G.SHARE_DIR:
         G.BASE_DIR = G.SHARE_DIR
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
@@ -94,32 +101,49 @@ def reload_settings():
         msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
     else:
         msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
+
     mkdir(G.COLAB_DIR)
+
+
+def can_auth():
+    return (G.USERNAME or G.API_KEY) and G.SECRET
+
+
+def reload_settings(host=None):
+    floobits_settings = load_floorc()
+    auth = floobits_settings['auth']
+    if len(auth) > 1:
+        if host is None:
+            raise ValueError("need to pick an account")
+
+    host = host or list(auth.keys())[0]
+
+    if host not in auth:
+        raise ValueError("No auth for %s" % host)
+
+    G.DEFAULT_HOST = host
+
+    for name, val in auth[host].items():
+        setattr(G, name.upper(), val)
 
 
 def load_floorc():
     """try to read settings out of the .floorc file"""
-    s = {}
+    default = {"auth": {"floobits.com": {}}}
     try:
-        fd = open(G.FLOORC_PATH, 'r')
+        fd = open(G.FLOOBITS_JSON_PATH, 'r')
     except IOError as e:
         if e.errno == 2:
-            return s
+            return default
         raise
 
-    default_settings = fd.read().split('\n')
+    default_settings = fd.read()
     fd.close()
-
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
-    return s
+    try:
+        return json.loads(default_settings)
+    except Exception as e:
+        print(e)
+    return default
 
 
 cancelled_timeouts = set()

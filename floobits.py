@@ -37,19 +37,19 @@ Please upgrade your operating system if you want to use this plugin. :(''')
         print(e)
 
 try:
-    from .floo import version
+    from .floo import version, editor
     from .floo import sublime_utils as sutils
     from .floo.listener import Listener
     from .floo.sublime_connection import SublimeConnection
-    from .floo.common import api, ignore, reactor, msg, shared as G, utils
+    from .floo.common import api, ignore, reactor, msg, migrations, shared as G, utils
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
     assert api and G and ignore and msg and utils
 except (ImportError, ValueError):
-    from floo import version
+    from floo import version, editor
     from floo import sublime_utils as sutils
     from floo.listener import Listener
-    from floo.common import api, ignore, reactor, msg, shared as G, utils
+    from floo.common import api, ignore, reactor, msg, migrations, shared as G, utils
     from floo.common.handlers.account import CreateAccountHandler
     from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.sublime_connection import SublimeConnection
@@ -91,22 +91,40 @@ def get_active_window(cb):
     cb(win)
 
 
-def create_or_link_account():
+def create_or_link_account(domain=None):
     agent = None
-    account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
-                                       'Click "Open browser" if you have one or click "cancel" and we\'ll make it for you.',
-                                       'Open browser')
-    if account:
+    if domain:
+        sublime.error_message("You must create an account at %s/signup and add the credentials to %s." % (
+            domain, G.FLOOBITS_JSON_PATH))
+        return
+
+    if utils.get_persistent_data().get('disable_account_creation'):
+        print('''A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n
+        We're really sorry. This should never happen.''')
+        return
+
+    domain = domain or "floobits.com"
+    G.DEFAULT_HOST = domain
+    account = sublime.ok_cancel_dialog('Setup Floobits (1 of 3)!\n\n'
+                                       'If you have a Floobits account or want to make one, click OK.', 'OK')
+    if not account:
+        print("not making account")
+        return
+
+    link_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\n',
+                                            'Do you have an account?', 'Yes')
+    if link_account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
-    elif utils.get_persistent_data().get('disable_account_creation'):
-        print('persistent.json has disable_account_creation. Skipping CreateAccountHandler')
-    else:
-        agent = CreateAccountHandler()
+        return
 
+    create_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\n',
+                                              'Do you want to create a new account?', 'Yes')
+    if create_account:
+        agent = CreateAccountHandler()
+        return
     if not agent:
-        sublime.error_message('''A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n
-We're really sorry. This should never happen.''')
+        sublime.message_dialog('''You can create or link a Floobits account at any point in the future.''')
         return
 
     try:
@@ -163,16 +181,31 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
     def is_enabled(self):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
+    @utils.inlined_callbacks
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
         global on_room_info_waterfall
         self.api_args = api_args
-        utils.reload_settings()
-        if not (G.USERNAME and G.SECRET):
-            return create_or_link_account()
+        hosts = utils.get_hosts()
+        account = yield editor.select_account, self.window, hosts
+        if not account:
+            if len(hosts) >= 1:
+                return
+            create_or_link_account()
+            return
+
+        try:
+            utils.reload_settings(account)
+        except ValueError as e:
+            print(e)
+            create_or_link_account(account)
+            return
+
         if paths:
             if len(paths) != 1:
-                return sublime.error_message('Only one folder at a time, please. :(')
-            return self.on_input(paths[0])
+                sublime.error_message('Only one folder at a time, please. :(')
+                return
+            self.on_input(paths[0])
+            return
         if dir_to_share is None:
             folders = self.window.folders()
             if folders:
@@ -518,8 +551,13 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         except Exception as e:
             return sublime.error_message(str(e))
 
-        utils.reload_settings()
-        if not (G.USERNAME and G.SECRET):
+        host = result['host']
+        try:
+            utils.reload_settings(host)
+        except ValueError as e:
+            return create_or_link_account(host)
+
+        if not utils.can_auth():
             return create_or_link_account()
 
         d = utils.get_persistent_data()
@@ -915,7 +953,8 @@ def plugin_loaded():
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
-    utils.reload_settings()
+    migrations.migrate_floorc()
+    utils.load_preferences()
 
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
@@ -933,7 +972,12 @@ def plugin_loaded():
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
-    can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
+    try:
+        utils.reload_settings()
+    except ValueError:
+        can_auth = True
+    else:
+        can_auth = utils.can_auth()
     # Sublime plugin API stuff can't be called right off the bat
     if not can_auth:
         utils.set_timeout(create_or_link_account, 1)
