@@ -451,3 +451,20 @@ def has_browser():
         except Exception:
             continue
     return False
+
+
+def update_recent_workspaces(workspace):
+    d = get_persistent_data()
+    recent_workspaces = d.get('recent_workspaces', [])
+    recent_workspaces.insert(0, workspace)
+    recent_workspaces = recent_workspaces[:100]
+    seen = set()
+    new = []
+    for r in recent_workspaces:
+        string = json.dumps(r)
+        if string not in seen:
+            new.append(r)
+            seen.add(string)
+    d['recent_workspaces'] = new
+    update_persistent_data(d)
+

@@ -62,22 +62,6 @@ on_room_info_waterfall = utils.Waterfall()
 ignore_modified_timeout = None
 
 
-def update_recent_workspaces(workspace):
-    d = utils.get_persistent_data()
-    recent_workspaces = d.get('recent_workspaces', [])
-    recent_workspaces.insert(0, workspace)
-    recent_workspaces = recent_workspaces[:100]
-    seen = set()
-    new = []
-    for r in recent_workspaces:
-        string = json.dumps(r)
-        if string not in seen:
-            new.append(r)
-            seen.add(string)
-    d['recent_workspaces'] = new
-    utils.update_persistent_data(d)
-
-
 def create_or_link_account():
     agent = None
     account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
@@ -489,7 +473,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 msg.debug('Stopping agent.')
                 reactor.stop()
                 G.AGENT = None
-            on_room_info_waterfall.add(update_recent_workspaces, {'url': workspace_url})
+            on_room_info_waterfall.add(utils.update_recent_workspaces, {'url': workspace_url})
             try:
                 conn = SublimeConnection(owner, workspace, agent_conn_kwargs.get('get_bufs', True))
                 reactor.connect(conn, host, port, secure)
