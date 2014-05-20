@@ -109,3 +109,35 @@ def migrate_floorc():
     data['preferences'] = preferences
     with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
         fd.write(json.dumps(data, indent=4, sort_keys=True))
+
+
+# {
+#     'preferences': {
+#         'staging.floobits.com': {
+#             'username': 'blah',
+#             'password': 'blah2',
+#             'api_key': ''
+#         },
+#         'default': {
+#             'username': 'blah2',
+#             'password': 'blah',
+#             'api_key': 'eohudoeu'
+#         }
+#     }
+# }
+
+
+# {
+#     'preferences': {
+#         'blah.floobits-enterprise.com': {
+#             'username': 'blah',
+#             'password': 'blah2',
+#             'api_key': ''
+#         },
+#         'default': {
+#             'username': 'blah2',
+#             'password': 'blah',
+#             'api_key': 'eohudoeu'
+#         }
+#     }
+# }

@@ -110,6 +110,7 @@ def can_auth():
 
 
 def reload_settings(host=None):
+    G.USERNAME = ""
     floobits_settings = load_floorc()
     auth = floobits_settings['auth']
     if len(auth) > 1:

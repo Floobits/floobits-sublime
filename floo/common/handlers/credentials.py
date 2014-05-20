@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import webbrowser
 
 try:
@@ -45,17 +46,24 @@ class RequestCredentialsHandler(base.BaseHandler):
 
     def on_data(self, name, data):
         if name == 'credentials':
-            with open(G.FLOORC_PATH, 'w') as floorc_fd:
-                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
-                floorc_fd.write(floorc)
-            utils.reload_settings()
-            if not G.USERNAME or not G.SECRET:
-                editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
-                api.send_error('No username or secret')
-            else:
+            try:
+                floo_json = {'preferences': {}}
+                floo_json['auth'] = {'floobits.com': data['credentials']}
+                with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
+                    data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)
+                    fd.write(data_as_string)
+                utils.reload_settings(G.DEFAULT_HOST)
+                if not utils.can_auth():
+                    editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
+                    api.send_error('No username or secret')
+                    return
+
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'w') as fd:
                     text = WELCOME_MSG % (G.USERNAME, self.proto.host)
                     fd.write(text)
                 editor.open_file(p)
-            self.proto.stop()
+            except Exception as e:
+                print(e)
+            finally:
+                self.proto.stop()

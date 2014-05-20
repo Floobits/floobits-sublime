@@ -105,34 +105,31 @@ def create_or_link_account(domain=None):
 
     domain = domain or "floobits.com"
     G.DEFAULT_HOST = domain
-    account = sublime.ok_cancel_dialog('Setup Floobits (1 of 3)!\n\n'
-                                       'If you have a Floobits account or want to make one, click OK.', 'OK')
+    account = sublime.ok_cancel_dialog('Setup Floobits (1 of 3)!\n\nIf you have a Floobits account or want to make one, click OK.', 'OK')
     if not account:
         print("not making account")
         return
 
-    link_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\n',
-                                            'Do you have an account?', 'Yes')
+    def connect(agent):
+        try:
+            reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+        except Exception as e:
+            print(e)
+            tb = traceback.format_exc()
+            print(tb)
+
+    link_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\nDo you have an account?', 'Yes')
     if link_account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
-        return
+        return connect(agent)
 
-    create_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\n',
-                                              'Do you want to create a new account?', 'Yes')
+    create_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\nDo you want to create a new account?', 'Yes')
     if create_account:
         agent = CreateAccountHandler()
-        return
-    if not agent:
-        sublime.message_dialog('''You can create or link a Floobits account at any point in the future.''')
-        return
+        return connect(agent)
 
-    try:
-        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
-    except Exception as e:
-        print(e)
-        tb = traceback.format_exc()
-        print(tb)
+    sublime.message_dialog('''You can create or link a Floobits account at any point in the future.''')
 
 
 def global_tick():
@@ -331,15 +328,24 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
+    @utils.inlined_callbacks
     def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
+            return
+        hosts = utils.get_hosts()
+        account = yield editor.select_account, self.window, hosts
+        if not account:
+            if len(hosts) >= 1:
+                return
+            create_or_link_account()
             return
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
         self.api_args = api_args or {}
         if workspace_name and dir_to_share and prompt == 'Workspace name:':
-            return self.on_input(workspace_name, dir_to_share)
+            self.on_input(workspace_name, dir_to_share)
+            return
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
 
     def on_input(self, workspace_name, dir_to_share=None):
