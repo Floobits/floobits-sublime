@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 import getpass
+import json
 
 try:
     from . import base
@@ -37,23 +38,25 @@ class CreateAccountHandler(base.BaseHandler):
         if name == 'create_user':
             del data['name']
             try:
-                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
-                with open(G.FLOORC_PATH, 'w') as floorc_fd:
-                    floorc_fd.write(floorc)
-                utils.reload_settings()
-                if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
-                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
+                floo_json = {'preferences': {}}
+                floo_json['auth'] = {'floobits.com': data}
+                with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
+                    data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)
+                    fd.write(data_as_string)
+                utils.reload_settings(G.DEFAULT_HOST)
+                if not utils.can_auth():
+                    editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
                     api.send_error('No username or secret')
-                else:
-                    p = os.path.join(G.BASE_DIR, 'welcome.md')
-                    with open(p, 'w') as fd:
-                        text = editor.welcome_text % (G.USERNAME, self.proto.host)
-                        fd.write(text)
-                    d = utils.get_persistent_data()
-                    d['auto_generated_account'] = True
-                    utils.update_persistent_data(d)
-                    G.AUTO_GENERATED_ACCOUNT = True
-                    editor.open_file(p)
+                    return
+                p = os.path.join(G.BASE_DIR, 'welcome.md')
+                with open(p, 'w') as fd:
+                    text = editor.welcome_text % (G.USERNAME, self.proto.host)
+                    fd.write(text)
+                d = utils.get_persistent_data()
+                d['auto_generated_account'] = True
+                utils.update_persistent_data(d)
+                G.AUTO_GENERATED_ACCOUNT = True
+                editor.open_file(p)
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str(e))

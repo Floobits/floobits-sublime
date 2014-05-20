@@ -105,7 +105,7 @@ def create_or_link_account(domain=None):
 
     domain = domain or "floobits.com"
     G.DEFAULT_HOST = domain
-    account = sublime.ok_cancel_dialog('Setup Floobits (1 of 3)!\n\nIf you have a Floobits account or want to make one, click OK.', 'OK')
+    account = sublime.ok_cancel_dialog('Floobits Setup (1 of 3)\n\nIf you have a Floobits account or want to make one, click OK.', 'OK')
     if not account:
         print("not making account")
         return
@@ -118,13 +118,13 @@ def create_or_link_account(domain=None):
             tb = traceback.format_exc()
             print(tb)
 
-    link_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\nDo you have an account?', 'Yes')
+    link_account = sublime.ok_cancel_dialog('Floobits Setup (2 of 3)\n\nDo you have an account? Click "Cancel" if you don\'t', 'Yes')
     if link_account:
         token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
         agent = RequestCredentialsHandler(token)
         return connect(agent)
 
-    create_account = sublime.ok_cancel_dialog('Setup Floobits (2 of 3)!\n\nDo you want to create a new account?', 'Yes')
+    create_account = sublime.ok_cancel_dialog('Floobits Setup (2 of 3)\n\nDo you want to create a new account?', 'Yes')
     if create_account:
         agent = CreateAccountHandler()
         return connect(agent)
