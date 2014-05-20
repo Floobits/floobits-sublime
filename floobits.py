@@ -101,6 +101,7 @@ We're really sorry. This should never happen.''')
 
 
 def global_tick():
+    # XXX: A couple of sublime 2 users have had reactor == None here
     reactor.tick()
     utils.set_timeout(global_tick, G.TICK_TIME)
 
