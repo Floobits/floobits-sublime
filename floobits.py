@@ -91,9 +91,9 @@ def get_active_window(cb):
     cb(win)
 
 
-def create_or_link_account(domain=None):
+def create_or_link_account(domain="floobits.com"):
     agent = None
-    if domain:
+    if domain != "floobits.com":
         sublime.error_message("You must create an account at %s/signup and add the credentials to %s." % (
             domain, G.FLOOBITS_JSON_PATH))
         return
@@ -103,7 +103,6 @@ def create_or_link_account(domain=None):
         We're really sorry. This should never happen.''')
         return
 
-    domain = domain or "floobits.com"
     G.DEFAULT_HOST = domain
     account = sublime.ok_cancel_dialog('Floobits Setup (1 of 3)\n\nIf you have a Floobits account or want to make one, click OK.', 'OK')
     if not account:
@@ -305,7 +304,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             utils.reload_settings(account)
         except ValueError as e:
             print(e)
-            create_or_link_account(account)
+            sublime.error_message("Something strange happened. Your ~/.floobits.json doesn't contain credentials for %s anymore." % account)
             return
 
         try:
@@ -572,7 +571,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             return
 
         if not utils.can_auth():
-            return create_or_link_account()
+            return create_or_link_account(host)
 
         d = utils.get_persistent_data()
         try:
@@ -986,14 +985,7 @@ def plugin_loaded():
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
-    try:
-        utils.reload_settings()
-    except ValueError:
-        can_auth = True
-    else:
-        can_auth = utils.can_auth()
-    # Sublime plugin API stuff can't be called right off the bat
-    if not can_auth:
+    if not os.path.exists(G.FLOOBITS_JSON_PATH) or len(utils.load_floorc()['auth']) < 1:
         utils.set_timeout(create_or_link_account, 1)
 
     utils.set_timeout(global_tick, 1)

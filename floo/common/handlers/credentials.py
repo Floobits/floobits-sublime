@@ -67,5 +67,6 @@ class RequestCredentialsHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str(e))
+                api.send_error(exception=e)
             finally:
                 self.proto.stop()

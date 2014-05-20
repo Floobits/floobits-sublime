@@ -111,17 +111,12 @@ def can_auth():
     return (G.USERNAME or G.API_KEY) and G.SECRET
 
 
-def reload_settings(host=None):
+def reload_settings(host):
     G.USERNAME = ""
     G.SECRET = ""
     G.API_KEY = ""
     floobits_settings = load_floorc()
-    auth = floobits_settings['auth']
-    if len(auth) > 1:
-        if host is None:
-            raise ValueError("need to pick an account")
-
-    host = host or list(auth.keys())[0]
+    auth = floobits_settings.get('auth', {})
 
     if host not in auth:
         raise ValueError("No auth for %s" % host)

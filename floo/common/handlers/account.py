@@ -60,6 +60,8 @@ class CreateAccountHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str(e))
+                api.send_error(exception=e)
+
             try:
                 d = utils.get_persistent_data()
                 d['disable_account_creation'] = True
