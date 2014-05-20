@@ -220,10 +220,11 @@ class Listener(sublime_plugin.EventListener):
     #         return
     #     G.AGENT.temp_disable_stalk = True
 
-    # def on_post_window_command(self, window, command_name, args):
-    #     if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
-    #         return
-    #     self.pending_commands -= 1
-    #     if not G.AGENT or self.pending_commands > 0:
-    #         return
-    #     G.AGENT.temp_disable_stalk = False
+    def on_post_window_command(self, window, command_name, args):
+        print(window, command_name, args)
+        # if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
+        #     return
+        # self.pending_commands -= 1
+        # if not G.AGENT or self.pending_commands > 0:
+        #     return
+        # G.AGENT.temp_disable_stalk = False
