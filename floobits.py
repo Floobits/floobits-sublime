@@ -178,24 +178,9 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
     def is_enabled(self):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
-    @utils.inlined_callbacks
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
         global on_room_info_waterfall
         self.api_args = api_args
-        hosts = utils.get_hosts()
-        account = yield editor.select_account, self.window, hosts, None
-        if not account:
-            if len(hosts) >= 1:
-                return
-            create_or_link_account()
-            return
-
-        try:
-            utils.reload_settings(account)
-        except ValueError as e:
-            print(e)
-            create_or_link_account(account)
-            return
 
         if paths:
             if len(paths) != 1:
@@ -212,6 +197,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         on_room_info_waterfall = utils.Waterfall()
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
+    @utils.inlined_callbacks
     def on_input(self, dir_to_share):
         file_to_share = None
         dir_to_share = os.path.expanduser(dir_to_share)
@@ -266,7 +252,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         try:
             utils.mkdir(dir_to_share)
         except Exception:
-            return sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
+            sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
+            return
 
         floo_file = os.path.join(dir_to_share, '.floo')
 
@@ -306,14 +293,30 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 'api_args': self.api_args,
                 'owner': owner[0],
             })
+        hosts = utils.get_hosts()
+        host = None
+        if len(hosts) == 1:
+            host = hosts[0]
+        account = yield editor.select_account, self.window, hosts, host
+        if not account:
+            return
+
+        try:
+            utils.reload_settings(account)
+        except ValueError as e:
+            print(e)
+            create_or_link_account(account)
+            return
 
         try:
             r = api.get_orgs_can_admin()
         except IOError as e:
-            return sublime.error_message('Error getting org list: %s' % str(e))
+            sublime.error_message('Error getting org list: %s' % str(e))
+            return
 
         if r.code >= 400 or len(r.body) == 0:
-            return on_done([G.USERNAME])
+            on_done([G.USERNAME])
+            return
 
         orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
         orgs.insert(0, [G.USERNAME, 'Create workspace owned by %s' % G.USERNAME])
@@ -328,16 +331,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
-    @utils.inlined_callbacks
     def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None):
         if not disconnect_dialog():
-            return
-        hosts = utils.get_hosts()
-        account = yield editor.select_account, self.window, hosts
-        if not account:
-            if len(hosts) >= 1:
-                return
-            create_or_link_account()
             return
         self.owner = owner or G.USERNAME
         self.dir_to_share = dir_to_share
@@ -564,7 +559,6 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             hosts = utils.get_hosts()
 
             def cb(host):
-                # add to floorc
                 if not host:
                     return
                 floo_json = utils.load_floorc()
@@ -573,12 +567,9 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                     data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)
                     fd.write(data_as_string)
                 self.run(workspace_url, agent_conn_kwargs=agent_conn_kwargs)
+            # TODO: this is stupid... tell them to go make an account or something
             editor.select_account(self.window, hosts, host, cb)
             return
-        try:
-            utils.reload_settings(host)
-        except ValueError as e:
-            return create_or_link_account(host)
 
         if not utils.can_auth():
             return create_or_link_account()

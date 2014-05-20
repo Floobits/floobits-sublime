@@ -34,6 +34,12 @@ except (AttributeError, ImportError, ValueError):
     URLError = urllib2.URLError
 
 try:
+    from urllib.parse import urlparse
+    assert urlparse
+except ImportError:
+    from urlparse import urlparse
+
+try:
     from .. import editor
     from . import msg, shared as G, utils
 except ImportError:
@@ -43,7 +49,17 @@ except ImportError:
     import utils
 
 
-def get_basic_auth():
+def get_basic_auth(workspace_url):
+
+    try:
+        result = urlparse(workspace_url)
+    except Exception as e:
+        msg.error(unicode(e))
+        return ""
+    try:
+        utils.reload_settings(result.hostname)
+    except ValueError:
+        return ""
     basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
@@ -96,7 +112,8 @@ def hit_url(url, data, method):
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth())
+    auth = get_basic_auth(url)
+    r.add_header('Authorization', 'Basic %s' % auth)
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
