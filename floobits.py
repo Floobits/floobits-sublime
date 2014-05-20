@@ -78,19 +78,6 @@ def update_recent_workspaces(workspace):
     utils.update_persistent_data(d)
 
 
-def ssl_error_msg(action):
-    sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
-                          'This is a known issue on Linux builds of Sublime Text. '
-                          'See this issue: https://github.com/SublimeText/Issues/issues/177')
-
-
-def get_active_window(cb):
-    win = sublime.active_window()
-    if not win:
-        return utils.set_timeout(get_active_window, 50, cb)
-    cb(win)
-
-
 def create_or_link_account():
     agent = None
     account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
