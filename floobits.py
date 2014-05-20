@@ -183,7 +183,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         global on_room_info_waterfall
         self.api_args = api_args
         hosts = utils.get_hosts()
-        account = yield editor.select_account, self.window, hosts
+        account = yield editor.select_account, self.window, hosts, None
         if not account:
             if len(hosts) >= 1:
                 return
@@ -558,6 +558,23 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             return sublime.error_message(str(e))
 
         host = result['host']
+        try:
+            utils.reload_settings(host)
+        except ValueError as e:
+            hosts = utils.get_hosts()
+
+            def cb(host):
+                # add to floorc
+                if not host:
+                    return
+                floo_json = utils.load_floorc()
+                floo_json['auth'][result['host']] = floo_json['auth'][host]
+                with open(G.FLOOBITS_JSON_PATH, 'w') as fd:
+                    data_as_string = json.dumps(floo_json, indent=4, sort_keys=True)
+                    fd.write(data_as_string)
+                self.run(workspace_url, agent_conn_kwargs=agent_conn_kwargs)
+            editor.select_account(self.window, hosts, host, cb)
+            return
         try:
             utils.reload_settings(host)
         except ValueError as e:

@@ -480,3 +480,4 @@ def has_browser():
         except Exception:
             continue
     return False
+

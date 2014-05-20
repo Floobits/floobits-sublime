@@ -66,18 +66,21 @@ def get_line_endings(path=None):
 
 
 def select_account(*args):
-    window, hosts, cb = args
-    if len(hosts) == 1:
+    window, hosts, host, cb = args
+
+    if len(hosts) == 1 and host and host == hosts[0]:
         return cb(hosts[0])
 
-    if len(hosts) > 1:
+    if len(hosts):
         def on_account(index):
-            if index == -1:
+            if index == -1 or index == len(hosts):
+                # len(hosts) is cancel, appended to opts at end below
                 return cb(None)
+            hosts.reverse()
             return cb(hosts[index])
         #  TODO: add usernames to dialog
         opts = [[h, "Use %s account." % h] for h in hosts]
         opts.reverse()
+        opts.append(['Cancel'])
         return window.show_quick_panel(opts, on_account)
-
-    return cb()
+    return cb(None)
