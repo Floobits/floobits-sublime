@@ -14,7 +14,7 @@ except (ImportError, ValueError):
 reactor = None
 
 
-class _Reactor(object):
+class __Reactor(object):
     ''' Low level event driver '''
     def __init__(self):
         self._protos = []
@@ -127,4 +127,4 @@ class _Reactor(object):
                 msg.error('Couldn\'t read from socket: %s' % str(e))
                 fd.reconnect()
 
-reactor = _Reactor()
+reactor = __Reactor()

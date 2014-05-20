@@ -24,23 +24,11 @@ DEFAULT_IGNORES = ['extern', 'node_modules', 'tmp', 'vendor']
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
-def create_flooignore(path):
-    flooignore = os.path.join(path, '.flooignore')
-    # A very short race condition, but whatever.
-    if os.path.exists(flooignore):
-        return
-    try:
-        with open(flooignore, 'w') as fd:
-            fd.write('\n'.join(DEFAULT_IGNORES))
-    except Exception as e:
-        msg.error('Error creating default .flooignore: %s' % str(e))
-
-
 class Ignore(object):
-    def __init__(self, parent, path, recurse=True):
+    def __init__(self, path, parent=None, recurse=True):
         self.parent = parent
         self.size = 0
-        self.children = []
+        self.children = {}
         self.files = []
         self.ignores = {
             '/TOO_BIG/': []
@@ -52,9 +40,6 @@ class Ignore(object):
         except OSError as e:
             if e.errno != errno.ENOTDIR:
                 msg.error('Error listing path %s: %s' % (path, unicode(e)))
-                return
-            self.path = os.path.dirname(self.path)
-            self.add_file(os.path.basename(path))
             return
         except Exception as e:
             msg.error('Error listing path %s: %s' % (path, unicode(e)))
@@ -86,9 +71,9 @@ class Ignore(object):
             msg.error('Error stat()ing path %s: %s' % (p_path, unicode(e)))
             return
         if stat.S_ISDIR(s.st_mode):
-            ig = Ignore(self, p_path)
-            self.children.append(ig)
-            self.size += ig.size
+            ig = Ignore(p_path, self)
+            self.children[p] = ig
+            # self.size += ig.size
             return
         elif stat.S_ISREG(s.st_mode):
             if s.st_size > (MAX_FILE_SIZE):
@@ -96,7 +81,7 @@ class Ignore(object):
                 msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
             else:
                 self.size += s.st_size
-                self.files.append(p)
+                self.files.append(p_path)
 
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'r') as fd:
@@ -111,10 +96,16 @@ class Ignore(object):
             msg.debug('Adding %s to ignore patterns' % ignore)
             self.ignores[ignore_file].append(ignore)
 
+    def get_children(self):
+        children = self.children.values()
+        for c in children:
+            children += c.get_children()
+        return children
+
     def list_paths(self):
         for f in self.files:
             yield os.path.join(self.path, f)
-        for c in self.children:
+        for c in self.children.values():
             for p in c.list_paths():
                 yield p
 
@@ -152,6 +143,18 @@ class Ignore(object):
         return False
 
 
+def create_flooignore(path):
+    flooignore = os.path.join(path, '.flooignore')
+    # A very short race condition, but whatever.
+    if os.path.exists(flooignore):
+        return
+    try:
+        with open(flooignore, 'w') as fd:
+            fd.write('\n'.join(DEFAULT_IGNORES))
+    except Exception as e:
+        msg.error('Error creating default .flooignore: %s' % str(e))
+
+
 def is_ignored(current_path, abs_path=None):
     abs_path = abs_path or current_path
     if not utils.is_shared(current_path):
@@ -162,7 +165,7 @@ def is_ignored(current_path, abs_path=None):
         return False
 
     base_path, file_name = os.path.split(current_path)
-    ig = Ignore(None, base_path, recurse=False)
+    ig = Ignore(base_path, recurse=False)
     if ig.is_ignored(abs_path):
         return True
 

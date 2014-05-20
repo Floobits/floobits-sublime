@@ -101,12 +101,13 @@ class FlooProtocol(base.BaseProtocol):
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
                 continue
+
             name = data.get('name')
             try:
-                msg.debug('got data ' + (name or 'no name'))
+                msg.log('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
             except Exception as e:
-                api.send_error('Error handling %s event.' % name, e)
+                api.send_error('Error handling %s event: %s.' % (name, str(e)), e)
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
                     self.stop()
