@@ -5,9 +5,11 @@ try:
     from . import shared as G
     assert G
     unicode = str
+    from .exc_fmt import str_e
     python2 = False
 except ImportError:
     python2 = True
+    from exc_fmt import str_e
     import shared as G
 
 
