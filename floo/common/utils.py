@@ -1,4 +1,3 @@
-import sys
 import os
 import json
 import re
@@ -24,9 +23,6 @@ except ImportError:
     import msg
     import shared as G
     from lib import DMP
-
-
-PY2 = sys.version_info < (3, 0)
 
 
 class FlooPatch(object):
@@ -70,12 +66,6 @@ class FlooPatch(object):
             'patch': patch_str,
             'name': 'patch'
         }
-
-
-def str_e(e):
-    if PY2:
-        return unicode(e.message, "utf8").encode("utf8")
-    return str(e)
 
 
 def reload_settings():

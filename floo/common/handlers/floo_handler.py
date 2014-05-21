@@ -572,7 +572,6 @@ class FlooHandler(base.BaseHandler):
 
     @utils.inlined_callbacks
     def get_files_from_ignore(self, path, cb):
-        print path, cb
         if not utils.is_shared(path):
             cb([set(), 0])
             return

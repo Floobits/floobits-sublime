@@ -21,6 +21,12 @@ import sublime
 
 PY2 = sys.version_info < (3, 0)
 
+# Stringify exceptions without raising unicode errors in python 2
+if PY2:
+    __builtins__.str_e = lambda e: unicode(e.message, "utf8").encode("utf8")
+else:
+    __builtins__.str_e = lambda e: str(e)
+
 
 if PY2 and sublime.platform() == 'windows':
     err_msg = '''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
