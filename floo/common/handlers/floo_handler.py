@@ -67,7 +67,7 @@ class FlooHandler(base.BaseHandler):
         try:
             return self.workspace_info['users'][str(user_id)]['username']
         except Exception:
-            return ""
+            return ''
 
     def get_buf_by_path(self, path):
         try:

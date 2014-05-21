@@ -104,10 +104,10 @@ class FlooProtocol(base.BaseProtocol):
 
             name = data.get('name')
             try:
-                msg.log('got data ' + (name or 'no name'))
+                msg.debug('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
             except Exception as e:
-                api.send_error('Error handling %s event: %s.' % (name, str(e)), e)
+                api.send_error('Error handling %s event.' % name, e)
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
                     self.stop()

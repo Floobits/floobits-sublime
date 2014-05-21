@@ -5,7 +5,6 @@
     "children": [
       {"caption": "  Floobits", "command": "floobits_not_a", "args": {"paths": []}},
       {"caption": "-"},
-      {"caption": "Sync", "command": "floobits_sync", "args": {"paths": []}},
       {"caption": "Add to workspace", "command": "floobits_add_to_workspace", "args": {"paths": []}},
       {"caption": "Remove from workspace", "command": "floobits_remove_from_workspace", "args": {"paths": []}},
       {"caption": "Share this (Public)", "command": "floobits_share_dir", "args": {
