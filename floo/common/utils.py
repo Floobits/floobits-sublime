@@ -15,12 +15,14 @@ except ImportError:
 try:
     from .. import editor
     from . import shared as G
+    from .exc_fmt import str_e
     from . import msg
     from .lib import DMP
     assert G and DMP
 except ImportError:
     import editor
     import msg
+    from exc_fmt import str_e
     import shared as G
     from lib import DMP
 
@@ -348,7 +350,7 @@ def mkdir(path):
         os.makedirs(path)
     except OSError as e:
         if e.errno != 17:
-            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
+            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, str_e(e)))
             raise
 
 

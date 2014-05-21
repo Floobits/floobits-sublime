@@ -10,11 +10,6 @@ except ImportError:
     ssl = False
 
 try:
-    unicode()
-except NameError:
-    unicode = str
-
-try:
     from . import editor
     from .common import msg, shared as G, utils
     from .common.exc_fmt import str_e
@@ -402,7 +397,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         try:
             cb(data['id'])
         except Exception as e:
-            print(e)
+            print(str_e(e))
 
     def _on_part(self, data):
         super(self.__class__, self)._on_part(data)

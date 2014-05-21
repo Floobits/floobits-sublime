@@ -7,7 +7,6 @@ import json
 import uuid
 import binascii
 import subprocess
-import traceback
 import webbrowser
 import threading
 
@@ -91,9 +90,7 @@ We're really sorry. This should never happen.''')
     try:
         reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
     except Exception as e:
-        print(e)
-        tb = traceback.format_exc()
-        print(tb)
+        print(str_e(e))
 
 
 def global_tick():
@@ -432,7 +429,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                             # no project data. co-opt this window
                             return w
                     except Exception as e:
-                        print(e)
+                        print(str_e(e))
 
             def wait_empty_window(i):
                 if i > 10:
@@ -475,9 +472,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 conn = SublimeConnection(owner, workspace, upload)
                 reactor.connect(conn, host, port, secure)
             except Exception as e:
-                print(e)
-                tb = traceback.format_exc()
-                print(tb)
+                print(str_e(e))
 
         try:
             result = utils.parse_url(workspace_url)
@@ -491,7 +486,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         d = utils.get_persistent_data()
         try:
             G.PROJECT_PATH = d['workspaces'][result['owner']][result['workspace']]['path']
-        except Exception as e:
+        except Exception:
             G.PROJECT_PATH = ''
 
         print('Project path is %s' % G.PROJECT_PATH)
@@ -893,7 +888,7 @@ def plugin_loaded():
     try:
         utils.normalize_persistent_data()
     except Exception as e:
-        print('Floobits: Error normalizing persistent data:', e)
+        print('Floobits: Error normalizing persistent data:', str_e(e))
         # Keep on truckin' I guess
 
     d = utils.get_persistent_data()

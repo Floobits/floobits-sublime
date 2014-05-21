@@ -1,11 +1,6 @@
 import sublime
 
 try:
-    unicode()
-except NameError:
-    unicode = str
-
-try:
     from .common import msg, shared as G, utils
     assert G and msg and utils
 except (ImportError, ValueError):

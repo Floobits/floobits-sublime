@@ -5,9 +5,11 @@ import sublime
 try:
     from .common import msg, shared as G, utils
     from .sublime_utils import get_text
+    from .common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
     from common import msg, shared as G, utils
+    from common.exc_fmt import str_e
     from sublime_utils import get_text
 
 
@@ -63,7 +65,7 @@ class View(object):
                 self.set_status('Floobits synced data for consistency.')
             utils.set_timeout(self.set_status, 5000, '')
         except Exception as e:
-            msg.error('Exception updating view: %s' % e)
+            msg.error('Exception updating view: %s' % str_e(e))
         if 'patch' not in G.PERMS:
             self.set_status('You don\'t have write permission. Buffer is read-only.')
             self.view.set_read_only(True)
