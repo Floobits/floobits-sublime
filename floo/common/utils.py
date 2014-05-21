@@ -258,7 +258,7 @@ def get_persistent_data(per_path=None):
         persistent_data = json.loads(data)
     except Exception as e:
         msg.debug('Failed to parse %s. Recent workspace list will be empty.' % per_path)
-        msg.debug(str(e))
+        msg.debug(str_e(e))
         msg.debug(data)
         return per_data
     if 'recent_workspaces' not in persistent_data:
@@ -278,7 +278,7 @@ def update_persistent_data(data):
             seen.add(x['url'])
             recent_workspaces.append(x)
         except Exception as e:
-            msg.debug(str(e))
+            msg.debug(str_e(e))
 
     data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
@@ -383,7 +383,7 @@ def save_buf(buf):
             else:
                 fd.write(buf['buf'])
     except Exception as e:
-        msg.error('Error saving buf: %s' % str(e))
+        msg.error('Error saving buf: %s' % str_e(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):

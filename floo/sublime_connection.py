@@ -17,6 +17,7 @@ except NameError:
 try:
     from . import editor
     from .common import msg, shared as G, utils
+    from .common.exc_fmt import str_e
     from .view import View
     from .common.handlers import floo_handler
     from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group
@@ -24,6 +25,7 @@ try:
 except ImportError:
     from floo import editor
     from common import msg, shared as G, utils
+    from common.exc_fmt import str_e
     from common.handlers import floo_handler
     from view import View
     from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
@@ -388,7 +390,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 G.WORKSPACE_WINDOW.focus_view(view)
                 G.WORKSPACE_WINDOW.run_command("close_file")
             except Exception as e:
-                msg.debug('Error closing view: %s' % unicode(e))
+                msg.debug('Error closing view: %s' % str_e(e))
         super(self.__class__, self)._on_delete_buf(data)
 
     def _on_create_buf(self, data):

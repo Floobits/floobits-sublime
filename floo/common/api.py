@@ -36,11 +36,13 @@ except (AttributeError, ImportError, ValueError):
 try:
     from .. import editor
     from . import msg, shared as G, utils
+    from .exc_fmt import str_e
 except ImportError:
     import editor
     import msg
     import shared as G
     import utils
+    from exc_fmt import str_e
 
 
 def get_basic_auth():
@@ -201,12 +203,12 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
-        msg.error(unicode(e))
+        msg.error(str_e(e))
         return False
     try:
         w = get_workspace_by_url(workspace_url)
     except Exception as e:
-        editor.error_message('Error opening url %s: %s' % (workspace_url, str(e)))
+        editor.error_message('Error opening url %s: %s' % (workspace_url, str_e(e)))
         return False
 
     if w.code >= 400:
@@ -222,7 +224,7 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
                 pass
             utils.update_persistent_data(d)
         except Exception as e:
-            msg.debug(unicode(e))
+            msg.debug(str_e(e))
         return False
 
     msg.debug('workspace: %s', json.dumps(w.body))

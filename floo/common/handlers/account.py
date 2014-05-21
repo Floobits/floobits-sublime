@@ -56,7 +56,7 @@ class CreateAccountHandler(base.BaseHandler):
                     editor.open_file(p)
             except Exception as e:
                 msg.debug(traceback.format_exc())
-                msg.error(str(e))
+                msg.error(str_e(e))
             try:
                 d = utils.get_persistent_data()
                 d['disable_account_creation'] = True

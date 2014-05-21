@@ -71,7 +71,7 @@ class MSG(object):
                 fd.write(b'\n')
                 fd.close()
             except Exception as e:
-                safe_print(unicode(e))
+                safe_print(str_e(e))
             safe_print(msg)
         else:
             editor_log(msg)

@@ -96,7 +96,7 @@ class FlooProtocol(base.BaseProtocol):
                 before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
-                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Unable to parse json: %s' % str_e(e))
                 msg.error('Data: %s' % before)
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
@@ -109,7 +109,7 @@ class FlooProtocol(base.BaseProtocol):
             except Exception as e:
                 api.send_error('Error handling %s event.' % name, e)
                 if name == 'room_info':
-                    editor.error_message('Error joining workspace: %s' % str(e))
+                    editor.error_message('Error joining workspace: %s' % str_e(e))
                     self.stop()
             self._buf_in = after
 

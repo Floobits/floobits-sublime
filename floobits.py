@@ -1,9 +1,4 @@
 # coding: utf-8
-try:
-    unicode()
-except NameError:
-    unicode = str
-
 import sys
 import os
 import re
@@ -20,13 +15,6 @@ import sublime_plugin
 import sublime
 
 PY2 = sys.version_info < (3, 0)
-
-# Stringify exceptions without raising unicode errors in python 2
-if PY2:
-    __builtins__.str_e = lambda e: unicode(e.message, "utf8").encode("utf8")
-else:
-    __builtins__.str_e = lambda e: str(e)
-
 
 if PY2 and sublime.platform() == 'windows':
     err_msg = '''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
@@ -48,6 +36,7 @@ try:
     from .floo.listener import Listener
     from .floo.sublime_connection import SublimeConnection
     from .floo.common import api, reactor, msg, shared as G, utils
+    from .floo.common.exc_fmt import str_e
     from .floo.common.handlers.account import CreateAccountHandler
     from .floo.common.handlers.credentials import RequestCredentialsHandler
     assert api and G and msg and utils
@@ -56,6 +45,7 @@ except (ImportError, ValueError):
     from floo import sublime_utils as sutils
     from floo.listener import Listener
     from floo.common import api, reactor, msg, shared as G, utils
+    from floo.common.exc_fmt import str_e
     from floo.common.handlers.account import CreateAccountHandler
     from floo.common.handlers.credentials import RequestCredentialsHandler
     from floo.sublime_connection import SublimeConnection
@@ -187,14 +177,14 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 del d['workspaces'][result['owner']][result['name']]
                 utils.update_persistent_data(d)
             except Exception as e:
-                msg.debug(unicode(e))
+                msg.debug(str_e(e))
             return
 
         def join_workspace(workspace_url):
             try:
                 w = find_workspace(workspace_url)
             except Exception as e:
-                sublime.error_message('Error: %s' % str(e))
+                sublime.error_message('Error: %s' % str_e(e))
                 return False
             if not w:
                 return False
@@ -260,7 +250,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         try:
             r = api.get_orgs_can_admin()
         except IOError as e:
-            return sublime.error_message('Error getting org list: %s' % str(e))
+            return sublime.error_message('Error getting org list: %s' % str_e(e))
 
         if r.code >= 400 or len(r.body) == 0:
             return on_done([G.USERNAME])
@@ -301,8 +291,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             msg.debug(str(self.api_args))
             r = api.create_workspace(self.api_args)
         except Exception as e:
-            msg.error('Unable to create workspace: %s' % unicode(e))
-            return sublime.error_message('Unable to create workspace: %s' % unicode(e))
+            msg.error('Unable to create workspace: %s' % str_e(e))
+            return sublime.error_message('Unable to create workspace: %s' % str_e(e))
 
         workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
         msg.log('Created workspace %s' % workspace_url)
@@ -470,7 +460,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 try:
                     utils.mkdir(d)
                 except Exception as e:
-                    return sublime.error_message('Could not create directory %s: %s' % (d, str(e)))
+                    return sublime.error_message('Could not create directory %s: %s' % (d, str_e(e)))
 
             result['upload'] = d
             utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
@@ -492,7 +482,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         try:
             result = utils.parse_url(workspace_url)
         except Exception as e:
-            return sublime.error_message(str(e))
+            return sublime.error_message(str_e(e))
 
         utils.reload_settings()
         if not (G.USERNAME and G.SECRET):
@@ -679,7 +669,7 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
             })
             webbrowser.open(url)
         except Exception as e:
-            sublime.error_message('Unable to open workspace in web editor: %s' % unicode(e))
+            sublime.error_message('Unable to open workspace in web editor: %s' % str_e(e))
 
 
 class FloobitsHelpCommand(FloobitsBaseCommand):

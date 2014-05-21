@@ -39,10 +39,10 @@ class Ignore(object):
             paths = os.listdir(self.path)
         except OSError as e:
             if e.errno != errno.ENOTDIR:
-                msg.error('Error listing path %s: %s' % (path, unicode(e)))
+                msg.error('Error listing path %s: %s' % (path, str_e(e)))
             return
         except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, unicode(e)))
+            msg.error('Error listing path %s: %s' % (path, str_e(e)))
             return
 
         msg.debug('Initializing ignores for %s' % path)
@@ -68,7 +68,7 @@ class Ignore(object):
         try:
             s = os.stat(p_path)
         except Exception as e:
-            msg.error('Error stat()ing path %s: %s' % (p_path, unicode(e)))
+            msg.error('Error stat()ing path %s: %s' % (p_path, str_e(e)))
             return
         if stat.S_ISDIR(s.st_mode):
             ig = Ignore(p_path, self)
@@ -129,7 +129,7 @@ class Ignore(object):
                             try:
                                 s = os.stat(path)
                             except Exception as e:
-                                msg.error('Error lstat()ing path %s: %s' % (path, unicode(e)))
+                                msg.error('Error lstat()ing path %s: %s' % (path, str_e(e)))
                                 continue
                             is_dir = stat.S_ISDIR(s.st_mode)
                         if is_dir:
@@ -152,7 +152,7 @@ def create_flooignore(path):
         with open(flooignore, 'w') as fd:
             fd.write('\n'.join(DEFAULT_IGNORES))
     except Exception as e:
-        msg.error('Error creating default .flooignore: %s' % str(e))
+        msg.error('Error creating default .flooignore: %s' % str_e(e))
 
 
 def is_ignored(current_path, abs_path=None):

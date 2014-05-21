@@ -10,6 +10,7 @@ try:
     from ..reactor import reactor
     from ..lib import DMP
     from .. import msg, ignore, shared as G, utils
+    from ..exc_fmt import str_e
     from ... import editor
     from ..protocols import floo_proto
 except (ImportError, ValueError) as e:
@@ -17,6 +18,7 @@ except (ImportError, ValueError) as e:
     from floo import editor
     from floo.common.lib import DMP
     from floo.common.reactor import reactor
+    from floo.common.exc_fmt import str_e
     from floo.common import msg, ignore, shared as G, utils
     from floo.common.protocols import floo_proto
 
@@ -286,7 +288,7 @@ class FlooHandler(base.BaseHandler):
             try:
                 utils.rm(path)
             except Exception as e:
-                msg.debug('Error deleting %s: %s' % (path, str(e)))
+                msg.debug('Error deleting %s: %s' % (path, str_e(e)))
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
@@ -437,6 +439,7 @@ class FlooHandler(base.BaseHandler):
                     changed_bufs.append(buf)
                     buf['md5'] = md5
             except Exception as e:
+                print(str_e(e))
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                 missing_bufs.append(buf)
         if self.upload_path and not read_only:
@@ -664,7 +667,7 @@ class FlooHandler(base.BaseHandler):
                     # work around python 3 encoding issue
                     buf = text.encode('utf8')
                 except Exception as e:
-                    msg.debug('Error encoding buf %s: %s' % (path, str(e)))
+                    msg.debug('Error encoding buf %s: %s' % (path, str_e(e)))
                     # We're probably in python 2 so it's ok to do this
                     buf = text
             size = len(buf)
@@ -715,7 +718,7 @@ class FlooHandler(base.BaseHandler):
         except (IOError, OSError):
             msg.error('Failed to open %s.' % path)
         except Exception as e:
-            msg.error('Failed to create buffer %s: %s' % (path, unicode(e)))
+            msg.error('Failed to create buffer %s: %s' % (path, str_e(e)))
         return size
 
     def stop(self):
