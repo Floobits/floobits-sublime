@@ -15,12 +15,14 @@ except ImportError:
 try:
     from .. import editor
     from . import shared as G
+    from .exc_fmt import str_e
     from . import msg
     from .lib import DMP
     assert G and DMP
 except ImportError:
     import editor
     import msg
+    from exc_fmt import str_e
     import shared as G
     from lib import DMP
 
@@ -66,19 +68,6 @@ class FlooPatch(object):
             'patch': patch_str,
             'name': 'patch'
         }
-
-
-class Waterfall(object):
-    def __init__(self):
-        self.chain = []
-
-    def add(self, f, *args, **kwargs):
-        self.chain.append(lambda: f(*args, **kwargs))
-
-    def call(self):
-        res = [f() for f in self.chain]
-        self.chain = []
-        return res
 
 
 def reload_settings():
@@ -271,7 +260,7 @@ def get_persistent_data(per_path=None):
         persistent_data = json.loads(data)
     except Exception as e:
         msg.debug('Failed to parse %s. Recent workspace list will be empty.' % per_path)
-        msg.debug(str(e))
+        msg.debug(str_e(e))
         msg.debug(data)
         return per_data
     if 'recent_workspaces' not in persistent_data:
@@ -291,7 +280,7 @@ def update_persistent_data(data):
             seen.add(x['url'])
             recent_workspaces.append(x)
         except Exception as e:
-            msg.debug(str(e))
+            msg.debug(str_e(e))
 
     data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
@@ -321,6 +310,22 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     update_persistent_data(d)
 
 
+def update_recent_workspaces(workspace_url):
+    d = get_persistent_data()
+    recent_workspaces = d.get('recent_workspaces', [])
+    recent_workspaces.insert(0, {'url': workspace_url})
+    recent_workspaces = recent_workspaces[:100]
+    seen = set()
+    new = []
+    for r in recent_workspaces:
+        string = json.dumps(r)
+        if string not in seen:
+            new.append(r)
+            seen.add(string)
+    d['recent_workspaces'] = new
+    update_persistent_data(d)
+
+
 def get_workspace_by_path(path, _filter):
     path = unfuck_path(path)
     for owner, workspaces in get_persistent_data()['workspaces'].items():
@@ -345,7 +350,7 @@ def mkdir(path):
         os.makedirs(path)
     except OSError as e:
         if e.errno != 17:
-            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
+            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, str_e(e)))
             raise
 
 
@@ -380,29 +385,31 @@ def save_buf(buf):
             else:
                 fd.write(buf['buf'])
     except Exception as e:
-        msg.error('Error saving buf: %s' % str(e))
+        msg.error('Error saving buf: %s' % str_e(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):
     try:
         while True:
-            arg0 = res
+            maybe_func = res
             args = []
             if type(res) == tuple:
-                arg0 = res[0]
-                args = list(res[1:])
-            if not callable(arg0):
+                maybe_func = len(res) and res[0]
+
+            if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:
                     res = gen_expr.send(res)
-            else:
-                def f(*args):
-                    return _unwind_generator(gen_expr, cb, args)
-                args.append(f)
-                return arg0(*args)
+                continue
+
+            def f(*args):
+                return _unwind_generator(gen_expr, cb, args)
+            args = list(res)[1:]
+            args.append(f)
+            return maybe_func(*args)
         # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
     except StopIteration:
         pass

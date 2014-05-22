@@ -7,12 +7,14 @@ try:
     from . import base
     from .. import msg, api, shared as G, utils
     from ....floo import editor
+    from ..exc_fmt import str_e
     from ..protocols import floo_proto
     assert api and G and msg and utils
 except (ImportError, ValueError):
     import base
     from floo import editor
     from floo.common.protocols import floo_proto
+    from floo.common.exc_fmt import str_e
     from .. import msg, api, shared as G, utils
 
 
@@ -56,7 +58,7 @@ class CreateAccountHandler(base.BaseHandler):
                     editor.open_file(p)
             except Exception as e:
                 msg.debug(traceback.format_exc())
-                msg.error(str(e))
+                msg.error(str_e(e))
             try:
                 d = utils.get_persistent_data()
                 d['disable_account_creation'] = True

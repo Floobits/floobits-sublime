@@ -15,11 +15,13 @@ except ImportError:
 try:
     from ... import editor
     from .. import api, cert, msg, shared as G, utils
+    from ..exc_fmt import str_e
     from . import base, proxy
     assert cert and G and msg and proxy and utils
 except (ImportError, ValueError):
     from floo import editor
     from floo.common import api, cert, msg, shared as G, utils
+    from floo.common.exc_fmt import str_e
     import base
     import proxy
 
@@ -96,19 +98,20 @@ class FlooProtocol(base.BaseProtocol):
                 before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
-                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Unable to parse json: %s' % str_e(e))
                 msg.error('Data: %s' % before)
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
                 continue
+
             name = data.get('name')
             try:
                 msg.debug('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
             except Exception as e:
-                api.send_error('Error handling %s event.' % name, e)
+                api.send_error('Error handling %s event.' % name, str_e(e))
                 if name == 'room_info':
-                    editor.error_message('Error joining workspace: %s' % str(e))
+                    editor.error_message('Error joining workspace: %s' % str_e(e))
                     self.stop()
             self._buf_in = after
 
@@ -214,7 +217,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
         except Exception as e:
-            msg.error('Error in SSL handshake:', e)
+            msg.error('Error in SSL handshake:', str_e(e))
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False

@@ -1,8 +1,3 @@
-try:
-    unicode()
-except NameError:
-    unicode = str
-
 import sys
 import base64
 import json
@@ -36,11 +31,13 @@ except (AttributeError, ImportError, ValueError):
 try:
     from .. import editor
     from . import msg, shared as G, utils
+    from .exc_fmt import str_e
 except ImportError:
     import editor
     import msg
     import shared as G
     import utils
+    from exc_fmt import str_e
 
 
 def get_basic_auth():
@@ -155,13 +152,14 @@ def get_orgs_can_admin():
 
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
-    if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
+    if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
         msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
         return
     data = {
         'jsondump': {
             'error_count': G.ERROR_COUNT
         },
+        'message': {},
         'username': G.USERNAME,
         'dir': G.COLAB_DIR,
     }
@@ -173,9 +171,9 @@ def send_error(description=None, exception=None):
             'description': str(exception),
             'stack': traceback.format_exc(exception)
         }
-        msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+    msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
     if description:
-        data['description'] = description
+        data['message']['description'] = description
     try:
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
         r = api_request(api_url, data)
@@ -200,12 +198,12 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
-        msg.error(unicode(e))
+        msg.error(str_e(e))
         return False
     try:
         w = get_workspace_by_url(workspace_url)
     except Exception as e:
-        editor.error_message('Error opening url %s: %s' % (workspace_url, str(e)))
+        editor.error_message('Error opening url %s: %s' % (workspace_url, str_e(e)))
         return False
 
     if w.code >= 400:
@@ -221,7 +219,7 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
                 pass
             utils.update_persistent_data(d)
         except Exception as e:
-            msg.debug(unicode(e))
+            msg.debug(str_e(e))
         return False
 
     msg.debug('workspace: %s', json.dumps(w.body))

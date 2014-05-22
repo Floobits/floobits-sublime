@@ -10,13 +10,9 @@ except ImportError:
     ssl = False
 
 try:
-    unicode()
-except NameError:
-    unicode = str
-
-try:
     from . import editor
     from .common import msg, shared as G, utils
+    from .common.exc_fmt import str_e
     from .view import View
     from .common.handlers import floo_handler
     from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group
@@ -24,12 +20,14 @@ try:
 except ImportError:
     from floo import editor
     from common import msg, shared as G, utils
+    from common.exc_fmt import str_e
     from common.handlers import floo_handler
     from view import View
     from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
 
 
 class SublimeConnection(floo_handler.FlooHandler):
+
     def tick(self):
         reported = set()
         while self.views_changed:
@@ -95,47 +93,65 @@ class SublimeConnection(floo_handler.FlooHandler):
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
-    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         if not G.EXPERT_MODE:
             editor.message_dialog('Your copy of %s/%s is out of sync. '
                                   'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
 
         def pluralize(arg):
-            return len(arg) > 1 and 's' or ''
+            return arg != 1 and 's' or ''
 
-        diffs = changed_bufs + missing_bufs
         overwrite_local = ''
         overwrite_remote = ''
+        missing = [buf['path'] for buf in missing_bufs]
+        changed = [buf['path'] for buf in changed_bufs]
 
-        if changed_bufs:
-            if len(diffs) < 5:
-                changed = ', '.join([buf['path'] for buf in changed_bufs])
-            else:
-                changed = len(changed_bufs)
-            overwrite_local += 'Fetch %s' % changed
-            overwrite_remote += 'Upload %s' % changed
+        to_upload = set(new_files + changed).difference(set(ignored))
+        to_remove = missing + ignored
+        to_fetch = changed + missing
+        to_upload_len = len(to_upload)
+        to_remove_len = len(to_remove)
+        remote_len = to_remove_len + to_upload_len
+        to_fetch_len = len(to_fetch)
 
-            if missing_bufs:
-                if len(diffs) < 5:
-                    missing = ', '.join([buf['path'] for buf in missing_bufs])
-                else:
-                    missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                overwrite_local += ' and fetch %s' % missing
-                overwrite_remote += ' and remove %s' % missing
-            elif len(diffs) >= 5:
-                overwrite_remote += ' file%s.' % pluralize(changed_bufs)
-                overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
-        elif missing_bufs:
-            if len(diffs) < 5:
-                missing = ', '.join([buf['path'] for buf in missing_bufs])
-            else:
-                missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-            overwrite_local += 'Fetch %s.' % missing
-            overwrite_remote += 'Remove %s.' % missing
+        msg.log('To fetch: %s' % ', '.join(to_fetch))
+        msg.log('To upload: %s' % ', '.join(to_upload))
+        msg.log('To remove: %s' % ', '.join(to_remove))
 
+        if not to_fetch:
+            overwrite_local = 'Fetch nothing'
+        elif to_fetch_len < 5:
+            overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
+        else:
+            overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+
+        if to_upload_len < 5:
+            to_upload_str = 'upload %s' % ', '.join(to_upload)
+        else:
+            to_upload_str = 'upload %s' % to_upload_len
+
+        if to_remove_len < 5:
+            to_remove_str = 'remove %s' % ', '.join(to_remove)
+        else:
+            to_remove_str = 'remove %s' % to_remove_len
+
+        if to_upload:
+            overwrite_remote += to_upload_str
+            if to_remove:
+                overwrite_remote += ' and '
+        if to_remove:
+            overwrite_remote += to_remove_str
+
+        if remote_len >= 5 and overwrite_remote:
+            overwrite_remote += ' files'
+
+        overwrite_remote = overwrite_remote.capitalize()
+
+        action = 'Overwrite'
+        # TODO: change action based on numbers of stuff
         opts = [
-            ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
-            ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
+            ['%s %s remote file%s.' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
+            ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
             ['Cancel', 'Disconnect and resolve conflict manually.'],
         ]
         # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
@@ -157,6 +173,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
+
         for v in G.WORKSPACE_WINDOW.views():
             if not v.file_name():
                 continue
@@ -280,6 +297,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         view = view.view
         regions = []
         for r in ranges:
+            # TODO: add one to the ranges that have a length of zero
             regions.append(sublime.Region(*r))
 
         def swap_regions(v):
@@ -386,7 +404,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 G.WORKSPACE_WINDOW.focus_view(view)
                 G.WORKSPACE_WINDOW.run_command("close_file")
             except Exception as e:
-                msg.debug('Error closing view: %s' % unicode(e))
+                msg.debug('Error closing view: %s' % str_e(e))
         super(self.__class__, self)._on_delete_buf(data)
 
     def _on_create_buf(self, data):
@@ -398,7 +416,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         try:
             cb(data['id'])
         except Exception as e:
-            print(e)
+            print(str_e(e))
 
     def _on_part(self, data):
         super(self.__class__, self)._on_part(data)

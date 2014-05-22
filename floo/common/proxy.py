@@ -2,11 +2,6 @@
 import sys
 
 try:
-    unicode()
-except NameError:
-    unicode = str
-
-try:
     from . import shared as G, utils, reactor
     from .handlers import base
     from .protocols import floo_proto
