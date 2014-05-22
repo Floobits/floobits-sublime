@@ -86,20 +86,23 @@ class Ignore(object):
             return
         if p == '.' or p == '..':
             return
-        is_ignored = self.is_ignored(p_path, log=True)
-        if is_ignored == IS_IG_IGNORED:
-            return
         try:
             s = os.stat(p_path)
         except Exception as e:
             msg.error('Error stat()ing path %s: %s' % (p_path, str_e(e)))
             return
-        if stat.S_ISDIR(s.st_mode):
+
+        is_dir = stat.S_ISDIR(s.st_mode)
+        if self.is_ignored(p_path, is_dir=is_dir, log=True):
+            return
+
+        if is_dir:
             ig = Ignore(p_path, self)
             self.children[p] = ig
             # self.size += ig.size
             return
-        elif stat.S_ISREG(s.st_mode):
+
+        if stat.S_ISREG(s.st_mode):
             if s.st_size > (MAX_FILE_SIZE):
                 self.ignores['/TOO_BIG/'].append(p)
                 msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/', False))
@@ -110,7 +113,7 @@ class Ignore(object):
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'r') as fd:
             ignores = fd.read()
-        self.ignores[ignore_file] = []
+        rules = []
         for ignore in ignores.split('\n'):
             ignore = ignore.strip()
             if len(ignore) == 0:
@@ -118,7 +121,8 @@ class Ignore(object):
             if ignore[0] == '#':
                 continue
             msg.debug('Adding %s to ignore patterns' % ignore)
-            self.ignores[ignore_file].insert(-1, ignore)
+            rules.insert(0, ignore)
+        self.ignores[ignore_file] = rules
 
     def get_children(self):
         children = self.children.values()
@@ -136,20 +140,34 @@ class Ignore(object):
     def is_ignored_message(self, path, pattern, ignore_file, exclude):
         exclude_msg = ''
         if exclude:
-            exclude_msg = 'not '
+            exclude_msg = '__NOT__ '
         if ignore_file == '/TOO_BIG/':
             return '%s %signored because it is too big (more than %s bytes)' % (path, exclude_msg, MAX_FILE_SIZE)
         return '%s %signored by pattern %s in %s' % (path, exclude_msg, pattern, os.path.join(self.path, ignore_file))
 
     def is_ignored(self, path, is_dir=None, log=False):
+        if is_dir is None:
+            try:
+                s = os.stat(path)
+            except Exception as e:
+                msg.error('Error lstat()ing path %s: %s' % (path, str_e(e)))
+                return True
+            is_dir = stat.S_ISDIR(s.st_mode)
+        ig = self._is_ignored(path, is_dir, log)
+        if ig == IS_IG_CHECK_CHILD:
+            return False
+        return ig
+
+    def _is_ignored(self, path, is_dir, log):
         rel_path = os.path.relpath(path, self.path)
         if self.parent:
-            ignored = self.parent.is_ignored(path, is_dir, log)
+            ignored = self.parent._is_ignored(path, is_dir, log)
             if ignored != IS_IG_CHECK_CHILD:
                 return ignored
         base_path, file_name = os.path.split(rel_path)
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
+                orig_pattern = pattern
                 exclude = False
                 match = False
                 if pattern[0] == "!":
@@ -162,13 +180,6 @@ class Ignore(object):
                         match = True
                 else:
                     if len(pattern) > 0 and pattern[-1] == '/':
-                        if is_dir is None:
-                            try:
-                                s = os.stat(path)
-                            except Exception as e:
-                                msg.error('Error lstat()ing path %s: %s' % (path, str_e(e)))
-                                continue
-                            is_dir = stat.S_ISDIR(s.st_mode)
                         if is_dir:
                             pattern = pattern[:-1]
                     if fnmatch.fnmatch(file_name, pattern):
@@ -177,7 +188,7 @@ class Ignore(object):
                         match = True
                 if match:
                     if log:
-                        msg.log(self.is_ignored_message(path, pattern, ignore_file, exclude))
+                        msg.log(self.is_ignored_message(path, orig_pattern, ignore_file, exclude))
                     if exclude:
                         return IS_IG_EXCLUDED
                     return IS_IG_IGNORED
