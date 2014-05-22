@@ -101,7 +101,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         def pluralize(arg):
             return len(arg) > 1 and 's' or ''
 
-        print('new', new_files)
         diffs = changed_bufs + missing_bufs + new_files
         overwrite_local = ''
         overwrite_remote = ''

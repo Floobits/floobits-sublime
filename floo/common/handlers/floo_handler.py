@@ -187,7 +187,7 @@ class FlooHandler(base.BaseHandler):
                     msg.debug('Starting data:', buf['buf'])
                     msg.debug('Patch:', data['patch'])
                 except Exception as e:
-                    print(e)
+                    msg.error(e)
 
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
@@ -383,7 +383,6 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str_e(e)))
                 missing_bufs.append(buf)
-        print(changed_bufs, missing_bufs, new_files)
         if (changed_bufs or missing_bufs or new_files):
             stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files)
             if stomp_local not in [0, 1]:
@@ -414,7 +413,6 @@ class FlooHandler(base.BaseHandler):
 
                 for p, buf_id in self.paths_to_ids.items():
                     if p in files:
-                        print("matches", p)
                         files.discard(p)
                         continue
                     self.send({
@@ -466,7 +464,7 @@ class FlooHandler(base.BaseHandler):
         try:
             del self.workspace_info['users'][user_id]
         except Exception:
-            print('Unable to delete user %s from user list' % (data))
+            msg.error('Unable to delete user %s from user list' % (data))
 
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
