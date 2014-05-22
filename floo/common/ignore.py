@@ -40,6 +40,10 @@ DEFAULT_IGNORES = [
 ]
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
+IS_IG_EXCLUDED = 0
+IS_IG_IGNORED = 1
+IS_IG_CHECK_CHILD = 2
+
 
 class Ignore(object):
     def __init__(self, path, parent=None, recurse=True):
@@ -82,9 +86,8 @@ class Ignore(object):
             return
         if p == '.' or p == '..':
             return
-        is_ignored = self.is_ignored(p_path)
-        if is_ignored:
-            msg.log(is_ignored)
+        is_ignored = self.is_ignored(p_path, log=True)
+        if is_ignored == IS_IG_IGNORED:
             return
         try:
             s = os.stat(p_path)
@@ -99,7 +102,7 @@ class Ignore(object):
         elif stat.S_ISREG(s.st_mode):
             if s.st_size > (MAX_FILE_SIZE):
                 self.ignores['/TOO_BIG/'].append(p)
-                msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/'))
+                msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/', False))
             else:
                 self.size += s.st_size
                 self.files.append(p_path)
@@ -115,7 +118,7 @@ class Ignore(object):
             if ignore[0] == '#':
                 continue
             msg.debug('Adding %s to ignore patterns' % ignore)
-            self.ignores[ignore_file].append(ignore)
+            self.ignores[ignore_file].insert(-1, ignore)
 
     def get_children(self):
         children = self.children.values()
@@ -130,20 +133,33 @@ class Ignore(object):
             for p in c.list_paths():
                 yield p
 
-    def is_ignored_message(self, path, pattern, ignore_file):
+    def is_ignored_message(self, path, pattern, ignore_file, exclude):
+        exclude_msg = ''
+        if exclude:
+            exclude_msg = 'not '
         if ignore_file == '/TOO_BIG/':
-            return '%s ignored because it is too big (more than %s bytes)' % (path, MAX_FILE_SIZE)
-        return '%s ignored by pattern %s in %s' % (path, pattern, os.path.join(self.path, ignore_file))
+            return '%s %signored because it is too big (more than %s bytes)' % (path, exclude_msg, MAX_FILE_SIZE)
+        return '%s %signored by pattern %s in %s' % (path, exclude_msg, pattern, os.path.join(self.path, ignore_file))
 
-    def is_ignored(self, path, is_dir=None):
+    def is_ignored(self, path, is_dir=None, log=False):
         rel_path = os.path.relpath(path, self.path)
+        if self.parent:
+            ignored = self.parent.is_ignored(path, is_dir, log)
+            if ignored != IS_IG_CHECK_CHILD:
+                return ignored
+        base_path, file_name = os.path.split(rel_path)
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
-                base_path, file_name = os.path.split(rel_path)
+                exclude = False
+                match = False
+                if pattern[0] == "!":
+                    exclude = True
+                    pattern = pattern[1:]
+
                 if pattern[0] == '/':
                     # Only match immediate children
                     if utils.unfuck_path(base_path) == self.path and fnmatch.fnmatch(file_name, pattern[1:]):
-                        return self.is_ignored_message(path, pattern, ignore_file)
+                        match = True
                 else:
                     if len(pattern) > 0 and pattern[-1] == '/':
                         if is_dir is None:
@@ -156,12 +172,16 @@ class Ignore(object):
                         if is_dir:
                             pattern = pattern[:-1]
                     if fnmatch.fnmatch(file_name, pattern):
-                        return self.is_ignored_message(path, pattern, ignore_file)
-                    if fnmatch.fnmatch(rel_path, pattern):
-                        return self.is_ignored_message(path, pattern, ignore_file)
-        if self.parent:
-            return self.parent.is_ignored(path)
-        return False
+                        match = True
+                    elif fnmatch.fnmatch(rel_path, pattern):
+                        match = True
+                if match:
+                    if log:
+                        msg.log(self.is_ignored_message(path, pattern, ignore_file, exclude))
+                    if exclude:
+                        return IS_IG_EXCLUDED
+                    return IS_IG_IGNORED
+        return IS_IG_CHECK_CHILD
 
 
 def create_flooignore(path):
@@ -174,23 +194,6 @@ def create_flooignore(path):
             fd.write('\n'.join(DEFAULT_IGNORES))
     except Exception as e:
         msg.error('Error creating default .flooignore: %s' % str_e(e))
-
-
-def is_ignored(current_path, abs_path=None):
-    abs_path = abs_path or current_path
-    if not utils.is_shared(current_path):
-        return True
-
-    path = utils.to_rel_path(current_path)  # Never throws ValueError because is_shared would return False
-    if path == ".":
-        return False
-
-    base_path, file_name = os.path.split(current_path)
-    ig = Ignore(base_path, recurse=False)
-    if ig.is_ignored(abs_path):
-        return True
-
-    return is_ignored(base_path, abs_path)
 
 
 def get_for_path(base_path, path):

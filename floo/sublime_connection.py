@@ -121,6 +121,8 @@ class SublimeConnection(floo_handler.FlooHandler):
             to_upload_str = 'upload %s' % len(to_upload)
             to_remove_str = 'remove %s' % len(to_remove)
 
+        if not to_fetch:
+            overwrite_local = 'Fetch nothing'
         if to_upload:
             overwrite_remote += to_upload_str
             if to_remove:

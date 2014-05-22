@@ -332,8 +332,9 @@ class FlooHandler(base.BaseHandler):
         changed_bufs = []
         missing_bufs = []
         new_files = set()
+        ig = ignore.get_for_path(G.PROJECT_PATH, G.PROJECT_PATH)
+        G.IGNORE = ig
         if not read_only:
-            ig = ignore.get_for_path(G.PROJECT_PATH, G.PROJECT_PATH)
             new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
 
         for buf_id, buf in data['bufs'].items():
@@ -386,7 +387,7 @@ class FlooHandler(base.BaseHandler):
         ignored = []
         for p, buf_id in self.paths_to_ids.items():
             if p not in new_files:
-                ignored.append(utils.to_rel_path(p))
+                ignored.append(p)
             new_files.discard(p)
 
         if (changed_bufs or missing_bufs or new_files):
