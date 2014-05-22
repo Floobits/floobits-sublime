@@ -295,74 +295,6 @@ class FlooHandler(base.BaseHandler):
         msg.log('%s %s %s' % (username, action, path))
 
     @utils.inlined_callbacks
-    def initial_upload(self, changed_bufs, missing_bufs, cb):
-        files, size = yield self.get_files_from_ignore, self.upload_path
-        if not files:
-            return
-
-        for buf in missing_bufs:
-            self.send({'name': 'delete_buf', 'id': buf['id']})
-
-        # TODO: pace ourselves (send through the uploader...)
-        for buf in changed_bufs:
-            self.send({
-                'name': 'set_buf',
-                'id': buf['id'],
-                'buf': buf['buf'],
-                'md5': buf['md5'],
-                'encoding': buf['encoding'],
-            })
-
-        # we already looked at every buf so remove those from the set
-        for buf_id, buf in self.bufs.items():
-            files.discard(buf['path'])
-
-        self.delete_ignored_bufs(self.upload_path, files)
-
-        def upload(relpath):
-            buf_id = self.paths_to_ids.get(relpath)
-            text = self.bufs.get(buf_id, {}).get("buf")
-            if text is None:
-                msg.warn("%s is not populated but I was told to upload it!" % relpath)
-                return 0
-            return self._upload(utils.get_full_path(relpath), text)
-
-        self._rate_limited_upload(iter(files), size, upload_func=upload)
-        cb()
-
-    @utils.inlined_callbacks
-    def handle_conflicts(self, changed_bufs, missing_bufs, cb):
-        stomp_local = True
-        if stomp_local and (changed_bufs or missing_bufs):
-            choice = yield self.stomp_prompt, changed_bufs, missing_bufs
-            if choice not in [0, 1]:
-                self.stop()
-                return
-            stomp_local = bool(choice)
-
-        if stomp_local:
-            for buf in changed_bufs:
-                self.get_buf(buf['id'], buf.get('view'))
-                self.save_on_get_bufs.add(buf['id'])
-            for buf in missing_bufs:
-                self.get_buf(buf['id'], buf.get('view'))
-                self.save_on_get_bufs.add(buf['id'])
-        else:
-            for buf in missing_bufs:
-                self.send({'name': 'delete_buf', 'id': buf['id']})
-
-            def upload(buf):
-                text = buf.get('buf')
-                if text is None:
-                    msg.warn("%s is not populated but I was told to upload it!" % buf['path'])
-                    return 0
-                return self._upload(utils.get_full_path(buf['path']), text)
-            size = reduce(lambda a, b: len(b['buf']) + a, changed_bufs, 0)
-            self._rate_limited_upload(iter(changed_bufs), size, upload_func=upload)
-
-        cb()
-
-    @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
         self.joined_workspace = True
@@ -376,6 +308,7 @@ class FlooHandler(base.BaseHandler):
             msg.log('No patch permission. Setting buffers to read-only')
             if 'request_perm' in data['perms']:
                 should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
+                # TODO: wait for perms to be OK'd/denied before uploading or bailing
                 if should_send:
                     self.send({'name': 'request_perms', 'perms': ['edit_room']})
             else:
@@ -398,7 +331,13 @@ class FlooHandler(base.BaseHandler):
 
         changed_bufs = []
         missing_bufs = []
+        new_files = set()
+        if not read_only:
+            ig = ignore.get_for_path(G.PROJECT_PATH, G.PROJECT_PATH)
+            new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
+
         for buf_id, buf in data['bufs'].items():
+            new_files.discard(buf['path'])
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
             new_dir = os.path.dirname(buf_path)
@@ -444,10 +383,53 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str_e(e)))
                 missing_bufs.append(buf)
-        if self.upload_path and not read_only:
-            yield self.initial_upload, changed_bufs, missing_bufs
-        else:
-            yield self.handle_conflicts, changed_bufs, missing_bufs
+        print(changed_bufs, missing_bufs, new_files)
+        if (changed_bufs or missing_bufs or new_files):
+            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files)
+            if stomp_local not in [0, 1]:
+                self.stop()
+                return
+            if stomp_local:
+                for buf in changed_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+                for buf in missing_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+            else:
+                files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
+
+                for buf in missing_bufs:
+                    self.send({'name': 'delete_buf', 'id': buf['id']})
+
+                # TODO: pace ourselves (send through the uploader...)
+                for buf in changed_bufs:
+                    self.send({
+                        'name': 'set_buf',
+                        'id': buf['id'],
+                        'buf': buf['buf'],
+                        'md5': buf['md5'],
+                        'encoding': buf['encoding'],
+                    })
+
+                for p, buf_id in self.paths_to_ids.items():
+                    if p in files:
+                        print("matches", p)
+                        files.discard(p)
+                        continue
+                    self.send({
+                        'name': 'delete_buf',
+                        'id': buf_id,
+                    })
+
+                def upload(relpath):
+                    buf_id = self.paths_to_ids.get(relpath)
+                    text = self.bufs.get(buf_id, {}).get("buf")
+                    if text is not None:
+                        return len(text)
+                    return self._upload(utils.get_full_path(relpath), text)
+
+                self._rate_limited_upload(iter(files), size, upload_func=upload)
 
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
@@ -563,39 +545,12 @@ class FlooHandler(base.BaseHandler):
     def _on_ping(self, data):
         self.send({'name': 'pong'})
 
-    def delete_ignored_bufs(self, root_path, files):
-        for p, buf_id in self.paths_to_ids.items():
-            rel_path = os.path.relpath(p, root_path).replace(os.sep, '/')
-            if rel_path.find('../') == 0:
-                continue
-            if p in files:
-                continue
-            self.send({
-                'name': 'delete_buf',
-                'id': buf_id,
-            })
-
     @utils.inlined_callbacks
-    def get_files_from_ignore(self, path, cb):
-        if not utils.is_shared(path):
-            cb([set(), 0])
-            return
-
-        if not os.path.isdir(path):
-            cb(set[path], 0)
-            return
-
-        ig = ignore.Ignore(G.PROJECT_PATH)
-        split = os.path.abspath(utils.to_rel_path(self.upload_path)).split(os.sep)
-        for d in split:
-            if d not in ig.children:
-                break
-            ig = ig.children[d]
-
+    def prompt_ignore(self, ig, path, cb):
         ignore.create_flooignore(ig.path)
         dirs = ig.get_children()
         dirs.append(ig)
-        dirs = sorted(dirs, key=attrgetter("size"))
+        dirs = sorted(dirs, key=attrgetter('size'))
         size = starting_size = reduce(lambda x, c: x + c.size, dirs, 0)
         too_big = []
         while size > MAX_WORKSPACE_SIZE and dirs:
@@ -618,14 +573,6 @@ class FlooHandler(base.BaseHandler):
         for ig in dirs:
             files = files.union(set([utils.to_rel_path(x) for x in ig.files]))
         cb([files, size])
-
-    @utils.inlined_callbacks
-    def sync(self, paths):
-        for p in paths:
-            files, size = yield self.get_files_from_ignore, p
-            if files:
-                G.AGENT._rate_limited_upload(iter(files), size)
-                G.AGENT.delete_ignored_bufs(p, files)
 
     @utils.inlined_callbacks
     def upload(self, path):

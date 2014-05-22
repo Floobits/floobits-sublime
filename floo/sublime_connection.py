@@ -93,7 +93,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
-    def stomp_prompt(self, changed_bufs, missing_bufs, cb):
+    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, cb):
         if not G.EXPERT_MODE:
             editor.message_dialog('Your copy of %s/%s is out of sync. '
                                   'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
@@ -101,35 +101,37 @@ class SublimeConnection(floo_handler.FlooHandler):
         def pluralize(arg):
             return len(arg) > 1 and 's' or ''
 
-        diffs = changed_bufs + missing_bufs
+        print('new', new_files)
+        diffs = changed_bufs + missing_bufs + new_files
         overwrite_local = ''
         overwrite_remote = ''
 
-        if changed_bufs:
-            if len(diffs) < 5:
-                changed = ', '.join([buf['path'] for buf in changed_bufs])
-            else:
-                changed = len(changed_bufs)
-            overwrite_local += 'Fetch %s' % changed
-            overwrite_remote += 'Upload %s' % changed
+        missing = [buf['path'] for buf in missing_bufs]
+        changed = [buf['path'] for buf in changed_bufs]
+        to_upload = new_files + changed
+        to_remove = missing
+        to_fetch = to_upload + to_remove
 
-            if missing_bufs:
-                if len(diffs) < 5:
-                    missing = ', '.join([buf['path'] for buf in missing_bufs])
-                else:
-                    missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-                overwrite_local += ' and fetch %s' % missing
-                overwrite_remote += ' and remove %s' % missing
-            elif len(diffs) >= 5:
-                overwrite_remote += ' file%s.' % pluralize(changed_bufs)
-                overwrite_local += ' remote file%s.' % pluralize(changed_bufs)
-        elif missing_bufs:
-            if len(diffs) < 5:
-                missing = ', '.join([buf['path'] for buf in missing_bufs])
-            else:
-                missing = '%s remote file%s.' % (len(missing_bufs), pluralize(missing_bufs))
-            overwrite_local += 'Fetch %s.' % missing
-            overwrite_remote += 'Remove %s.' % missing
+        if len(diffs) < 5:
+            overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
+            to_upload = 'upload %s' % ', '.join(to_upload)
+            to_remove = 'remove %s' % ', '.join(to_remove)
+        else:
+            overwrite_local = 'Fetch %s file%s' % (len(to_fetch), pluralize(to_fetch))
+            to_upload = 'upload %s' % len(to_upload)
+            to_remove = 'remove %s' % len(to_remove)
+
+        if new_files or changed:
+            overwrite_remote += to_upload
+            if missing:
+                overwrite_remote += ' and '
+        if missing:
+            overwrite_remote += to_remove
+
+        if len(diffs) >= 5 and overwrite_remote:
+            overwrite_remote += ' files'
+
+        overwrite_remote = overwrite_remote.capitalize()
 
         opts = [
             ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
@@ -279,6 +281,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         view = view.view
         regions = []
         for r in ranges:
+            # TODO: add one to the ranges that have a length of zero
             regions.append(sublime.Region(*r))
 
         def swap_regions(v):

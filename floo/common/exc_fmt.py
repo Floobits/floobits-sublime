@@ -11,11 +11,11 @@ except NameError:
 
 
 def str_e(e):
-    message = getattr(e, "message", None)
-    if not (message and unicode):
-        return str(e)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
+        message = getattr(e, "message", None)
+        if not (message and unicode):
+            return str(e)
         try:
             return unicode(message, "utf8").encode("utf8")
         except:

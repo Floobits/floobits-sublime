@@ -172,3 +172,20 @@ def is_ignored(current_path, abs_path=None):
         return True
 
     return is_ignored(base_path, abs_path)
+
+
+def get_for_path(base_path, path):
+    if not utils.is_shared(path):
+        return None
+
+    if not os.path.isdir(path):
+        return None
+
+    ig = Ignore(base_path)
+    split = utils.to_rel_path(path).split('/')
+    for d in split:
+        if d not in ig.children:
+            break
+        ig = ig.children[d]
+
+    return ig
