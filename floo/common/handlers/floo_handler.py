@@ -294,6 +294,41 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
+    def _initial_upload(self, ig, missing_bufs, changed_bufs, cb):
+        files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
+
+        for buf in missing_bufs:
+            self.send({'name': 'delete_buf', 'id': buf['id']})
+
+        # TODO: pace ourselves (send through the uploader...)
+        for buf in changed_bufs:
+            self.send({
+                'name': 'set_buf',
+                'id': buf['id'],
+                'buf': buf['buf'],
+                'md5': buf['md5'],
+                'encoding': buf['encoding'],
+            })
+
+        for p, buf_id in self.paths_to_ids.items():
+            if p in files:
+                files.discard(p)
+                continue
+            self.send({
+                'name': 'delete_buf',
+                'id': buf_id,
+            })
+
+        def __upload(relpath):
+            buf_id = self.paths_to_ids.get(relpath)
+            text = self.bufs.get(buf_id, {}).get("buf")
+            if text is not None:
+                return len(text)
+            return self._upload(utils.get_full_path(relpath), text)
+
+        self._rate_limited_upload(iter(files), size, upload_func=__upload)
+        cb()
+
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
@@ -390,7 +425,9 @@ class FlooHandler(base.BaseHandler):
                 ignored.append(p)
             new_files.discard(p)
 
-        if (changed_bufs or missing_bufs or new_files):
+        if self.upload_path:
+            yield self._initial_upload, ig, missing_bufs, changed_bufs
+        elif changed_bufs or missing_bufs or new_files:
             # TODO: handle readonly here
             stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
             if stomp_local not in [0, 1]:
@@ -403,39 +440,6 @@ class FlooHandler(base.BaseHandler):
                 for buf in missing_bufs:
                     self.get_buf(buf['id'], buf.get('view'))
                     self.save_on_get_bufs.add(buf['id'])
-            else:
-                files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
-
-                for buf in missing_bufs:
-                    self.send({'name': 'delete_buf', 'id': buf['id']})
-
-                # TODO: pace ourselves (send through the uploader...)
-                for buf in changed_bufs:
-                    self.send({
-                        'name': 'set_buf',
-                        'id': buf['id'],
-                        'buf': buf['buf'],
-                        'md5': buf['md5'],
-                        'encoding': buf['encoding'],
-                    })
-
-                for p, buf_id in self.paths_to_ids.items():
-                    if p in files:
-                        files.discard(p)
-                        continue
-                    self.send({
-                        'name': 'delete_buf',
-                        'id': buf_id,
-                    })
-
-                def upload(relpath):
-                    buf_id = self.paths_to_ids.get(relpath)
-                    text = self.bufs.get(buf_id, {}).get("buf")
-                    if text is not None:
-                        return len(text)
-                    return self._upload(utils.get_full_path(relpath), text)
-
-                self._rate_limited_upload(iter(files), size, upload_func=upload)
 
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)

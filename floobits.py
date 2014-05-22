@@ -196,7 +196,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 response = api.update_workspace(w.body['owner'], w.body['name'], w.body)
                 msg.debug(str(response.body))
             utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
-            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url, 'upload': dir_to_share})
+            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
             return True
 
         if os.path.isfile(dir_to_share):
