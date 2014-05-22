@@ -125,7 +125,7 @@ class Ignore(object):
         self.ignores[ignore_file] = rules
 
     def get_children(self):
-        children = self.children.values()
+        children = list(self.children.values())
         for c in children:
             children += c.get_children()
         return children
