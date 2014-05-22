@@ -93,49 +93,55 @@ class SublimeConnection(floo_handler.FlooHandler):
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
-    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, cb):
+    def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         if not G.EXPERT_MODE:
             editor.message_dialog('Your copy of %s/%s is out of sync. '
                                   'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
 
         def pluralize(arg):
-            return len(arg) > 1 and 's' or ''
+            return arg != 1 and 's' or ''
 
-        print('new', new_files)
-        diffs = changed_bufs + missing_bufs + new_files
         overwrite_local = ''
         overwrite_remote = ''
-
         missing = [buf['path'] for buf in missing_bufs]
         changed = [buf['path'] for buf in changed_bufs]
-        to_upload = new_files + changed
-        to_remove = missing
-        to_fetch = to_upload + to_remove
 
-        if len(diffs) < 5:
+        to_upload = set(new_files + changed).difference(set(ignored))
+        to_remove = missing + ignored
+        to_fetch = changed + missing
+        diffs = len(to_upload) + len(to_remove) + len(to_fetch)
+
+        if diffs < 5:
             overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
-            to_upload = 'upload %s' % ', '.join(to_upload)
-            to_remove = 'remove %s' % ', '.join(to_remove)
+            to_upload_str = 'upload %s' % ', '.join(to_upload)
+            to_remove_str = 'remove %s' % ', '.join(to_remove)
         else:
-            overwrite_local = 'Fetch %s file%s' % (len(to_fetch), pluralize(to_fetch))
-            to_upload = 'upload %s' % len(to_upload)
-            to_remove = 'remove %s' % len(to_remove)
+            to_fetch_len = len(to_fetch)
+            overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+            to_upload_str = 'upload %s' % len(to_upload)
+            to_remove_str = 'remove %s' % len(to_remove)
 
-        if new_files or changed:
-            overwrite_remote += to_upload
-            if missing:
+        if not to_fetch:
+            overwrite_local = 'Fetch nothing'
+        if to_upload:
+            overwrite_remote += to_upload_str
+            if to_remove:
                 overwrite_remote += ' and '
-        if missing:
-            overwrite_remote += to_remove
+        if to_remove:
+            overwrite_remote += to_remove_str
 
-        if len(diffs) >= 5 and overwrite_remote:
+        if diffs >= 5 and overwrite_remote:
             overwrite_remote += ' files'
 
         overwrite_remote = overwrite_remote.capitalize()
 
+        action = 'Overwrite'
+        # TODO: change action based on numbers of stuff
+        remote_len = len(to_remove) + len(to_upload)
+        to_fetch_len = len(to_fetch)
         opts = [
-            ['Overwrite %s remote file%s' % (len(diffs), pluralize(diffs)), overwrite_remote],
-            ['Overwrite %s local file%s' % (len(diffs), pluralize(diffs)), overwrite_local],
+            ['%s %s Remote File%s' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
+            ['%s %s Local File%s' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
             ['Cancel', 'Disconnect and resolve conflict manually.'],
         ]
         # TODO: sublime text doesn't let us focus a window. so use the active window. super lame

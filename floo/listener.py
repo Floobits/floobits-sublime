@@ -142,7 +142,7 @@ class Listener(sublime_plugin.EventListener):
         if buf is None:
             if not is_shared:
                 return cleanup()
-            if ignore.is_ignored(view.file_name()):
+            if G.IGNORE and G.IGNORE.is_ignored(view.file_name(), log=True) == ignore.IS_IG_IGNORED:
                 msg.log('%s is ignored. Not creating buffer.' % view.file_name())
                 return cleanup()
             msg.log('Creating new buffer ', name, view.file_name())
