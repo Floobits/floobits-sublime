@@ -376,6 +376,7 @@ class FlooHandler(base.BaseHandler):
             msg.log('No patch permission. Setting buffers to read-only')
             if 'request_perm' in data['perms']:
                 should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
+                # TODO: wait for perms to be OK'd/denied before uploading or bailing
                 if should_send:
                     self.send({'name': 'request_perms', 'perms': ['edit_room']})
             else:
@@ -618,14 +619,6 @@ class FlooHandler(base.BaseHandler):
         for ig in dirs:
             files = files.union(set([utils.to_rel_path(x) for x in ig.files]))
         cb([files, size])
-
-    @utils.inlined_callbacks
-    def sync(self, paths):
-        for p in paths:
-            files, size = yield self.get_files_from_ignore, p
-            if files:
-                G.AGENT._rate_limited_upload(iter(files), size)
-                G.AGENT.delete_ignored_bufs(p, files)
 
     @utils.inlined_callbacks
     def upload(self, path):
