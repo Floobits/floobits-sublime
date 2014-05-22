@@ -116,8 +116,8 @@ class SublimeConnection(floo_handler.FlooHandler):
             to_upload_str = 'upload %s' % ', '.join(to_upload)
             to_remove_str = 'remove %s' % ', '.join(to_remove)
         else:
-            len_to_fetch = len(to_fetch)
-            overwrite_local = 'Fetch %s file%s' % (len_to_fetch, pluralize(len_to_fetch))
+            to_fetch_len = len(to_fetch)
+            overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
             to_upload_str = 'upload %s' % len(to_upload)
             to_remove_str = 'remove %s' % len(to_remove)
 
@@ -135,9 +135,11 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         action = 'Overwrite'
         # TODO: change action based on numbers of stuff
+        remote_len = len(to_remove) + len(to_upload)
+        to_fetch_len = len(to_fetch)
         opts = [
-            ['%s %s Remote File%s' % (action, diffs, pluralize(diffs)), overwrite_remote],
-            ['%s %s Local File%s' % (action, len(to_fetch), pluralize(len(to_fetch))), overwrite_local],
+            ['%s %s Remote File%s' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
+            ['%s %s Local File%s' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
             ['Cancel', 'Disconnect and resolve conflict manually.'],
         ]
         # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
