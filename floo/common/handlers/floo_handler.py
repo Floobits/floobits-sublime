@@ -187,7 +187,7 @@ class FlooHandler(base.BaseHandler):
                     msg.debug('Starting data:', buf['buf'])
                     msg.debug('Patch:', data['patch'])
                 except Exception as e:
-                    print(e)
+                    msg.error(e)
 
             if '\x01' in t[0]:
                 msg.debug('FOUND CRAZY BYTE IN BUFFER')
@@ -332,12 +332,12 @@ class FlooHandler(base.BaseHandler):
         changed_bufs = []
         missing_bufs = []
         new_files = set()
+        ig = ignore.get_for_path(G.PROJECT_PATH, G.PROJECT_PATH)
+        G.IGNORE = ig
         if not read_only:
-            ig = ignore.get_for_path(G.PROJECT_PATH, G.PROJECT_PATH)
             new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
 
         for buf_id, buf in data['bufs'].items():
-            new_files.discard(buf['path'])
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
             new_dir = os.path.dirname(buf_path)
@@ -383,9 +383,15 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str_e(e)))
                 missing_bufs.append(buf)
-        print(changed_bufs, missing_bufs, new_files)
+
+        ignored = []
+        for p, buf_id in self.paths_to_ids.items():
+            if p not in new_files:
+                ignored.append(p)
+            new_files.discard(p)
+
         if (changed_bufs or missing_bufs or new_files):
-            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files)
+            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
             if stomp_local not in [0, 1]:
                 self.stop()
                 return
@@ -414,7 +420,6 @@ class FlooHandler(base.BaseHandler):
 
                 for p, buf_id in self.paths_to_ids.items():
                     if p in files:
-                        print("matches", p)
                         files.discard(p)
                         continue
                     self.send({
@@ -466,7 +471,7 @@ class FlooHandler(base.BaseHandler):
         try:
             del self.workspace_info['users'][user_id]
         except Exception:
-            print('Unable to delete user %s from user list' % (data))
+            msg.error('Unable to delete user %s from user list' % (data))
 
     def _on_set_temp_data(self, data):
         hangout_data = data.get('data', {})
