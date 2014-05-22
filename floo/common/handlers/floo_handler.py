@@ -391,6 +391,7 @@ class FlooHandler(base.BaseHandler):
             new_files.discard(p)
 
         if (changed_bufs or missing_bufs or new_files):
+            # TODO: handle readonly here
             stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
             if stomp_local not in [0, 1]:
                 self.stop()
