@@ -337,7 +337,6 @@ class FlooHandler(base.BaseHandler):
             new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
 
         for buf_id, buf in data['bufs'].items():
-            new_files.discard(buf['path'])
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
             new_dir = os.path.dirname(buf_path)
@@ -383,8 +382,15 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str_e(e)))
                 missing_bufs.append(buf)
+
+        ignored = []
+        for p, buf_id in self.paths_to_ids.items():
+            if p not in new_files:
+                ignored.append(utils.to_rel_path(p))
+            new_files.discard(p)
+
         if (changed_bufs or missing_bufs or new_files):
-            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files)
+            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
             if stomp_local not in [0, 1]:
                 self.stop()
                 return

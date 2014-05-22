@@ -18,11 +18,26 @@ except NameError:
 
 
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
-# TODO: make this configurable
 HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
+BLACKLIST = [
+    '.DS_Store',
+    '.git',
+    '.svn',
+    '.hg',
+]
+
 # TODO: grab global git ignores:
 # gitconfig_file = popen("git config -z --get core.excludesfile", "r");
-DEFAULT_IGNORES = ['extern', 'node_modules', 'tmp', 'vendor']
+DEFAULT_IGNORES = [
+    '#*',
+    '*.o',
+    '*.pyc',
+    '*~',
+    'extern/',
+    'node_modules/',
+    'tmp',
+    'vendor/',
+]
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
 
@@ -36,6 +51,9 @@ class Ignore(object):
             '/TOO_BIG/': []
         }
         self.path = utils.unfuck_path(path)
+
+        if not parent:
+            self.ignores['/DEFAULT/'] = BLACKLIST
 
         try:
             paths = os.listdir(self.path)
@@ -53,15 +71,16 @@ class Ignore(object):
                 self.load(ignore_file)
             except Exception:
                 pass
-
         if recurse:
             for p in paths:
                 self.add_file(p)
 
     def add_file(self, p):
         p_path = os.path.join(self.path, p)
-        if p[0] == '.' and p not in HIDDEN_WHITELIST:
-            msg.log('Ignoring hidden path %s' % p_path)
+        if p in BLACKLIST:
+            msg.log('Ignoring blacklisted file %s' % p)
+            return
+        if p == '.' or p == '..':
             return
         is_ignored = self.is_ignored(p_path)
         if is_ignored:
