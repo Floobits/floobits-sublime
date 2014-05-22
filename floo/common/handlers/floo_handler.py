@@ -294,6 +294,7 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
+    @utils.inlined_callbacks
     def _initial_upload(self, ig, missing_bufs, changed_bufs, cb):
         files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
 
