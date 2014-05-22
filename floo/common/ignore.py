@@ -93,7 +93,7 @@ class Ignore(object):
             return
 
         is_dir = stat.S_ISDIR(s.st_mode)
-        if self.is_ignored(p_path, is_dir=is_dir, log=True):
+        if self.is_ignored(p_path, is_dir, True):
             return
 
         if is_dir:
@@ -153,7 +153,7 @@ class Ignore(object):
                 msg.error('Error lstat()ing path %s: %s' % (path, str_e(e)))
                 return True
             is_dir = stat.S_ISDIR(s.st_mode)
-        ig = self._is_ignored(path, is_dir, log)
+        ig = self._is_ignored(path.replace(os.sep, '/'), is_dir, log)
         if ig == IS_IG_CHECK_CHILD:
             return False
         return ig
@@ -165,6 +165,12 @@ class Ignore(object):
             if ignored != IS_IG_CHECK_CHILD:
                 return ignored
         base_path, file_name = os.path.split(rel_path)
+
+        # most nodes are empty
+        # len == 1 means just /TOO_BIG/
+        if len(self.ignores) == 1 and not self.ignores['/TOO_BIG/']:
+            return IS_IG_CHECK_CHILD
+
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
                 orig_pattern = pattern
@@ -205,20 +211,3 @@ def create_flooignore(path):
             fd.write('\n'.join(DEFAULT_IGNORES))
     except Exception as e:
         msg.error('Error creating default .flooignore: %s' % str_e(e))
-
-
-def get_for_path(base_path, path):
-    if not utils.is_shared(path):
-        return None
-
-    if not os.path.isdir(path):
-        return None
-
-    ig = Ignore(base_path)
-    split = utils.to_rel_path(path).split('/')
-    for d in split:
-        if d not in ig.children:
-            break
-        ig = ig.children[d]
-
-    return ig
