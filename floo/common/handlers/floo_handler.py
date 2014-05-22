@@ -428,6 +428,15 @@ class FlooHandler(base.BaseHandler):
 
         if self.upload_path:
             yield self._initial_upload, ig, missing_bufs, changed_bufs
+            # TODO: maybe use org name here
+            who = 'Your friends'
+            anon_perms = G.AGENT.workspace_info.get('anon_perms')
+            if 'get_buf' in anon_perms:
+                who = 'Anyone'
+            _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
+            # Workaround for horrible Sublime Text bug
+            utils.set_timeout(editor.message_dialog, 0, _msg)
+
         elif changed_bufs or missing_bufs or new_files:
             # TODO: handle readonly here
             stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
