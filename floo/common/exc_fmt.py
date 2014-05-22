@@ -6,11 +6,24 @@ import traceback
 
 try:
     unicode()
-except:
+except NameError:
     unicode = None
 
 
 def str_e(e):
+    message = getattr(e, "message", None)
+    if not (message and unicode):
+        return str(e)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            return unicode(message, "utf8").encode("utf8")
+        except:
+            return message.encode("utf8")
+
+
+def pp_e(e):
+    """returns a str in all pythons everywher"""
     # py3k has __traceback__
     tb = getattr(e, "__traceback__", None)
     if tb is not None:
@@ -21,35 +34,28 @@ def str_e(e):
     if tb is not None:
         return "\n".join(traceback.format_tb(tb))
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        message = getattr(e, "message", None)
-        if message and unicode is not None:
-            try:
-                return unicode(message, "utf8").encode("utf8")
-            except:
-                return message.encode("utf8")
-        return str(e)
+    return str_e(e)
+
 
 if __name__ == "__main__":
-    def test(s):
+    def test(excp):
         try:
-            raise Exception(s)
+            raise excp
         except Exception as e:
             stre = str_e(e)
-            print(type(stre))
+            assert isinstance(stre, str)
             print(stre)
 
-    def test2(s):
+    def test2(excp):
         try:
-            raise Exception(s)
+            raise excp
         except Exception as e:
             sys.exc_clear()
             stre = str_e(e)
-            assert str(type(stre)) == "<type 'str'>"
+            assert isinstance(stre, str)
             print(stre)
 
-    tests = ["asdf", u"aß∂ƒ", u"asdf", b"asdf1234"]
+    tests = [Exception("asdf"),  Exception(u"aß∂ƒ"),  Exception(u"asdf"),  Exception(b"asdf1234")]
     for t in tests:
         test(t)
         if getattr(sys, "exc_clear", None):

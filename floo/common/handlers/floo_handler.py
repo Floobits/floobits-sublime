@@ -3,6 +3,7 @@ import sys
 import hashlib
 import base64
 import collections
+from functools import reduce
 from operator import attrgetter
 
 try:
@@ -296,7 +297,7 @@ class FlooHandler(base.BaseHandler):
     @utils.inlined_callbacks
     def initial_upload(self, changed_bufs, missing_bufs, cb):
         files, size = yield self.get_files_from_ignore, self.upload_path
-        if not (files):
+        if not files:
             return
 
         for buf in missing_bufs:
@@ -322,7 +323,8 @@ class FlooHandler(base.BaseHandler):
             buf_id = self.paths_to_ids.get(relpath)
             text = self.bufs.get(buf_id, {}).get("buf")
             if text is None:
-                return msg.warn("%s is not populated but I was told to upload it!" % relpath)
+                msg.warn("%s is not populated but I was told to upload it!" % relpath)
+                return 0
             return self._upload(utils.get_full_path(relpath), text)
 
         self._rate_limited_upload(iter(files), size, upload_func=upload)
@@ -352,8 +354,9 @@ class FlooHandler(base.BaseHandler):
             def upload(buf):
                 text = buf.get('buf')
                 if text is None:
-                    return msg.warn("%s is not populated but I was told to upload it!" % buf['path'])
-                self._upload(utils.get_full_path(buf['path']), text)
+                    msg.warn("%s is not populated but I was told to upload it!" % buf['path'])
+                    return 0
+                return self._upload(utils.get_full_path(buf['path']), text)
             size = reduce(lambda a, b: len(b['buf']) + a, changed_bufs, 0)
             self._rate_limited_upload(iter(changed_bufs), size, upload_func=upload)
 

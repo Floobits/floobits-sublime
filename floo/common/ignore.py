@@ -5,9 +5,11 @@ import stat
 
 try:
     from . import msg, utils
-    assert msg and utils
+    from .exc_fmt import str_e
+    assert msg and str_e and utils
 except ImportError:
     import msg
+    from exc_fmt import str_e
 
 try:
     unicode()

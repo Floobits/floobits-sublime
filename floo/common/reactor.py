@@ -4,9 +4,11 @@ import select
 try:
     from . import api, msg
     from .. import editor
+    from ..common.exc_fmt import str_e
     from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
+    from floo.common.exc_fmt import str_e
     from floo.common.handlers import tcp_server
     from floo.common import api, msg
     from floo import editor
