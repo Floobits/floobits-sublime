@@ -64,6 +64,7 @@ class BaseHandler(event_emitter.EventEmitter):
     def stop(self):
         from .. import reactor
         reactor.reactor.stop_handler(self)
+        G.AGENT = None
 
     def is_ready(self):
         return self.joined_workspace

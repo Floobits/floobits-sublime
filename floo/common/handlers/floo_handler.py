@@ -440,6 +440,8 @@ class FlooHandler(base.BaseHandler):
                 for buf in missing_bufs:
                     self.get_buf(buf['id'], buf.get('view'))
                     self.save_on_get_bufs.add(buf['id'])
+            else:
+                yield self._initial_upload, ig, missing_bufs, changed_bufs
 
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
