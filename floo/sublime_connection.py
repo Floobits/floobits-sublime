@@ -205,7 +205,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         hangout_client = None
         users = self.workspace_info.get('users')
         for user_id, user in users.items():
-            if user['username'] == G.USERNAME and 'hangout' in user['client']:
+            if user['username'] == self.username and 'hangout' in user['client']:
                 hangout_client = user
                 break
         if not hangout_client:

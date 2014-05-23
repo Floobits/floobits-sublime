@@ -77,9 +77,8 @@ def plugin_loaded():
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
-    can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
     # Sublime plugin API stuff can't be called right off the bat
-    if not can_auth:
+    if not utils.can_auth():
         utils.set_timeout(create_or_link_account, 1)
 
     utils.set_timeout(global_tick, 1)

@@ -112,6 +112,32 @@ def load_floorc():
     return s
 
 
+def load_floorc_json():
+    s = {}
+    try:
+        with open(G.FLOORC_JSON_PATH, 'r') as fd:
+            floorc_json = fd.read()
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            return s
+        raise
+
+    try:
+        default_settings = json.loads(floorc_json)
+    except ValueError:
+        return s
+
+    for k, v in default_settings.items():
+        s[k.upper()] = v
+    return s
+
+
+def can_auth():
+    auth = G.AUTH.get(G.DEFAULT_HOST, {})
+    can_auth = (auth.get('username') or auth.get('api_key')) and auth.get('secret')
+    return can_auth
+
+
 cancelled_timeouts = set()
 timeout_ids = set()
 

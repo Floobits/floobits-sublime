@@ -49,7 +49,7 @@ class RequestCredentialsHandler(base.BaseHandler):
                 floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
                 floorc_fd.write(floorc)
             utils.reload_settings()
-            if not G.USERNAME or not G.SECRET:
+            if not utils.can_auth():
                 editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
                 api.send_error('No username or secret')
             else:

@@ -87,7 +87,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
         self.api_args = api_args
         utils.reload_settings()
-        if not (G.USERNAME and G.SECRET):
+        if not utils.can_auth():
             return create_or_link_account()
         if paths:
             if len(paths) != 1:
@@ -107,7 +107,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
         workspace_url = None
-        print(G.COLAB_DIR, G.USERNAME, workspace_name)
+        msg.log('Colab dir: %s, Username: %s, Workspace name: %s' % (G.COLAB_DIR, G.USERNAME, workspace_name))
 
         def find_workspace(workspace_url):
             r = api.get_workspace_by_url(workspace_url)
@@ -425,7 +425,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             return sublime.error_message(str_e(e))
 
         utils.reload_settings()
-        if not (G.USERNAME and G.SECRET):
+        if not utils.can_auth():
             return create_or_link_account()
 
         d = utils.get_persistent_data()

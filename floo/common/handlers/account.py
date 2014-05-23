@@ -43,10 +43,7 @@ class CreateAccountHandler(base.BaseHandler):
                 with open(G.FLOORC_PATH, 'w') as floorc_fd:
                     floorc_fd.write(floorc)
                 utils.reload_settings()
-                if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
-                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
-                    api.send_error('No username or secret')
-                else:
+                if utils.can_auth():
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'w') as fd:
                         text = editor.welcome_text % (G.USERNAME, self.proto.host)
@@ -56,6 +53,9 @@ class CreateAccountHandler(base.BaseHandler):
                     utils.update_persistent_data(d)
                     G.AUTO_GENERATED_ACCOUNT = True
                     editor.open_file(p)
+                else:
+                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
+                    api.send_error('No username or secret')
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str_e(e))

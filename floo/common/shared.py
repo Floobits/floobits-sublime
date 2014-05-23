@@ -4,9 +4,7 @@ __VERSION__ = ''
 __PLUGIN_VERSION__ = ''
 
 # Config settings
-USERNAME = ''
-SECRET = ''
-API_KEY = ''
+AUTH = {}
 
 DEBUG = False
 SOCK_DEBUG = False
