@@ -23,29 +23,21 @@ Please upgrade your operating system if you want to use this plugin. :(''')
         print(e)
 
 try:
+    from .window_commands import create_or_link_account
     from .floo import version
     from .floo.listener import Listener
     from .floo.common import reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
+    from window_commands import create_or_link_account
     from floo import version
     from floo.listener import Listener
     from floo.common import reactor, shared as G, utils
     from floo.common.exc_fmt import str_e
+assert Listener and version
 
 reactor = reactor.reactor
-
-
-try:
-    from text_commands import FlooViewReplaceRegion, FlooViewReplaceRegions
-    from window_commands import *
-    assert FlooViewReplaceRegion and FlooViewReplaceRegions
-except:
-    from .window_commands import *
-    from .text_commands import FlooViewReplaceRegion, FlooViewReplaceRegions
-
-assert FlooViewReplaceRegion and FlooViewReplaceRegions and Listener and version
 
 
 def global_tick():
