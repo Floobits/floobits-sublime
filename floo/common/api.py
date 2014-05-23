@@ -40,7 +40,9 @@ except ImportError:
     from exc_fmt import str_e
 
 
-def get_basic_auth():
+def get_basic_auth(host):
+    username = G.AUTH.get(host, {}).get('username')
+    secret = G.AUTH.get(host, {}).get('secret')
     basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
@@ -114,13 +116,13 @@ def api_request(url, data=None, method=None):
     return APIResponse(r)
 
 
-def create_workspace(post_data):
-    api_url = 'https://%s/api/workspace' % G.DEFAULT_HOST
+def create_workspace(host, post_data):
+    api_url = 'https://%s/api/workspace' % host
     return api_request(api_url, post_data)
 
 
-def update_workspace(owner, workspace, data):
-    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
+def update_workspace(host, owner, workspace, data):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
     return api_request(api_url, data, method='PUT')
 
 
@@ -130,23 +132,23 @@ def get_workspace_by_url(url):
     return api_request(api_url)
 
 
-def get_workspace(owner, workspace):
-    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
+def get_workspace(host, owner, workspace):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
     return api_request(api_url)
 
 
-def get_workspaces():
-    api_url = 'https://%s/api/workspace/can/view' % (G.DEFAULT_HOST)
+def get_workspaces(host):
+    api_url = 'https://%s/api/workspace/can/view' % (host)
     return api_request(api_url)
 
 
-def get_orgs():
-    api_url = 'https://%s/api/orgs' % (G.DEFAULT_HOST)
+def get_orgs(host):
+    api_url = 'https://%s/api/orgs' % (host)
     return api_request(api_url)
 
 
-def get_orgs_can_admin():
-    api_url = 'https://%s/api/orgs/can/admin' % (G.DEFAULT_HOST)
+def get_orgs_can_admin(host):
+    api_url = 'https://%s/api/orgs/can/admin' % (host)
     return api_request(api_url)
 
 

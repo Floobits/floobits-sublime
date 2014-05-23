@@ -42,8 +42,8 @@ TOO_BIG_TEXT = '''Maximum workspace size is %.2fMB.\n
 class FlooHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
 
-    def __init__(self, owner, workspace, upload=None):
-        super(FlooHandler, self).__init__()
+    def __init__(self, owner, workspace, auth, upload=None):
+        super(FlooHandler, self).__init__(auth)
         self.owner = owner
         self.workspace = workspace
         self.upload_path = upload and utils.unfuck_path(upload)
@@ -103,7 +103,7 @@ class FlooHandler(base.BaseHandler):
         view.save()
 
     def on_connect(self):
-        self.reload_settings()
+        utils.reload_settings()
 
         req = {
             'username': self.username,

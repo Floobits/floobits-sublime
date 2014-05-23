@@ -72,7 +72,7 @@ class FlooPatch(object):
 
 
 def reload_settings():
-    floorc_settings = load_floorc()
+    floorc_settings = load_floorc_json()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
     if G.SHARE_DIR:

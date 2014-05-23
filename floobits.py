@@ -57,9 +57,9 @@ def plugin_loaded():
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
-    s = utils.reload_settings()
     if not os.path.exists(G.FLOORC_JSON_PATH):
-        migrations.migrate_floorc(s)
+        migrations.migrate_floorc()
+    utils.reload_settings()
 
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))

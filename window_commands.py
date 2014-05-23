@@ -332,7 +332,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
             if sublime.platform() == 'linux':
                 subl = open('/proc/self/cmdline').read().split(chr(0))[0]
             elif sublime.platform() == 'osx':
-                floorc = utils.load_floorc()
+                floorc = utils.load_floorc_json()
                 subl = floorc.get('SUBLIME_EXECUTABLE')
                 if not subl:
                     settings = sublime.load_settings('Floobits.sublime-settings')
@@ -414,7 +414,8 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 reactor.stop()
                 G.AGENT = None
             try:
-                conn = SublimeConnection(owner, workspace, upload)
+                auth = G.AUTH.get(host)
+                conn = SublimeConnection(owner, workspace, auth, upload)
                 reactor.connect(conn, host, port, secure)
             except Exception as e:
                 print(str_e(e))
@@ -468,9 +469,10 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
         return G.AUTO_GENERATED_ACCOUNT
 
     def run(self):
-        floorc = utils.load_floorc()
-        username = floorc.get('USERNAME')
-        secret = floorc.get('SECRET')
+        floorc = utils.load_floorc_json()
+        auth = floorc.get('AUTH', {}).get(G.DEFAULT_HOST, {})
+        username = auth.get('username')
+        secret = auth.get('secret')
         print(username, secret)
         if not (username and secret):
             return sublime.error_message('You don\'t seem to have a Floobits account of any sort')
