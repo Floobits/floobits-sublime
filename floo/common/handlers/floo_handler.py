@@ -586,7 +586,7 @@ class FlooHandler(base.BaseHandler):
             cb([set(), 0])
             return
         if too_big:
-            txt = TOO_BIG_TEXT % (MAX_WORKSPACE_SIZE / 1000000.0, path, starting_size / 1000000.0, "\n".join([x.path for x in too_big]))
+            txt = TOO_BIG_TEXT % (MAX_WORKSPACE_SIZE / 1000000.0, path, starting_size / 1000000.0, "\n".join(set([x.path for x in too_big])))
             upload = yield self.ok_cancel_dialog, txt
             if not upload:
                 cb([set(), 0])
