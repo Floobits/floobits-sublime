@@ -36,25 +36,16 @@ except (ImportError, ValueError):
 
 reactor = reactor.reactor
 
-from text_commands import FlooViewReplaceRegion, FlooViewReplaceRegions
-assert FlooViewReplaceRegion and FlooViewReplaceRegions
 
-from window_commands import FloobitsOpenSettingsCommand, FloobitsShareDirCommand, FloobitsCreateWorkspaceCommand, \
-    FloobitsPromptJoinWorkspaceCommand, FloobitsJoinWorkspaceCommand, FloobitsPinocchioCommand, \
-    FloobitsLeaveWorkspaceCommand, FloobitsClearHighlightsCommand, FloobitsSummonCommand, \
-    FloobitsJoinRecentWorkspaceCommand, FloobitsAddToWorkspaceCommand, FloobitsRemoveFromWorkspaceCommand, \
-    FloobitsCreateHangoutCommand, FloobitsPromptHangoutCommand, FloobitsOpenWebEditorCommand, FloobitsHelpCommand, \
-    FloobitsToggleStalkerModeCommand, FloobitsEnableStalkerModeCommand, FloobitsDisableStalkerModeCommand, \
-    FloobitsOpenWorkspaceSettingsCommand, RequestPermissionCommand, FloobitsFollowSplit, FloobitsNotACommand, \
-    create_or_link_account
+try:
+    from text_commands import FlooViewReplaceRegion, FlooViewReplaceRegions
+    from window_commands import *
+    assert FlooViewReplaceRegion and FlooViewReplaceRegions
+except:
+    from .window_commands import *
+    from .text_commands import FlooViewReplaceRegion, FlooViewReplaceRegions
 
-assert Listener and version and FloobitsOpenSettingsCommand and FloobitsShareDirCommand and FloobitsCreateWorkspaceCommand and \
-    FloobitsPromptJoinWorkspaceCommand and FloobitsJoinWorkspaceCommand and FloobitsPinocchioCommand and \
-    FloobitsLeaveWorkspaceCommand and FloobitsClearHighlightsCommand and FloobitsSummonCommand and \
-    FloobitsJoinRecentWorkspaceCommand and FloobitsAddToWorkspaceCommand and FloobitsRemoveFromWorkspaceCommand and \
-    FloobitsCreateHangoutCommand and FloobitsPromptHangoutCommand and FloobitsOpenWebEditorCommand and FloobitsHelpCommand and \
-    FloobitsToggleStalkerModeCommand and FloobitsEnableStalkerModeCommand and FloobitsDisableStalkerModeCommand and \
-    FloobitsOpenWorkspaceSettingsCommand and RequestPermissionCommand and FloobitsFollowSplit and FloobitsNotACommand
+assert FlooViewReplaceRegion and FlooViewReplaceRegions and Listener and version
 
 
 def global_tick():

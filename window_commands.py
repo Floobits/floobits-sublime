@@ -709,3 +709,12 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
     def description(self):
         return
+
+__all__ = [
+    "create_or_link_account", "FloobitsOpenSettingsCommand", "FloobitsShareDirCommand", "FloobitsCreateWorkspaceCommand",
+    "FloobitsPromptJoinWorkspaceCommand", "FloobitsJoinWorkspaceCommand", "FloobitsPinocchioCommand",
+    "FloobitsLeaveWorkspaceCommand", "FloobitsClearHighlightsCommand", "FloobitsSummonCommand",
+    "FloobitsJoinRecentWorkspaceCommand", "FloobitsAddToWorkspaceCommand", "FloobitsRemoveFromWorkspaceCommand",
+    "FloobitsCreateHangoutCommand", "FloobitsPromptHangoutCommand", "FloobitsOpenWebEditorCommand", "FloobitsHelpCommand",
+    "FloobitsToggleStalkerModeCommand", "FloobitsEnableStalkerModeCommand", "FloobitsDisableStalkerModeCommand",
+    "FloobitsOpenWorkspaceSettingsCommand", "RequestPermissionCommand", "FloobitsFollowSplit", "FloobitsNotACommand"]
