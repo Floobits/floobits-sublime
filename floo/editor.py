@@ -78,7 +78,7 @@ def select_auth(*args):
     if len(auths) == 1 and auths.get(host):
         return cb(auths.values()[0])
 
-    opts = [[h, 'account %s' % a.get('username')] for h, a in auths.items()]
+    opts = [[h, 'Connect as %s' % a.get('username')] for h, a in auths.items()]
     opts.append(['Cancel'])
 
     def on_account(index):

@@ -434,6 +434,13 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 auth = G.AUTH.get(host)
                 if not auth:
                     auth = yield editor.select_auth, self.window, G.AUTH, host
+                    if auth['host'] != host:
+                        auth_host = auth['host']
+                        del auth['host']
+                        s = utils.load_floorc_json()
+                        s['AUTH'][host] = auth
+                        utils.save_floorc_json(s)
+                        utils.reload_settings()
                 if auth is None:
                     return
                 conn = SublimeConnection(owner, workspace, auth, upload)

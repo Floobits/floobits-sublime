@@ -108,6 +108,15 @@ def load_floorc_json():
     return s
 
 
+def save_floorc_json(s):
+    floorc_json = {}
+    for k, v in s.items():
+        floorc_json[k.lower()] = v
+    print('writing %s' % floorc_json)
+    with open(G.FLOORC_JSON_PATH, 'w') as fd:
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
+
+
 def can_auth(host=None):
     auth = G.AUTH.get(host or G.DEFAULT_HOST, {})
     can_auth = (auth.get('username') or auth.get('api_key')) and auth.get('secret')
