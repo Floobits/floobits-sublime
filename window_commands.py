@@ -14,6 +14,7 @@ import sublime
 PY2 = sys.version_info < (3, 0)
 
 try:
+    from .floo import editor
     from .floo.sublime_connection import SublimeConnection
     from .floo.common import api, reactor, msg, shared as G, utils
     from .floo.common.exc_fmt import str_e
@@ -21,6 +22,7 @@ try:
     from .floo.common.handlers.credentials import RequestCredentialsHandler
     assert api and G and msg and utils
 except (ImportError, ValueError):
+    from floo import editor
     from floo.common import api, reactor, msg, shared as G, utils
     from floo.common.exc_fmt import str_e
     from floo.common.handlers.account import CreateAccountHandler
@@ -101,14 +103,15 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
         self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
+    @utils.inlined_callbacks
     def on_input(self, dir_to_share):
         file_to_share = None
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
         workspace_name = os.path.basename(dir_to_share)
         workspace_url = None
-        msg.log('Colab dir: %s, Username: %s, Workspace name: %s' % (G.COLAB_DIR, G.USERNAME, workspace_name))
 
+        # TODO: use prejoin_workspace instead
         def find_workspace(workspace_url):
             r = api.get_workspace_by_url(workspace_url)
             if r.code < 400:
@@ -120,7 +123,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 utils.update_persistent_data(d)
             except Exception as e:
                 msg.debug(str_e(e))
-            return
 
         def join_workspace(workspace_url):
             try:
@@ -151,7 +153,8 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         try:
             utils.mkdir(dir_to_share)
         except Exception:
-            return sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
+            sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
+            return
 
         floo_file = os.path.join(dir_to_share, '.floo')
 
@@ -180,25 +183,36 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     if join_workspace(workspace_url):
                         return
 
+        auth = yield editor.select_auth, self.window, G.AUTH
+        if not auth:
+            return
+
+        username = auth.get('username')
+        host = auth['host']
+
         def on_done(owner):
+            msg.log('Colab dir: %s, Username: %s, Workspace: %s/%s' % (G.COLAB_DIR, username, owner[0], workspace_name))
             self.window.run_command('floobits_create_workspace', {
                 'workspace_name': workspace_name,
                 'dir_to_share': dir_to_share,
                 'upload': file_to_share or dir_to_share,
                 'api_args': self.api_args,
                 'owner': owner[0],
+                'host': host,
             })
 
         try:
             r = api.get_orgs_can_admin()
         except IOError as e:
-            return sublime.error_message('Error getting org list: %s' % str_e(e))
+            sublime.error_message('Error getting org list: %s' % str_e(e))
+            return
 
         if r.code >= 400 or len(r.body) == 0:
-            return on_done([G.USERNAME])
+            on_done([username])
+            return
 
         orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
-        orgs.insert(0, [G.USERNAME, 'Create workspace owned by %s' % G.USERNAME])
+        orgs.insert(0, [username, 'Create workspace owned by %s' % username])
         self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
 
 
@@ -210,14 +224,15 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
         return True
 
     # TODO: throw workspace_name in api_args
-    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None, upload=None):
+    def run(self, workspace_name=None, dir_to_share=None, prompt='Workspace name:', api_args=None, owner=None, upload=None, host=None):
         if not disconnect_dialog():
             return
-        self.owner = owner or G.USERNAME
+        self.owner = owner
         self.dir_to_share = dir_to_share
         self.workspace_name = workspace_name
         self.api_args = api_args or {}
         self.upload = upload
+        self.host = host
         if workspace_name and dir_to_share and prompt == 'Workspace name:':
             return self.on_input(workspace_name, dir_to_share)
         self.window.show_input_panel(prompt, workspace_name, self.on_input, None, None)
@@ -231,12 +246,12 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             self.api_args['name'] = workspace_name
             self.api_args['owner'] = self.owner
             msg.debug(str(self.api_args))
-            r = api.create_workspace(self.api_args)
+            r = api.create_workspace(self.host, self.api_args)
         except Exception as e:
             msg.error('Unable to create workspace: %s' % str_e(e))
             return sublime.error_message('Unable to create workspace: %s' % str_e(e))
 
-        workspace_url = 'https://%s/%s/%s' % (G.DEFAULT_HOST, self.owner, workspace_name)
+        workspace_url = 'https://%s/%s/%s' % (self.host, self.owner, workspace_name)
         msg.log('Created workspace %s' % workspace_url)
 
         if r.code < 400:
@@ -259,7 +274,8 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             'workspace_name': workspace_name,
             'api_args': self.api_args,
             'owner': self.owner,
-            'upload': self.upload
+            'upload': self.upload,
+            'host': self.host,
         }
         if r.code == 400:
             kwargs['workspace_name'] = re.sub('[^A-Za-z0-9_\-\.]', '-', workspace_name)
@@ -270,7 +286,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             except Exception:
                 pass
             if sublime.ok_cancel_dialog('%s' % r.body, 'Open billing settings'):
-                webbrowser.open('https://%s/%s/settings#billing' % (G.DEFAULT_HOST, self.owner))
+                webbrowser.open('https://%s/%s/settings#billing' % (self.host, self.owner))
             return
         else:
             kwargs['prompt'] = 'Workspace %s/%s already exists. Choose another name:' % (self.owner, workspace_name)
@@ -578,7 +594,8 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
     def run(self):
         owner = G.AGENT.owner
         workspace = G.AGENT.workspace
-        webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s' % (owner, workspace))
+        host = G.AGENT.proto.host
+        webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s/%s' % (host, owner, workspace))
 
     def is_enabled(self):
         return bool(super(FloobitsCreateHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)

@@ -55,7 +55,7 @@ class RequestCredentialsHandler(base.BaseHandler):
             else:
                 p = os.path.join(G.BASE_DIR, 'welcome.md')
                 with open(p, 'w') as fd:
-                    text = WELCOME_MSG % (G.USERNAME, self.proto.host)
+                    text = WELCOME_MSG % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
                     fd.write(text)
                 editor.open_file(p)
             self.proto.stop()

@@ -63,3 +63,29 @@ def get_line_endings(path=None):
     if ending == 'windows':
         return '\r\n'
     return '\n'
+
+
+def select_auth(*args):
+    window, auths, cb = args
+
+    if not auths:
+        return cb(None)
+
+    auths = dict(auths)
+    for k, v in auths.items():
+        v['host'] = k
+
+    if len(auths) == 1:
+        return cb(auths.values()[0])
+
+    opts = [[h, 'account %s' % a.get('username')] for h, a in auths.items()]
+    opts.append(['Cancel'])
+
+    def on_account(index):
+        if index < 0 or index >= len(auths):
+            # len(hosts) is cancel, appended to opts at end below
+            return cb(None)
+        host = opts[index][0]
+        return cb(auths[host])
+
+    return window.show_quick_panel(opts, on_account)

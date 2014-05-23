@@ -43,7 +43,7 @@ except ImportError:
 def get_basic_auth(host):
     username = G.AUTH.get(host, {}).get('username')
     secret = G.AUTH.get(host, {}).get('secret')
-    basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
+    basic_auth = ('%s:%s' % (username, secret)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
@@ -61,8 +61,8 @@ class APIResponse():
             self.body = json.loads(r.read().decode("utf-8"))
 
 
-def proxy_api_request(url, data, method):
-    args = ['python', '-m', 'floo.proxy', '--url', url]
+def proxy_api_request(host, url, data, method):
+    args = ['python', '-m', 'floo.proxy',  '--host', host, '--url', url]
     if data:
         args += ["--data", json.dumps(data)]
     if method:
@@ -89,28 +89,28 @@ def user_agent():
     )
 
 
-def hit_url(url, data, method):
+def hit_url(host, url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth())
+    r.add_header('Authorization', 'Basic %s' % get_basic_auth(host))
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
     return urlopen(r, timeout=5)
 
 
-def api_request(url, data=None, method=None):
+def api_request(host, url, data=None, method=None):
     if data:
         method = method or 'POST'
     else:
         method = method or 'GET'
     if ssl is False:
-        return proxy_api_request(url, data, method)
+        return proxy_api_request(host, url, data, method)
     try:
-        r = hit_url(url, data, method)
+        r = hit_url(host, url, data, method)
     except HTTPError as e:
         r = e
     return APIResponse(r)
@@ -118,38 +118,38 @@ def api_request(url, data=None, method=None):
 
 def create_workspace(host, post_data):
     api_url = 'https://%s/api/workspace' % host
-    return api_request(api_url, post_data)
+    return api_request(host, api_url, post_data)
 
 
 def update_workspace(host, owner, workspace, data):
     api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
-    return api_request(api_url, data, method='PUT')
+    return api_request(host, api_url, data, method='PUT')
 
 
 def get_workspace_by_url(url):
     result = utils.parse_url(url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
-    return api_request(api_url)
+    return api_request(result['host'], api_url)
 
 
 def get_workspace(host, owner, workspace):
     api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
-    return api_request(api_url)
+    return api_request(host, api_url)
 
 
 def get_workspaces(host):
     api_url = 'https://%s/api/workspace/can/view' % (host)
-    return api_request(api_url)
+    return api_request(host, api_url)
 
 
 def get_orgs(host):
     api_url = 'https://%s/api/orgs' % (host)
-    return api_request(api_url)
+    return api_request(host, api_url)
 
 
 def get_orgs_can_admin(host):
     api_url = 'https://%s/api/orgs/can/admin' % (host)
-    return api_request(api_url)
+    return api_request(host, api_url)
 
 
 def send_error(description=None, exception=None):
@@ -162,11 +162,11 @@ def send_error(description=None, exception=None):
             'error_count': G.ERROR_COUNT
         },
         'message': {},
-        'username': G.USERNAME,
         'dir': G.COLAB_DIR,
     }
     if G.AGENT:
         data['owner'] = G.AGENT.owner
+        data['username'] = G.AGENT.username
         data['workspace'] = G.AGENT.workspace
     if exception:
         data['message'] = {
@@ -177,8 +177,9 @@ def send_error(description=None, exception=None):
     if description:
         data['message']['description'] = description
     try:
+        # TODO: use G.AGENT.proto.host?
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
-        r = api_request(api_url, data)
+        r = api_request(G.DEFAULT_HOST, api_url, data)
         G.ERRORS_SENT += 1
         return r
     except Exception as e:

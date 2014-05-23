@@ -46,7 +46,7 @@ class CreateAccountHandler(base.BaseHandler):
                 if utils.can_auth():
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'w') as fd:
-                        text = editor.welcome_text % (G.USERNAME, self.proto.host)
+                        text = editor.welcome_text % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
                         fd.write(text)
                     d = utils.get_persistent_data()
                     d['auto_generated_account'] = True

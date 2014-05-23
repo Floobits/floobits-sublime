@@ -105,6 +105,11 @@ def migrate_floorc():
     }
     for k, v in s.items():
         k = k.lower()
+        try:
+            v = int(v)
+        except Exception:
+            pass
+
         if k in ['username', 'secret', 'api_key']:
             floorc_json['auth'][default_host][k] = v
         else:
