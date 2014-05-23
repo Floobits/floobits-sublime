@@ -576,7 +576,7 @@ class FlooHandler(base.BaseHandler):
         size = starting_size = reduce(lambda x, c: x + c.size, dirs, 0)
         too_big = []
         while size > MAX_WORKSPACE_SIZE and dirs:
-            cd = too_big.pop()
+            cd = dirs.pop()
             size -= cd.size
             too_big.append(cd)
         if size > MAX_WORKSPACE_SIZE:
