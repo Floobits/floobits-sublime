@@ -84,6 +84,7 @@ def reload_settings():
     else:
         msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
+    return floorc_settings
 
 
 def load_floorc():

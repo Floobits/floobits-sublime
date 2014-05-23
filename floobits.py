@@ -26,14 +26,14 @@ try:
     from .window_commands import create_or_link_account
     from .floo import version
     from .floo.listener import Listener
-    from .floo.common import reactor, shared as G, utils
+    from .floo.common import migrations, reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
     from window_commands import create_or_link_account
     from floo import version
     from floo.listener import Listener
-    from floo.common import reactor, shared as G, utils
+    from floo.common import migrations, reactor, shared as G, utils
     from floo.common.exc_fmt import str_e
 assert Listener and version
 
@@ -57,7 +57,9 @@ def plugin_loaded():
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
-    utils.reload_settings()
+    s = utils.reload_settings()
+    if not os.path.exists(G.FLOORC_JSON_PATH):
+        migrations.migrate_floorc(s)
 
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))

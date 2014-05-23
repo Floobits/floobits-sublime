@@ -66,3 +66,19 @@ def migrate_symlinks():
         os.unlink(os.path.join(G.COLAB_DIR, 'msgs.floobits.log'))
     except Exception:
         pass
+
+
+def migrate_floorc(s):
+    floorc_json = {
+        'auth': {
+            G.DEFAULT_HOST: {}
+        }
+    }
+    for k, v in s.items():
+        k = k.lower()
+        if k in ['username', 'secret', 'api_key']:
+            floorc_json['auth'][G.DEFAULT_HOST][k] = v
+        else:
+            floorc_json[k] = v
+    with open(G.FLOORC_JSON_PATH, 'w') as fd:
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
