@@ -6,17 +6,11 @@ import sublime
 
 try:
     from .floo import sublime_utils as sutils
-    from .floo.common import shared as G, utils
-    assert utils
+    from .floo.common import shared as G
+    assert G
 except (ImportError, ValueError):
     from floo import sublime_utils as sutils
-    from floo.common import shared as G, utils
-
-ignore_modified_timeout = None
-
-
-def unignore_modified_events():
-    G.IGNORE_MODIFIED_EVENTS = False
+    from floo.common import shared as G
 
 
 def transform_selections(selections, start, new_offset):
@@ -48,8 +42,6 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
             return selections
 
         G.IGNORE_MODIFIED_EVENTS = True
-        utils.cancel_timeout(ignore_modified_timeout)
-        ignore_modified_timeout = utils.set_timeout(unignore_modified_events, 2)
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)

@@ -57,19 +57,6 @@ assert Listener and version and FloobitsOpenSettingsCommand and FloobitsShareDir
     FloobitsOpenWorkspaceSettingsCommand and RequestPermissionCommand and FloobitsFollowSplit and FloobitsNotACommand
 
 
-def ssl_error_msg(action):
-    sublime.error_message('Your version of Sublime Text can\'t ' + action + ' because it has a broken SSL module. '
-                          'This is a known issue on Linux builds of Sublime Text. '
-                          'See this issue: https://github.com/SublimeText/Issues/issues/177')
-
-
-def get_active_window(cb):
-    win = sublime.active_window()
-    if not win:
-        return utils.set_timeout(get_active_window, 50, cb)
-    cb(win)
-
-
 def global_tick():
     # XXX: A couple of sublime 2 users have had reactor == None here
     reactor.tick()
