@@ -3,11 +3,11 @@ import sublime_plugin
 import collections
 
 try:
-    from .common import msg, ignore, shared as G, utils
+    from .common import msg, shared as G, utils
     from .sublime_utils import get_buf, get_text
-    assert G and ignore and G and utils and msg and get_buf and get_text
+    assert G and G and utils and msg and get_buf and get_text
 except ImportError:
-    from common import msg, ignore, shared as G, utils
+    from common import msg, shared as G, utils
     from sublime_utils import get_buf, get_text
 
 
@@ -142,7 +142,7 @@ class Listener(sublime_plugin.EventListener):
         if buf is None:
             if not is_shared:
                 return cleanup()
-            if G.IGNORE and G.IGNORE.is_ignored(view.file_name(), log=True) == ignore.IS_IG_IGNORED:
+            if G.IGNORE and not G.IGNORE.is_ignored(view.file_name(), log=True):
                 msg.log('%s is ignored. Not creating buffer.' % view.file_name())
                 return cleanup()
             msg.log('Creating new buffer ', name, view.file_name())

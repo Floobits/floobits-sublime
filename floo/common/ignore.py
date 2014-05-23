@@ -40,13 +40,31 @@ DEFAULT_IGNORES = [
 ]
 MAX_FILE_SIZE = 1024 * 1024 * 5
 
-IS_IG_EXCLUDED = 0
 IS_IG_IGNORED = 1
 IS_IG_CHECK_CHILD = 2
 
 
+def create_flooignore(path):
+    flooignore = os.path.join(path, '.flooignore')
+    # A very short race condition, but whatever.
+    if os.path.exists(flooignore):
+        return
+    try:
+        with open(flooignore, 'w') as fd:
+            fd.write('\n'.join(DEFAULT_IGNORES))
+    except Exception as e:
+        msg.error('Error creating default .flooignore: %s' % str_e(e))
+
+
+def create_ignore_tree(path):
+    ig = Ignore(path)
+    ig.ignores['/DEFAULT/'] = BLACKLIST
+    ig.recurse(ig)
+    return ig
+
+
 class Ignore(object):
-    def __init__(self, path, parent=None, recurse=True):
+    def __init__(self, path, parent=None):
         self.parent = parent
         self.size = 0
         self.children = {}
@@ -56,59 +74,55 @@ class Ignore(object):
         }
         self.path = utils.unfuck_path(path)
 
-        if not parent:
-            self.ignores['/DEFAULT/'] = BLACKLIST
-
+    def recurse(self, root):
         try:
             paths = os.listdir(self.path)
         except OSError as e:
             if e.errno != errno.ENOTDIR:
-                msg.error('Error listing path %s: %s' % (path, str_e(e)))
+                msg.error('Error listing path %s: %s' % (self.path, str_e(e)))
             return
         except Exception as e:
-            msg.error('Error listing path %s: %s' % (path, str_e(e)))
+            msg.error('Error listing path %s: %s' % (self.path, str_e(e)))
             return
 
-        msg.debug('Initializing ignores for %s' % path)
+        msg.debug('Initializing ignores for %s' % self.path)
         for ignore_file in IGNORE_FILES:
             try:
                 self.load(ignore_file)
             except Exception:
                 pass
-        if recurse:
-            for p in paths:
-                self.add_file(p)
 
-    def add_file(self, p):
-        p_path = os.path.join(self.path, p)
-        if p in BLACKLIST:
-            msg.log('Ignoring blacklisted file %s' % p)
-            return
-        if p == '.' or p == '..':
-            return
-        try:
-            s = os.stat(p_path)
-        except Exception as e:
-            msg.error('Error stat()ing path %s: %s' % (p_path, str_e(e)))
-            return
+        for p in paths:
+            p_path = os.path.join(self.path, p)
+            if p in BLACKLIST:
+                msg.log('Ignoring blacklisted file %s' % p)
+                continue
+            if p == '.' or p == '..':
+                continue
+            try:
+                s = os.stat(p_path)
+            except Exception as e:
+                msg.error('Error stat()ing path %s: %s' % (p_path, str_e(e)))
+                continue
 
-        is_dir = stat.S_ISDIR(s.st_mode)
-        if self.is_ignored(p_path, is_dir, True):
-            return
+            is_dir = stat.S_ISDIR(s.st_mode)
+            if root.is_ignored(p_path, is_dir, True):
+                continue
 
-        if is_dir:
-            ig = Ignore(p_path, self)
-            self.children[p] = ig
-            # self.size += ig.size
-            return
+            if is_dir:
+                ig = Ignore(p_path, self)
+                self.children[p] = ig
+                ig.recurse(root)
+                # self.size += ig.size
+                continue
 
-        if stat.S_ISREG(s.st_mode):
-            if s.st_size > (MAX_FILE_SIZE):
-                self.ignores['/TOO_BIG/'].append(p)
-                msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/', False))
-            else:
-                self.size += s.st_size
-                self.files.append(p_path)
+            if stat.S_ISREG(s.st_mode):
+                if s.st_size > (MAX_FILE_SIZE):
+                    self.ignores['/TOO_BIG/'].append(p)
+                    msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/', False))
+                else:
+                    self.size += s.st_size
+                    self.files.append(p_path)
 
     def load(self, ignore_file):
         with open(os.path.join(self.path, ignore_file), 'r') as fd:
@@ -137,7 +151,8 @@ class Ignore(object):
             for p in c.list_paths():
                 yield p
 
-    def is_ignored_message(self, path, pattern, ignore_file, exclude):
+    def is_ignored_message(self, rel_path, pattern, ignore_file, exclude):
+        path = os.path.join(self.path, rel_path)
         exclude_msg = ''
         if exclude:
             exclude_msg = '__NOT__ '
@@ -153,23 +168,11 @@ class Ignore(object):
                 msg.error('Error lstat()ing path %s: %s' % (path, str_e(e)))
                 return True
             is_dir = stat.S_ISDIR(s.st_mode)
-        ig = self._is_ignored(path.replace(os.sep, '/'), is_dir, log)
-        if ig == IS_IG_CHECK_CHILD:
-            return False
-        return ig
+        rel_path = os.path.relpath(path, self.path).replace(os.sep, '/')
+        return self._is_ignored(rel_path, is_dir, log)
 
-    def _is_ignored(self, path, is_dir, log):
-        rel_path = os.path.relpath(path, self.path)
-        if self.parent:
-            ignored = self.parent._is_ignored(path, is_dir, log)
-            if ignored != IS_IG_CHECK_CHILD:
-                return ignored
+    def _is_ignored(self, rel_path, is_dir, log):
         base_path, file_name = os.path.split(rel_path)
-
-        # most nodes are empty
-        # len == 1 means just /TOO_BIG/
-        if len(self.ignores) == 1 and not self.ignores['/TOO_BIG/']:
-            return IS_IG_CHECK_CHILD
 
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
@@ -181,9 +184,7 @@ class Ignore(object):
                     pattern = pattern[1:]
 
                 if pattern[0] == '/':
-                    # Only match immediate children
-                    if utils.unfuck_path(base_path) == self.path and fnmatch.fnmatch(file_name, pattern[1:]):
-                        match = True
+                    match = fnmatch.fnmatch(rel_path, pattern[1:])
                 else:
                     if len(pattern) > 0 and pattern[-1] == '/':
                         if is_dir:
@@ -194,20 +195,16 @@ class Ignore(object):
                         match = True
                 if match:
                     if log:
-                        msg.log(self.is_ignored_message(path, orig_pattern, ignore_file, exclude))
+                        msg.log(self.is_ignored_message(rel_path, orig_pattern, ignore_file, exclude))
                     if exclude:
-                        return IS_IG_EXCLUDED
-                    return IS_IG_IGNORED
-        return IS_IG_CHECK_CHILD
+                        return False
+                    return True
 
-
-def create_flooignore(path):
-    flooignore = os.path.join(path, '.flooignore')
-    # A very short race condition, but whatever.
-    if os.path.exists(flooignore):
-        return
-    try:
-        with open(flooignore, 'w') as fd:
-            fd.write('\n'.join(DEFAULT_IGNORES))
-    except Exception as e:
-        msg.error('Error creating default .flooignore: %s' % str_e(e))
+        split = rel_path.split("/", 1)
+        if len(split) != 2:
+            return False
+        name, new_path = split
+        ig = self.children.get(name)
+        if ig:
+            return ig._is_ignored(new_path, is_dir, log)
+        return False

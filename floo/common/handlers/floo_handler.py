@@ -368,7 +368,7 @@ class FlooHandler(base.BaseHandler):
         changed_bufs = []
         missing_bufs = []
         new_files = set()
-        ig = ignore.Ignore(G.PROJECT_PATH)
+        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
         G.IGNORE = ig
         if not read_only:
             new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
