@@ -11,12 +11,6 @@ except ImportError:
     import msg
     from exc_fmt import str_e
 
-try:
-    unicode()
-except NameError:
-    unicode = str
-
-
 IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
 HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 BLACKLIST = [
