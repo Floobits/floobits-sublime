@@ -140,7 +140,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             if set(anon_perms) != set(new_anon_perms):
                 msg.debug(str(anon_perms), str(new_anon_perms))
                 w.body['perms']['AnonymousUser'] = new_anon_perms
-                response = api.update_workspace(w.body['owner'], w.body['name'], w.body)
+                response = api.update_workspace(workspace_url, w.body)
                 msg.debug(str(response.body))
             utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
             self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
@@ -202,7 +202,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             })
 
         try:
-            r = api.get_orgs_can_admin()
+            r = api.get_orgs_can_admin(host)
         except IOError as e:
             sublime.error_message('Error getting org list: %s' % str_e(e))
             return
@@ -435,7 +435,6 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 if not auth:
                     auth = yield editor.select_auth, self.window, G.AUTH, host
                     if auth['host'] != host:
-                        auth_host = auth['host']
                         del auth['host']
                         s = utils.load_floorc_json()
                         s['AUTH'][host] = auth

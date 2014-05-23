@@ -121,9 +121,10 @@ def create_workspace(host, post_data):
     return api_request(host, api_url, post_data)
 
 
-def update_workspace(host, owner, workspace, data):
-    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
-    return api_request(host, api_url, data, method='PUT')
+def update_workspace(workspace_url, data):
+    result = utils.parse_url(workspace_url)
+    api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
+    return api_request(result['host'], api_url, data, method='PUT')
 
 
 def get_workspace_by_url(url):
@@ -233,7 +234,7 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     if set(anon_perms) != set(new_anon_perms):
         msg.debug(str(anon_perms), str(new_anon_perms))
         w.body['perms']['AnonymousUser'] = new_anon_perms
-        response = update_workspace(w.body['owner'], w.body['name'], w.body)
+        response = update_workspace(workspace_url, w.body)
         msg.debug(str(response.body))
     utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
     return result
