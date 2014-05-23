@@ -280,7 +280,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
-    def run(self, workspace='https://floobits.com/'):
+    def run(self, workspace=G.DEFAULT_HOST):
         for d in self.window.folders():
             floo_file = os.path.join(d, '.floo')
             try:
