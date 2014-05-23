@@ -1,5 +1,6 @@
 import os
 import json
+import errno
 from collections import defaultdict
 
 try:
@@ -68,16 +69,44 @@ def migrate_symlinks():
         pass
 
 
-def migrate_floorc(s):
+def __load_floorc():
+    """try to read settings out of the .floorc file"""
+    s = {}
+    try:
+        fd = open(G.FLOORC_PATH, 'r')
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            return s
+        raise
+
+    default_settings = fd.read().split('\n')
+    fd.close()
+
+    for setting in default_settings:
+        # TODO: this is horrible
+        if len(setting) == 0 or setting[0] == '#':
+            continue
+        try:
+            name, value = setting.split(' ', 1)
+        except IndexError:
+            continue
+        s[name.upper()] = value
+    return s
+
+
+def migrate_floorc():
+    s = __load_floorc()
+    default_host = s.get('DEFAULT_HOST', G.DEFAULT_HOST)
+
     floorc_json = {
         'auth': {
-            G.DEFAULT_HOST: {}
+            default_host: {}
         }
     }
     for k, v in s.items():
         k = k.lower()
         if k in ['username', 'secret', 'api_key']:
-            floorc_json['auth'][G.DEFAULT_HOST][k] = v
+            floorc_json['auth'][default_host][k] = v
         else:
             floorc_json[k] = v
     with open(G.FLOORC_JSON_PATH, 'w') as fd:

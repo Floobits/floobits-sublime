@@ -1,4 +1,5 @@
 import os
+import errno
 import json
 import re
 import hashlib
@@ -85,31 +86,6 @@ def reload_settings():
         msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
     return floorc_settings
-
-
-def load_floorc():
-    """try to read settings out of the .floorc file"""
-    s = {}
-    try:
-        fd = open(G.FLOORC_PATH, 'r')
-    except IOError as e:
-        if e.errno == 2:
-            return s
-        raise
-
-    default_settings = fd.read().split('\n')
-    fd.close()
-
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
-    return s
 
 
 def load_floorc_json():
@@ -376,7 +352,7 @@ def mkdir(path):
     try:
         os.makedirs(path)
     except OSError as e:
-        if e.errno != 17:
+        if e.errno != errno.EEXIST:
             editor.error_message('Cannot create directory {0}.\n{1}'.format(path, str_e(e)))
             raise
 
