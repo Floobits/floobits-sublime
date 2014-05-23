@@ -66,7 +66,7 @@ def get_line_endings(path=None):
 
 
 def select_auth(*args):
-    window, auths, cb = args
+    window, auths, host, cb = args
 
     if not auths:
         return cb(None)
@@ -75,7 +75,7 @@ def select_auth(*args):
     for k, v in auths.items():
         v['host'] = k
 
-    if len(auths) == 1:
+    if len(auths) == 1 and auths.get(host):
         return cb(auths.values()[0])
 
     opts = [[h, 'account %s' % a.get('username')] for h, a in auths.items()]

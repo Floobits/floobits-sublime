@@ -108,8 +108,8 @@ def load_floorc_json():
     return s
 
 
-def can_auth():
-    auth = G.AUTH.get(G.DEFAULT_HOST, {})
+def can_auth(host=None):
+    auth = G.AUTH.get(host or G.DEFAULT_HOST, {})
     can_auth = (auth.get('username') or auth.get('api_key')) and auth.get('secret')
     return can_auth
 

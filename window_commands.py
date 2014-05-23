@@ -183,7 +183,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     if join_workspace(workspace_url):
                         return
 
-        auth = yield editor.select_auth, self.window, G.AUTH
+        auth = yield editor.select_auth, self.window, G.AUTH, None
         if not auth:
             return
 
@@ -424,6 +424,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
+        @utils.inlined_callbacks
         def run_agent(owner, workspace, host, port, secure, upload):
             if G.AGENT:
                 msg.debug('Stopping agent.')
@@ -431,6 +432,10 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                 G.AGENT = None
             try:
                 auth = G.AUTH.get(host)
+                if not auth:
+                    auth = yield editor.select_auth, self.window, G.AUTH, host
+                if auth is None:
+                    return
                 conn = SublimeConnection(owner, workspace, auth, upload)
                 reactor.connect(conn, host, port, secure)
             except Exception as e:
