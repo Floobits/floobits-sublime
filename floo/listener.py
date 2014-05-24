@@ -199,7 +199,7 @@ class Listener(sublime_plugin.EventListener):
     @if_connected
     def on_selection_modified(self, view, agent, buf=None):
         if view.is_scratch():
-            if view.name() == "Choose Your Adventure!":
+            if view.name() == "Floobits":
                 workspace = view.get_regions("workspace")
                 if not workspace:
                     return

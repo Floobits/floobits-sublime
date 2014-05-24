@@ -27,16 +27,13 @@ except ImportError:
 
 MERGE_TXT = u"""Your copy of {workspace} is out of sync.
 
+
 {remote_title} into the workspace?
 {remote}
 
-OR
 
 {local_title} and overwrite the local copies?
 {local}
-
-
-{quit}
 """
 
 
@@ -133,48 +130,26 @@ class SublimeConnection(floo_handler.FlooHandler):
         msg.log('To remove: %s' % ', '.join(to_remove))
 
         if not to_fetch:
-            overwrite_local = 'Fetch nothing'
+            overwrite_local = '\n\tFetch nothing'
         elif to_fetch_len:
-            overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
-        # else:
-        #     overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+            overwrite_local = '\n\tFetch:\n\t\t%s.' % '\n\t\t'.join(to_fetch)
 
         if to_upload_len:
-            to_upload_str = 'upload %s' % ', '.join(to_upload)
-        # else:
-        #     to_upload_str = 'upload %s' % to_upload_len
+            overwrite_remote += '\n\tUpload:\n\t\t%s' % '\n\t\t'.join(to_upload)
 
         if to_remove_len:
-            to_remove_str = 'remove %s' % ', '.join(to_remove)
-        # else:
-        #     to_remove_str = 'remove %s' % to_remove_len
+            overwrite_remote += '\n\tRemove:\n\t\t%s' % '\n\t\t'.join(to_remove)
 
-        if to_upload:
-            overwrite_remote += to_upload_str
-            if to_remove:
-                overwrite_remote += ' and '
-        if to_remove:
-            overwrite_remote += to_remove_str
-
-        if remote_len and overwrite_remote:
-            overwrite_remote += ' files'
-
-        overwrite_remote = overwrite_remote.capitalize()
-
-        # TODO: change action based on numbers of stuff
-
-        # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
-        # G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
         w = sublime.active_window() or G.WORKSPACE_WINDOW
         v = w.new_file()
-        v.set_name("Choose Your Adventure!")
+        v.set_name("Floobits")
         remote_title = 'Push %s file%s' % (remote_len, pluralize(remote_len))
         local_title = 'Pull %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
         kwargs = {
             "owner": self.owner, "workspace": self.workspace_url,
             "remote_title": remote_title,
             "local_title": local_title,
-            "remote": overwrite_remote, "local": overwrite_local, "quit": "quit"
+            "remote": overwrite_remote, "local": overwrite_local
         }
 
         txt = MERGE_TXT.format(**kwargs)
