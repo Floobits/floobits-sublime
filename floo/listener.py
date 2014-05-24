@@ -199,29 +199,40 @@ class Listener(sublime_plugin.EventListener):
     @if_connected
     def on_selection_modified(self, view, agent, buf=None):
         if view.is_scratch():
-            if view.name() == "Floobits":
-                workspace = view.get_regions("workspace")
-                if not workspace:
+            name = view.name()
+            if name and name.find("Floobits - ") == 0:
+                workspaces = view.get_regions("workspace")
+                if not workspaces:
                     return
 
-                current = view.sel()[0].a
-                remote_region = view.get_regions("remote")[0]
-                local_region = view.get_regions("local")[0]
-                print(current, remote_region, local_region)
+                current = view.sel()[0]
+                if current.a != current.b:
+                    return
+                pos = current.a
 
-                if remote_region.contains(current):
-                    workspace = workspace[0]
-                    view.erase_regions("remote")
-                    view.erase_regions("local")
-                    view.erase_regions("workspace")
-                    print("remote", workspace)
-                elif local_region.contains(current):
-                    workspace = workspace[0]
-                    view.erase_regions("remote")
-                    view.erase_regions("local")
-                    view.erase_regions("workspace")
-                    print("local", workspace)
-                # v.erase_regions(region_key)
+                remote_regions = view.get_regions("remote")
+                if not remote_regions:
+                    return
+                remote_region = remote_regions[0]
+
+                local_regions = view.get_regions("local")
+                if not local_regions:
+                    return
+                local_region = local_regions[0]
+
+                if remote_region.contains(pos):
+                    choice = 0
+                elif local_region.contains(pos):
+                    choice = 1
+                else:
+                    return
+
+                workspace = workspaces[0]
+                view.erase_regions("remote")
+                view.erase_regions("local")
+                view.erase_regions("workspace")
+                print(choice, workspace)
+                agent.cb(choice)
                 return
         buf = is_view_loaded(view)
         if buf:

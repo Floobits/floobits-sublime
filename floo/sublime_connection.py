@@ -28,11 +28,11 @@ except ImportError:
 MERGE_TXT = u"""Your copy of {workspace} is out of sync.
 
 
-{remote_title} into the workspace?
+Push - {remote_title}
 {remote}
 
 
-{local_title} and overwrite the local copies?
+Pull - {local_title}
 {local}
 """
 
@@ -142,10 +142,15 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         w = sublime.active_window() or G.WORKSPACE_WINDOW
         v = w.new_file()
-        v.set_name("Floobits")
-        v.set_syntax_file("Packages/Floobits/floobits.hidden-tmLanguage")
-        remote_title = 'Push %s file%s' % (remote_len, pluralize(remote_len))
-        local_title = 'Pull %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+        v.set_name("Floobits - %s/%s" % (self.owner, self.workspace))
+
+        try:
+            v.set_syntax_file("Packages/Floobits/floobits.hidden-tmLanguage")
+        except:
+            pass
+
+        remote_title = 'Overwrite %s remote file%s?' % (remote_len, pluralize(remote_len))
+        local_title = 'Overwrite %s local file%s?' % (to_fetch_len, pluralize(to_fetch_len))
         kwargs = {
             "owner": self.owner, "workspace": self.workspace_url,
             "remote_title": remote_title,
@@ -159,18 +164,16 @@ class SublimeConnection(floo_handler.FlooHandler):
         r = v.find_all(self.workspace_url)
         v.add_regions("workspace", r, "asdf.asdf", sublime.HIDDEN)
 
-        r = v.find_all(remote_title)
+        r = v.find_all(remote_title, sublime.LITERAL)
+        print(r)
         v.add_regions("remote", r, "asdf.asdf", sublime.DRAW_OUTLINED)
 
-        r = v.find_all(local_title)
+        r = v.find_all(local_title, sublime.LITERAL)
         v.add_regions("local", r, "asdf.eef", sublime.DRAW_OUTLINED)
-
-        r = v.find_all("quit")
-        v.add_regions("quit", r, "asdf", sublime.DRAW_OUTLINED)
 
         v.set_scratch(True)
         v.set_read_only(True)
-        # w.show_quick_panel(opts, cb)
+        self.cb = cb
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = sublime.ok_cancel_dialog(msg)
