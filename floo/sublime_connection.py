@@ -143,6 +143,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         w = sublime.active_window() or G.WORKSPACE_WINDOW
         v = w.new_file()
         v.set_name("Floobits")
+        v.set_syntax_file("Packages/Floobits/floobits.hidden-tmLanguage")
         remote_title = 'Push %s file%s' % (remote_len, pluralize(remote_len))
         local_title = 'Pull %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
         kwargs = {

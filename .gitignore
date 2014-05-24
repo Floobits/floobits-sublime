@@ -2,4 +2,5 @@
 .DS_store
 .sublime-project
 Floobits.sublime-settings
+floobits.hidden-tmLanguage.cache
 persistent.json
