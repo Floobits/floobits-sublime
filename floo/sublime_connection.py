@@ -25,6 +25,20 @@ except ImportError:
     from view import View
     from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
 
+MERGE_TXT = u"""Your copy of {workspace} is out of sync.
+
+{remote_title} into the workspace?
+{remote}
+
+OR
+
+{local_title} and overwrite the local copies?
+{local}
+
+
+{quit}
+"""
+
 
 class SublimeConnection(floo_handler.FlooHandler):
 
@@ -94,9 +108,9 @@ class SublimeConnection(floo_handler.FlooHandler):
         editor.status_message(status)
 
     def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
-        if not G.EXPERT_MODE:
-            editor.message_dialog('Your copy of %s/%s is out of sync. '
-                                  'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
+        # if not G.EXPERT_MODE:
+        #     editor.message_dialog('Your copy of %s/%s is out of sync. '
+        #                           'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
 
         def pluralize(arg):
             return arg != 1 and 's' or ''
@@ -120,20 +134,20 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         if not to_fetch:
             overwrite_local = 'Fetch nothing'
-        elif to_fetch_len < 5:
+        elif to_fetch_len:
             overwrite_local = 'Fetch %s' % ', '.join(to_fetch)
-        else:
-            overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+        # else:
+        #     overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
 
-        if to_upload_len < 5:
+        if to_upload_len:
             to_upload_str = 'upload %s' % ', '.join(to_upload)
-        else:
-            to_upload_str = 'upload %s' % to_upload_len
+        # else:
+        #     to_upload_str = 'upload %s' % to_upload_len
 
-        if to_remove_len < 5:
+        if to_remove_len:
             to_remove_str = 'remove %s' % ', '.join(to_remove)
-        else:
-            to_remove_str = 'remove %s' % to_remove_len
+        # else:
+        #     to_remove_str = 'remove %s' % to_remove_len
 
         if to_upload:
             overwrite_remote += to_upload_str
@@ -142,22 +156,45 @@ class SublimeConnection(floo_handler.FlooHandler):
         if to_remove:
             overwrite_remote += to_remove_str
 
-        if remote_len >= 5 and overwrite_remote:
+        if remote_len and overwrite_remote:
             overwrite_remote += ' files'
 
         overwrite_remote = overwrite_remote.capitalize()
 
-        action = 'Overwrite'
         # TODO: change action based on numbers of stuff
-        opts = [
-            ['%s %s remote file%s.' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
-            ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
-            ['Cancel', 'Disconnect and resolve conflict manually.'],
-        ]
+
         # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
         # G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
         w = sublime.active_window() or G.WORKSPACE_WINDOW
-        w.show_quick_panel(opts, cb)
+        v = w.new_file()
+        v.set_name("Choose Your Adventure!")
+        remote_title = 'Push %s file%s' % (remote_len, pluralize(remote_len))
+        local_title = 'Pull %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
+        kwargs = {
+            "owner": self.owner, "workspace": self.workspace_url,
+            "remote_title": remote_title,
+            "local_title": local_title,
+            "remote": overwrite_remote, "local": overwrite_local, "quit": "quit"
+        }
+
+        txt = MERGE_TXT.format(**kwargs)
+        v.run_command('floo_view_replace_region', {'r': [0, 0], 'data': txt})
+
+        r = v.find_all(self.workspace_url)
+        v.add_regions("workspace", r, "asdf.asdf", sublime.HIDDEN)
+
+        r = v.find_all(remote_title)
+        v.add_regions("remote", r, "asdf.asdf", sublime.DRAW_OUTLINED)
+
+        r = v.find_all(local_title)
+        v.add_regions("local", r, "asdf.eef", sublime.DRAW_OUTLINED)
+
+        r = v.find_all("quit")
+        v.add_regions("quit", r, "asdf", sublime.DRAW_OUTLINED)
+
+        v.set_scratch(True)
+        v.set_read_only(True)
+        # w.show_quick_panel(opts, cb)
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = sublime.ok_cancel_dialog(msg)

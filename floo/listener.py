@@ -198,6 +198,31 @@ class Listener(sublime_plugin.EventListener):
 
     @if_connected
     def on_selection_modified(self, view, agent, buf=None):
+        if view.is_scratch():
+            if view.name() == "Choose Your Adventure!":
+                workspace = view.get_regions("workspace")
+                if not workspace:
+                    return
+
+                current = view.sel()[0].a
+                remote_region = view.get_regions("remote")[0]
+                local_region = view.get_regions("local")[0]
+                print(current, remote_region, local_region)
+
+                if remote_region.contains(current):
+                    workspace = workspace[0]
+                    view.erase_regions("remote")
+                    view.erase_regions("local")
+                    view.erase_regions("workspace")
+                    print("remote", workspace)
+                elif local_region.contains(current):
+                    workspace = workspace[0]
+                    view.erase_regions("remote")
+                    view.erase_regions("local")
+                    view.erase_regions("workspace")
+                    print("local", workspace)
+                # v.erase_regions(region_key)
+                return
         buf = is_view_loaded(view)
         if buf:
             agent.selection_changed.append((view, buf, False))
