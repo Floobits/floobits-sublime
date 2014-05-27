@@ -3,7 +3,6 @@ import socket
 import select
 import collections
 import json
-import traceback
 import errno
 import os.path
 
@@ -15,12 +14,12 @@ except ImportError:
 
 try:
     from ... import editor
-    from .. import cert, msg, shared as G, utils
+    from .. import api, cert, msg, shared as G, utils
     from . import base, proxy
     assert cert and G and msg and proxy and utils
 except (ImportError, ValueError):
     from floo import editor
-    from floo.common import cert, msg, shared as G, utils
+    from floo.common import api, cert, msg, shared as G, utils
     import base
     import proxy
 
@@ -107,8 +106,7 @@ class FlooProtocol(base.BaseProtocol):
                 msg.debug('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
             except Exception as e:
-                print(traceback.format_exc())
-                msg.error('Error handling %s event (%s).' % (name, str(e)))
+                api.send_error('Error handling %s event.' % name, e)
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str(e))
                     self.stop()
@@ -198,7 +196,6 @@ class FlooProtocol(base.BaseProtocol):
             self._proc.cleanup()
         except Exception:
             pass
-        G.JOINED_WORKSPACE = False
         self._slice = bytes()
         self._buf_in = bytes()
         self._buf_out = bytes()
@@ -206,6 +203,7 @@ class FlooProtocol(base.BaseProtocol):
         self._needs_handshake = self._secure
         self.connected = False
         self._proc = None
+        self.emit('cleanup')
 
     def _do_ssl_handshake(self):
         try:

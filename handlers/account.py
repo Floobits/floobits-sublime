@@ -42,8 +42,8 @@ class CreateAccountHandler(base.BaseHandler):
                     floorc_fd.write(floorc)
                 utils.reload_settings()
                 if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
-                    editor.message_dialog('Something went wrong. You will need to sign up for an account to use Floobits.')
-                    api.send_error({'message': 'No username or secret'})
+                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
+                    api.send_error('No username or secret')
                 else:
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'w') as fd:

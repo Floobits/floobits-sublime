@@ -22,6 +22,7 @@ class BaseHandler(event_emitter.EventEmitter):
 
     def __init__(self):
         super(BaseHandler, self).__init__()
+        self.joined_workspace = False
         G.AGENT = self
         self.reload_settings()
 
@@ -58,10 +59,14 @@ class BaseHandler(event_emitter.EventEmitter):
         message = 'Disconnected from server! Reason: %s' % str(data.get('reason'))
         msg.error(message)
         editor.error_message(message)
-        self.proto.stop()
+        self.stop()
+
+    def stop(self):
+        from .. import reactor
+        reactor.reactor.stop_handler(self)
 
     def is_ready(self):
-        return G.JOINED_WORKSPACE
+        return self.joined_workspace
 
     def reload_settings(self):
         utils.reload_settings()

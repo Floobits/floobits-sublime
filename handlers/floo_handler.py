@@ -2,6 +2,7 @@ import os
 import sys
 import hashlib
 import base64
+import collections
 from operator import attrgetter
 
 try:
@@ -41,8 +42,6 @@ class FlooHandler(base.BaseHandler):
         self.workspace = workspace
         self.should_get_bufs = get_bufs
         self.reset()
-        self.bufs = {}
-        self.paths_to_ids = {}
 
     def _on_highlight(self, data):
         raise NotImplementedError("_on_highlight not implemented")
@@ -52,6 +51,14 @@ class FlooHandler(base.BaseHandler):
 
     def get_view(self, buf_id):
         raise NotImplementedError("get_view not implemented")
+
+    def build_protocol(self, *args):
+        self.proto = super(FlooHandler, self).build_protocol(*args)
+
+        def f():
+            self.joined_workspace = False
+        self.proto.on("cleanup", f)
+        return self.proto
 
     def get_username_by_id(self, user_id):
         try:
@@ -81,6 +88,10 @@ class FlooHandler(base.BaseHandler):
         if view:
             view.set_read_only(True)
             view.set_status('Floobits locked this file until it is synced.')
+            try:
+                del G.VIEW_TO_HASH[view.native_id]
+            except Exception:
+                pass
 
     def save_view(self, view):
         view.save()
@@ -112,6 +123,7 @@ class FlooHandler(base.BaseHandler):
         self.bufs = {}
         self.paths_to_ids = {}
         self.save_on_get_bufs = set()
+        self.on_load = collections.defaultdict(dict)
 
     def _on_patch(self, data):
         buf_id = data['id']
@@ -192,8 +204,13 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
-            msg.debug('No view. Saving buffer %s' % buf_id)
-            utils.save_buf(buf)
+            msg.debug('No view. Not saving buffer %s' % buf_id)
+
+            def _on_load():
+                v = self.get_view(buf_id)
+                if v:
+                    v.update(buf, message=False)
+            self.on_load[buf_id]['patch'] = _on_load
             return
 
         view.apply_patches(buf, t, data['username'])
@@ -273,7 +290,7 @@ class FlooHandler(base.BaseHandler):
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.reset()
-        G.JOINED_WORKSPACE = True
+        self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
 
@@ -312,12 +329,14 @@ class FlooHandler(base.BaseHandler):
             if view and not view.is_loading() and buf['encoding'] == 'utf8':
                 view_text = view.get_text()
                 view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                buf['buf'] = view_text
+                buf['view'] = view
+                G.VIEW_TO_HASH[view.native_id] = view_md5
                 if view_md5 == buf['md5']:
                     msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
-                    buf['buf'] = view_text
-                    G.VIEW_TO_HASH[view.native_id] = view_md5
-                elif self.should_get_bufs:
+                else:
                     changed_bufs.append(buf_id)
+                    buf['md5'] = view_md5
             else:
                 try:
                     if buf['encoding'] == "utf8":
@@ -332,36 +351,46 @@ class FlooHandler(base.BaseHandler):
                         buf_fd = open(buf_path, 'rb')
                         buf_buf = buf_fd.read()
                         md5 = hashlib.md5(buf_buf).hexdigest()
+                    buf_fd.close()
+                    buf['buf'] = buf_buf
                     if md5 == buf['md5']:
                         msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
-                        buf['buf'] = buf_buf
-                    elif self.should_get_bufs:
-                        msg.debug('md5 should not getting buffer %s' % buf['path'])
+                    else:
+                        msg.debug('md5 differs. possibly getting buffer later %s' % buf['path'])
                         changed_bufs.append(buf_id)
+                        buf['md5'] = md5
                 except Exception as e:
                     msg.debug('Error calculating md5 for %s, %s' % (buf['path'], e))
                     missing_bufs.append(buf_id)
 
-        if changed_bufs and self.should_get_bufs:
-            if len(changed_bufs) > 4:
-                prompt = '%s local files are different from the workspace. Overwrite your local files?' % len(changed_bufs)
-            else:
-                prompt = 'Overwrite the following local files?\n'
-                for buf_id in changed_bufs:
-                    prompt += '\n%s' % self.bufs[buf_id]['path']
+        stomp_local = self.should_get_bufs
+        if stomp_local and (changed_bufs or missing_bufs):
+            changed = [self.bufs[buf_id] for buf_id in changed_bufs]
+            missing = [self.bufs[buf_id] for buf_id in missing_bufs]
+            choice = yield self.stomp_prompt, changed, missing
+            if choice not in [0, 1]:
+                self.stop()
+                return
+            stomp_local = bool(choice)
 
-            stomp_local = yield self.ok_cancel_dialog, prompt
-            for buf_id in changed_bufs:
-                if stomp_local:
-                    self.get_buf(buf_id)
-                    self.save_on_get_bufs.add(buf_id)
-                else:
-                    buf = self.bufs[buf_id]
-                    # TODO: this is inefficient. we just read the file 20 lines ago
-                    self.upload(utils.get_full_path(buf['path']))
+        for buf_id in changed_bufs:
+            buf = self.bufs[buf_id]
+            if stomp_local:
+                self.get_buf(buf_id, buf.get('view'))
+                self.save_on_get_bufs.add(buf_id)
+            else:
+                self._upload(utils.get_full_path(buf['path']), buf['buf'])
 
         for buf_id in missing_bufs:
-            self.get_buf(buf_id)
+            buf = self.bufs[buf_id]
+            if stomp_local:
+                self.get_buf(buf_id, buf.get('view'))
+                self.save_on_get_bufs.add(buf_id)
+            else:
+                self.send({
+                    'name': 'delete_buf',
+                    'id': buf['id'],
+                })
 
         success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
         msg.log(success_msg)
@@ -411,6 +440,9 @@ class FlooHandler(base.BaseHandler):
         buf = self.bufs.get(buf_id)
         if not buf:
             return
+        on_view_load = self.on_load.get(buf_id)
+        if on_view_load:
+            del on_view_load['patch']
         view = self.get_view(data['id'])
         if view:
             self.save_view(view)
@@ -443,7 +475,7 @@ class FlooHandler(base.BaseHandler):
             'name': 'perms',
             'action': confirm and 'add' or 'reject',
             'user_id': user_id,
-            'perms': perms
+            'perms': perms,
         })
 
     def _on_perms(self, data):
@@ -519,21 +551,28 @@ class FlooHandler(base.BaseHandler):
     def _upload(self, path, text=None):
         size = 0
         try:
-            if text:
-                # TODO: possible encoding issues with python 3
-                buf = text
-            else:
+            if text is None:
                 with open(path, 'rb') as buf_fd:
                     buf = buf_fd.read()
+            else:
+                try:
+                    # work around python 3 encoding issue
+                    buf = text.encode('utf8')
+                except Exception as e:
+                    msg.debug('Error encoding buf %s: %s' % (path, str(e)))
+                    # We're probably in python 2 so it's ok to do this
+                    buf = text
             size = len(buf)
             encoding = 'utf8'
             rel_path = utils.to_rel_path(path)
             existing_buf = self.get_buf_by_path(path)
             if existing_buf:
-                buf_md5 = hashlib.md5(buf).hexdigest()
-                if existing_buf['md5'] == buf_md5:
-                    msg.log('%s already exists and has the same md5. Skipping.' % path)
-                    return size
+                if text is None:
+                    buf_md5 = hashlib.md5(buf).hexdigest()
+                    if existing_buf['md5'] == buf_md5:
+                        msg.log('%s already exists and has the same md5. Skipping.' % path)
+                        return size
+                    existing_buf['md5'] = buf_md5
                 msg.log('Setting buffer ', rel_path)
 
                 try:
@@ -544,13 +583,12 @@ class FlooHandler(base.BaseHandler):
 
                 existing_buf['buf'] = buf
                 existing_buf['encoding'] = encoding
-                existing_buf['md5'] = buf_md5
 
                 self.send({
                     'name': 'set_buf',
                     'id': existing_buf['id'],
                     'buf': buf,
-                    'md5': buf_md5,
+                    'md5': existing_buf['md5'],
                     'encoding': encoding,
                 })
                 return size

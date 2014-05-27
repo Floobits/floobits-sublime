@@ -18,7 +18,7 @@ except (ImportError, ValueError):
     from protocols import floo_proto
 
 
-#KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
+# KANS: this should use base, but I want the connection logic from FlooProto (ie, move that shit to base)
 class ProxiedProtocol(floo_proto.FlooProtocol):
     ''' Speaks floo proto, but is given the conn and we don't want to reconnect '''
     def _handle(self, data):
@@ -67,7 +67,7 @@ class ProxyServer(base.BaseHandler):
 
 
 def main():
-    G.__VERSION__ = '0.03'
+    G.__VERSION__ = '0.11'
     G.__PLUGIN_VERSION__ = '1.0'
     utils.reload_settings()
 

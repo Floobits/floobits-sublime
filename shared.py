@@ -11,6 +11,8 @@ API_KEY = ''
 DEBUG = False
 SOCK_DEBUG = False
 
+EXPERT_MODE = False
+
 ALERT_ON_MSG = True
 LOG_TO_CONSOLE = False
 
@@ -21,6 +23,10 @@ BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 DEFAULT_HOST = 'floobits.com'
 DEFAULT_PORT = 3448
 SECURE = True
+ERROR_COUNT = 0
+ERRORS_SENT = 0
+# Don't spam us with error reports
+MAX_ERROR_REPORTS = 2
 
 PROXY_PORT = 0  # Random port
 SHARE_DIR = None
@@ -28,7 +34,6 @@ COLAB_DIR = ''
 PROJECT_PATH = ''
 WORKSPACE_WINDOW = None
 
-JOINED_WORKSPACE = False
 PERMS = []
 STALKER_MODE = False
 SPLIT_MODE = False

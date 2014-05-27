@@ -7,6 +7,8 @@ import sys
 import base64
 import json
 import subprocess
+import traceback
+from functools import wraps
 
 try:
     import ssl
@@ -78,6 +80,16 @@ def proxy_api_request(url, data, method):
     return r
 
 
+def user_agent():
+    return 'Floobits Plugin %s %s %s py-%s.%s' % (
+        editor.name(),
+        G.__PLUGIN_VERSION__,
+        editor.platform(),
+        sys.version_info[0],
+        sys.version_info[1]
+    )
+
+
 def hit_url(url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
@@ -87,13 +99,7 @@ def hit_url(url, data, method):
     r.add_header('Authorization', 'Basic %s' % get_basic_auth())
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
-    r.add_header('User-Agent', 'Floobits Plugin %s %s %s py-%s.%s' % (
-        editor.name(),
-        G.__PLUGIN_VERSION__,
-        editor.platform(),
-        sys.version_info[0],
-        sys.version_info[1]
-    ))
+    r.add_header('User-Agent', user_agent())
     return urlopen(r, timeout=5)
 
 
@@ -147,12 +153,47 @@ def get_orgs_can_admin():
     return api_request(api_url)
 
 
-def send_error(data):
+def send_error(description=None, exception=None):
+    G.ERROR_COUNT += 1
+    if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
+        msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
+        return
+    data = {
+        'jsondump': {
+            'error_count': G.ERROR_COUNT
+        },
+        'username': G.USERNAME,
+        'dir': G.COLAB_DIR,
+    }
+    if G.AGENT:
+        data['owner'] = G.AGENT.owner
+        data['workspace'] = G.AGENT.workspace
+    if description:
+        data['description'] = description
+    if exception:
+        data['message'] = {
+            'msg': str(exception),
+            'stack': traceback.format_exc(exception)
+        }
+        msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
     try:
-        api_url = 'https://%s/api/error' % (G.DEFAULT_HOST)
-        return api_request(api_url, data)
+        api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
+        r = api_request(api_url, data)
+        G.ERRORS_SENT += 1
+        return r
     except Exception as e:
         print(e)
+
+
+def send_errors(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            send_error(None, e)
+            raise
+    return wrapped
 
 
 def prejoin_workspace(workspace_url, dir_to_share, api_args):
