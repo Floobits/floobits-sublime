@@ -653,18 +653,18 @@ class FloobitsHelpCommand(FloobitsBaseCommand):
         return True
 
 
-class FloobitsToggleStalkerModeCommand(FloobitsBaseCommand):
+class FloobitsToggleFollowModeCommand(FloobitsBaseCommand):
     def run(self):
-        if G.STALKER_MODE:
-            self.window.run_command('floobits_disable_stalker_mode')
+        if G.FOLLOW_MODE:
+            self.window.run_command('floobits_disable_follow_mode')
         else:
-            self.window.run_command('floobits_enable_stalker_mode')
+            self.window.run_command('floobits_enable_follow_mode')
 
 
-class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
+class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
     def run(self):
-        G.STALKER_MODE = True
-        msg.log('Stalker mode enabled')
+        G.FOLLOW_MODE = True
+        msg.log('Follow mode enabled')
         G.AGENT.update_status_msg()
         G.AGENT.highlight()
 
@@ -674,21 +674,21 @@ class FloobitsEnableStalkerModeCommand(FloobitsBaseCommand):
         return True
 
     def is_enabled(self):
-        return bool(super(FloobitsEnableStalkerModeCommand, self).is_enabled() and not G.STALKER_MODE)
+        return bool(super(FloobitsEnableFollowModeCommand, self).is_enabled() and not G.FOLLOW_MODE)
 
 
-class FloobitsDisableStalkerModeCommand(FloobitsBaseCommand):
+class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
     def run(self):
-        G.STALKER_MODE = False
+        G.FOLLOW_MODE = False
         G.SPLIT_MODE = False
-        msg.log('Stalker mode disabled')
+        msg.log('Follow mode disabled')
         G.AGENT.update_status_msg('Stopped following changes. ')
 
     def is_visible(self):
         return self.is_enabled()
 
     def is_enabled(self):
-        return bool(super(FloobitsDisableStalkerModeCommand, self).is_enabled() and G.STALKER_MODE)
+        return bool(super(FloobitsDisableFollowModeCommand, self).is_enabled() and G.FOLLOW_MODE)
 
 
 class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
@@ -718,7 +718,7 @@ class RequestPermissionCommand(FloobitsBaseCommand):
 class FloobitsFollowSplit(FloobitsBaseCommand):
     def run(self):
         G.SPLIT_MODE = True
-        G.STALKER_MODE = True
+        G.FOLLOW_MODE = True
         if self.window.num_groups() == 1:
             self.window.set_layout({
                 'cols': [0.0, 1.0],

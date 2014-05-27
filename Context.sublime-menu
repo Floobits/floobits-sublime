@@ -3,12 +3,12 @@
     "caption": "Floobits",
     "children": [
       {
-        "caption": "Stalk Workspace (Follow changes)",
-        "command": "floobits_enable_stalker_mode"
+        "caption": "Follow Workspace Changes",
+        "command": "floobits_enable_follow_mode"
       },
       {
-        "caption": "Stop Stalking Workspace",
-        "command": "floobits_disable_stalker_mode"
+        "caption": "Stop Following Workspace",
+        "command": "floobits_disable_follow_mode"
       },
       {
         "caption": "Summon",
