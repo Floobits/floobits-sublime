@@ -42,7 +42,10 @@ class _Reactor(object):
             msg.warn('Error stopping connection: %s' % str_e(e))
         self._handlers.remove(handler)
         self._protos.remove(handler.proto)
+        if hasattr(handler, 'listener_factory'):
+            return handler.listener_factory.stop()
         if not self._handlers and not self._protos:
+            msg.log('All handlers stopped. Stopping reactor.')
             self.stop()
 
     def stop(self):
