@@ -76,7 +76,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 'ranges': view.get_selections(),
                 'ping': summon,
                 'summon': summon,
-                'following': G.STALKER_MODE,
+                'following': G.FOLLOW_MODE,
             }
             self.send(highlight_json)
 
@@ -86,7 +86,7 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def update_status_msg(self, status=''):
         self._status_timeout = 0
-        if G.STALKER_MODE:
+        if G.FOLLOW_MODE:
             status += 'Following changes in'
         else:
             status += 'Connected to'
@@ -192,7 +192,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         super(self.__class__, self).reset()
         self.on_clone = {}
         self.create_buf_cbs = {}
-        self.temp_disable_stalk = False
+        self.temp_disable_follow = False
         self.temp_ignore_highlight = {}
         self.temp_ignore_highlight = {}
         self.views_changed = []
@@ -279,8 +279,8 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.debug('ignoring command until temp_ignore_highlight is complete')
             return
 
-        if G.STALKER_MODE:
-            if self.temp_disable_stalk or data.get('following'):
+        if G.FOLLOW_MODE:
+            if self.temp_disable_follow or data.get('following'):
                 do_stuff = False
             else:
                 do_stuff = True
@@ -315,7 +315,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             # Explicit summon by another user. Center the line.
             if summon:
                 view.show_at_center(regions[0])
-            # Avoid scrolling/jumping lots in stalker mode
+            # Avoid scrolling/jumping lots in follow mode
             else:
                 view.show(regions[0])
             return

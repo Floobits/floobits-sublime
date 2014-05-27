@@ -46,16 +46,16 @@
     }
   },
   {
-    "caption": "Floobits - Stalk Workspace (Follow Changes)",
-    "command": "floobits_enable_stalker_mode"
+    "caption": "Floobits - Follow Workspace Changes",
+    "command": "floobits_enable_follow_mode"
   },
   {
-    "caption": "Floobits - Stalk Workspace in Split (Follow Changes)",
+    "caption": "Floobits - Follow Workspace Changes in Split",
     "command": "floobits_follow_split"
   },
   {
-    "caption": "Floobits - Stop Stalking Workspace",
-    "command": "floobits_disable_stalker_mode"
+    "caption": "Floobits - Stop Following Workspace",
+    "command": "floobits_disable_follow_mode"
   },
   {
     "caption": "Floobits - Summon Everyone",
