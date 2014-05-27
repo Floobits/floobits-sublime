@@ -9,6 +9,6 @@
 	},
 	{
 		"keys": ["shift+ctrl+alt+a"],
-		"command": "floobits_toggle_stalker_mode"
+		"command": "floobits_toggle_follow_mode"
 	}
 ]

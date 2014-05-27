@@ -44,7 +44,7 @@ class Listener(sublime_plugin.EventListener):
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
         self.between_save_events = collections.defaultdict(lambda: [0, ""])
-        self.disable_stalker_mode_timeout = None
+        self.disable_follow_mode_timeout = None
 
     def name(self, view):
         return view.file_name()
@@ -53,16 +53,16 @@ class Listener(sublime_plugin.EventListener):
         msg.debug('new', self.name(view))
 
     @if_connected
-    def reenable_stalker_mode(self, agent):
-        agent.temp_disable_stalk = False
-        self.disable_stalker_mode_timeout = None
+    def reenable_follow_mode(self, agent):
+        agent.temp_disable_follow = False
+        self.disable_follow_mode_timeout = None
 
     @if_connected
-    def disable_stalker_mode(self, timeout, agent):
-        if G.STALKER_MODE is True:
-            agent.temp_disable_stalk = True
-        utils.cancel_timeout(self.disable_stalker_mode_timeout)
-        self.disable_stalker_mode_timeout = utils.set_timeout(self.reenable_stalker_mode, timeout)
+    def disable_follow_mode(self, timeout, agent):
+        if G.FOLLOW_MODE is True:
+            agent.temp_disable_follow = True
+        utils.cancel_timeout(self.disable_follow_mode_timeout)
+        self.disable_follow_mode_timeout = utils.set_timeout(self.reenable_follow_mode, timeout)
 
     @if_connected
     def on_clone(self, view, agent):
@@ -192,7 +192,7 @@ class Listener(sublime_plugin.EventListener):
 
         msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
 
-        self.disable_stalker_mode(2000)
+        self.disable_follow_mode(2000)
         buf['forced_patch'] = False
         agent.views_changed.append((view, buf))
 
@@ -218,7 +218,7 @@ class Listener(sublime_plugin.EventListener):
     #     self.pending_commands += 1
     #     if not G.AGENT:
     #         return
-    #     G.AGENT.temp_disable_stalk = True
+    #     G.AGENT.temp_disable_follow = True
 
     # def on_post_window_command(self, window, command_name, args):
     #     if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
@@ -226,4 +226,4 @@ class Listener(sublime_plugin.EventListener):
     #     self.pending_commands -= 1
     #     if not G.AGENT or self.pending_commands > 0:
     #         return
-    #     G.AGENT.temp_disable_stalk = False
+    #     G.AGENT.temp_disable_follow = False
