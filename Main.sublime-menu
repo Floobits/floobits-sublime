@@ -6,7 +6,20 @@
     "id": "floobitsmenu",
     "caption": "Floobits",
     "children": [
-          {
+      {
+        "id": "floobits_setup",
+        "caption": "Setup",
+        "command": "floobits_setup"
+      },
+      {
+        "caption": "Help",
+        "command": "floobits_help"
+      },
+      {
+        "caption": "-",
+        "command": "floobits_not_a"
+      },
+      {
         "id": "floobits_workspace_menu",
         "caption": "Join Workspace",
         "command": "floobits_prompt_join_workspace"
@@ -38,7 +51,7 @@
         "command": "floobits_leave_workspace"
       },
       {
-        "caption": " ",
+        "caption": "-",
         "command": "floobits_not_a"
       },
       {
@@ -53,22 +66,14 @@
         "command": "floobits_open_workspace_settings"
       },
       {
-        "id": "floobits_create_hangout",
-        "caption": "Open Workspace in a Google+ Hangout",
-        "command": "floobits_create_hangout"
-      },
-      {
         "id": "floobits_open_web_editor",
         "caption": "Open Workspace in Web Editor",
         "command": "floobits_open_web_editor"
       },
       {
-        "caption": " ",
-        "command": "floobits_not_a"
-      },
-      {
-        "caption": "Help",
-        "command": "floobits_help"
+        "id": "floobits_create_hangout",
+        "caption": "Open Workspace in a Google+ Hangout",
+        "command": "floobits_create_hangout"
       }
     ]
   }]

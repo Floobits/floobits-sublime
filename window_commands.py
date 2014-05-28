@@ -45,8 +45,8 @@ def disconnect_dialog():
 
 def link_account(host, cb):
     account = sublime.ok_cancel_dialog('No credentials found in ~/.floorc.json for %s.\n\n'
-                                       'Click "Link account" to open a web browser and add credentials.' % host,
-                                       'Link account')
+                                       'Click "Link Account" to open a web browser and add credentials.' % host,
+                                       'Link Account')
     if not account:
         return
     token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
@@ -64,28 +64,41 @@ We're really sorry. This should never happen.''' % host)
         print(str_e(e))
 
 
-def create_or_link_account():
-    agent = None
-    account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
-                                       'Click "Open browser" if you have one or click "cancel" and we\'ll make it for you.',
-                                       'Open browser')
-    if account:
-        token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-        agent = RequestCredentialsHandler(token)
-    elif utils.get_persistent_data().get('disable_account_creation'):
-        print('persistent.json has disable_account_creation. Skipping CreateAccountHandler')
-    else:
-        agent = CreateAccountHandler()
-
-    if not agent:
-        sublime.error_message('''A configuration error occured earlier. Please go to floobits.com and sign up to use this plugin.\n
-We're really sorry. This should never happen.''')
+def create_or_link_account(force=False):
+    disable_account_creation = utils.get_persistent_data().get('disable_account_creation')
+    if disable_account_creation and not force:
+        print('We could not automatically create or link your floobits account. Please go to floobits.com and sign up to use this plugin.')
         return
 
-    try:
-        reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
-    except Exception as e:
-        print(str_e(e))
+    opts = [
+        ['I have a Floobits account', 'Open web page to link account.'],
+        ['Make a Floobits account for me', ''],
+        ['Cancel', ''],
+    ]
+
+    def cb(index):
+        if index == 0:
+            token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+            agent = RequestCredentialsHandler(token)
+        elif index == 1:
+            agent = CreateAccountHandler()
+        else:
+            d = utils.get_persistent_data()
+            d['disable_account_creation'] = True
+            utils.update_persistent_data(d)
+            sublime.message_dialog('''You can set up a Floobits account at any time under Tools -> Floobits -> Setup''')
+        try:
+            reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
+        except Exception as e:
+            print(str_e(e))
+
+    def get_workspace_window():
+        w = sublime.active_window()
+        if w is None:
+            return utils.set_timeout(get_workspace_window, 50)
+        sublime.message_dialog('Thank you for installing the Floobits plugin!\n\nLet\'s set up your editor to work with Floobits.')
+        w.show_quick_panel(opts, cb)
+    get_workspace_window()
 
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
@@ -741,6 +754,17 @@ class FloobitsFollowSplit(FloobitsBaseCommand):
                 'rows': [0.0, 0.5, 1.0],
                 'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
             })
+
+
+class FloobitsSetup(FloobitsBaseCommand):
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return not utils.can_auth()
+
+    def run(self):
+        create_or_link_account(True)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
