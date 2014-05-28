@@ -71,8 +71,8 @@ def create_or_link_account(force=False):
         return
 
     opts = [
-        ['I have a Floobits account', 'Open web page to link account.'],
-        ['Make a Floobits account for me', ''],
+        ['Use existing Floobits account.', '(opens web page)'],
+        ['Create a new Floobits account.', ''],
         ['Cancel', ''],
     ]
 
@@ -84,9 +84,11 @@ def create_or_link_account(force=False):
             agent = CreateAccountHandler()
         else:
             d = utils.get_persistent_data()
+            if d.get('disable_account_creation'):
+                return
             d['disable_account_creation'] = True
             utils.update_persistent_data(d)
-            sublime.message_dialog('''You can set up a Floobits account at any time under Tools -> Floobits -> Setup''')
+            sublime.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
         try:
             reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
         except Exception as e:
