@@ -26,14 +26,14 @@ try:
     from .window_commands import create_or_link_account
     from .floo import version
     from .floo.listener import Listener
-    from .floo.common import reactor, shared as G, utils
+    from .floo.common import migrations, reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
     from window_commands import create_or_link_account
     from floo import version
     from floo.listener import Listener
-    from floo.common import reactor, shared as G, utils
+    from floo.common import migrations, reactor, shared as G, utils
     from floo.common.exc_fmt import str_e
 assert Listener and version
 
@@ -57,12 +57,14 @@ def plugin_loaded():
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
+    if not os.path.exists(G.FLOORC_JSON_PATH):
+        migrations.migrate_floorc()
     utils.reload_settings()
 
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
     if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
-        print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
+        print('Renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
         os.rename(old_colab_dir, G.BASE_DIR)
         os.symlink(G.BASE_DIR, old_colab_dir)
 
@@ -75,9 +77,8 @@ def plugin_loaded():
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
 
-    can_auth = (G.USERNAME or G.API_KEY) and G.SECRET
     # Sublime plugin API stuff can't be called right off the bat
-    if not can_auth:
+    if not utils.can_auth():
         utils.set_timeout(create_or_link_account, 1)
 
     utils.set_timeout(global_tick, 1)
@@ -89,5 +90,5 @@ if PY2:
 
     def warning():
         if not called_plugin_loaded:
-            print('Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.')
+            print('Your computer is slow and could not start the Floobits reactor. Please contact us (support@floobits.com) or upgrade to Sublime Text 3.')
     threading.Timer(20, warning).start()

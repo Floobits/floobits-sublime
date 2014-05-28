@@ -20,6 +20,7 @@ except (ImportError, ValueError):
 
 class CreateAccountHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
+    # TODO: timeout after 60 seconds
 
     def on_connect(self):
         try:
@@ -43,19 +44,19 @@ class CreateAccountHandler(base.BaseHandler):
                 with open(G.FLOORC_PATH, 'w') as floorc_fd:
                     floorc_fd.write(floorc)
                 utils.reload_settings()
-                if False in [bool(x) for x in (G.USERNAME, G.API_KEY, G.SECRET)]:
-                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
-                    api.send_error('No username or secret')
-                else:
+                if utils.can_auth():
                     p = os.path.join(G.BASE_DIR, 'welcome.md')
                     with open(p, 'w') as fd:
-                        text = editor.welcome_text % (G.USERNAME, self.proto.host)
+                        text = editor.welcome_text % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
                         fd.write(text)
                     d = utils.get_persistent_data()
                     d['auto_generated_account'] = True
                     utils.update_persistent_data(d)
                     G.AUTO_GENERATED_ACCOUNT = True
                     editor.open_file(p)
+                else:
+                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
+                    api.send_error('No username or secret')
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str_e(e))

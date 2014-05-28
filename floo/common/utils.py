@@ -1,4 +1,5 @@
 import os
+import errno
 import json
 import re
 import hashlib
@@ -71,7 +72,7 @@ class FlooPatch(object):
 
 
 def reload_settings():
-    floorc_settings = load_floorc()
+    floorc_settings = load_floorc_json()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
     if G.SHARE_DIR:
@@ -79,36 +80,47 @@ def reload_settings():
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
     G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    if G.DEBUG == '1':
+    if G.DEBUG:
         msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
     else:
         msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
+    return floorc_settings
 
 
-def load_floorc():
-    """try to read settings out of the .floorc file"""
+def load_floorc_json():
     s = {}
     try:
-        fd = open(G.FLOORC_PATH, 'r')
+        with open(G.FLOORC_JSON_PATH, 'r') as fd:
+            floorc_json = fd.read()
     except IOError as e:
-        if e.errno == 2:
+        if e.errno == errno.ENOENT:
             return s
         raise
 
-    default_settings = fd.read().split('\n')
-    fd.close()
+    try:
+        default_settings = json.loads(floorc_json)
+    except ValueError:
+        return s
 
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
+    for k, v in default_settings.items():
+        s[k.upper()] = v
     return s
+
+
+def save_floorc_json(s):
+    floorc_json = {}
+    for k, v in s.items():
+        floorc_json[k.lower()] = v
+    msg.log('Writing %s' % floorc_json)
+    with open(G.FLOORC_JSON_PATH, 'w') as fd:
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
+
+
+def can_auth(host=None):
+    auth = G.AUTH.get(host or G.DEFAULT_HOST, {})
+    can_auth = (auth.get('username') or auth.get('api_key')) and auth.get('secret')
+    return can_auth
 
 
 cancelled_timeouts = set()
@@ -349,7 +361,7 @@ def mkdir(path):
     try:
         os.makedirs(path)
     except OSError as e:
-        if e.errno != 17:
+        if e.errno != errno.EEXIST:
             editor.error_message('Cannot create directory {0}.\n{1}'.format(path, str_e(e)))
             raise
 
@@ -399,7 +411,7 @@ def _unwind_generator(gen_expr, cb=None, res=None):
             if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
-                #TODO: catch not generator
+                # TODO: catch no generator
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:

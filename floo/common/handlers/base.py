@@ -24,7 +24,8 @@ class BaseHandler(event_emitter.EventEmitter):
         super(BaseHandler, self).__init__()
         self.joined_workspace = False
         G.AGENT = self
-        self.reload_settings()
+        # TODO: removeme?
+        utils.reload_settings()
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
@@ -68,12 +69,6 @@ class BaseHandler(event_emitter.EventEmitter):
 
     def is_ready(self):
         return self.joined_workspace
-
-    def reload_settings(self):
-        utils.reload_settings()
-        self.username = G.USERNAME
-        self.secret = G.SECRET
-        self.api_key = G.API_KEY
 
     def tick(self):
         pass

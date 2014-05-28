@@ -241,7 +241,6 @@ def main():
         dest='method',
         default=None
     )
-
     parser.add_option(
         '--host',
         dest='host',
@@ -266,7 +265,7 @@ def main():
         if options.data:
             data = json.loads(options.data)
         try:
-            r = api.hit_url(options.url, data, options.method)
+            r = api.hit_url(options.host, options.url, data, options.method)
         except HTTPError as e:
             r = e
         except URLError as e:
@@ -280,7 +279,10 @@ def main():
         print(r.read().decode('utf-8'))
         sys.exit(err)
 
-    remote_host = options.host or remote_host
+    if not options.host:
+        sys.exit(1)
+
+    remote_host = options.host
     remote_port = int(options.port) or remote_port
     remote_ssl = bool(options.ssl) or remote_ssl
 

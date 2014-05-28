@@ -4,9 +4,7 @@ __VERSION__ = ''
 __PLUGIN_VERSION__ = ''
 
 # Config settings
-USERNAME = ''
-SECRET = ''
-API_KEY = ''
+AUTH = {}
 
 DEBUG = False
 SOCK_DEBUG = False
@@ -52,3 +50,4 @@ IGNORE_MODIFIED_EVENTS = False
 VIEW_TO_HASH = {}
 
 FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))
+FLOORC_JSON_PATH = os.path.expanduser(os.path.join('~', '.floorc.json'))
