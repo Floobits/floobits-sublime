@@ -61,6 +61,7 @@ class Ignore(object):
     def __init__(self, path, parent=None):
         self.parent = parent
         self.size = 0
+        self.total_size = 0
         self.children = {}
         self.files = []
         self.ignores = {
@@ -107,7 +108,7 @@ class Ignore(object):
                 ig = Ignore(p_path, self)
                 self.children[p] = ig
                 ig.recurse(root)
-                # self.size += ig.size
+                self.total_size += ig.total_size
                 continue
 
             if stat.S_ISREG(s.st_mode):
@@ -116,6 +117,7 @@ class Ignore(object):
                     msg.log(self.is_ignored_message(p_path, p, '/TOO_BIG/', False))
                 else:
                     self.size += s.st_size
+                    self.total_size += s.st_size
                     self.files.append(p_path)
 
     def load(self, ignore_file):

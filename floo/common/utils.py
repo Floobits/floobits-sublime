@@ -399,6 +399,7 @@ def _unwind_generator(gen_expr, cb=None, res=None):
             if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
+                #TODO: catch not generator
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:

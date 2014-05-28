@@ -58,6 +58,9 @@ class FlooHandler(base.BaseHandler):
     def get_view(self, buf_id):
         raise NotImplementedError("get_view not implemented")
 
+    def get_view_text_by_path(self, rel_path):
+        raise NotImplementedError("get_view_text_by_path not implemented")
+
     def build_protocol(self, *args):
         self.proto = super(FlooHandler, self).build_protocol(*args)
 
@@ -255,7 +258,11 @@ class FlooHandler(base.BaseHandler):
             data['buf'] = base64.b64decode(data['buf'])
         self.bufs[data['id']] = data
         self.paths_to_ids[data['path']] = data['id']
-        utils.save_buf(data)
+        view = self.get_view(data['id'])
+        if view:
+            self.save_view(view)
+        else:
+            utils.save_buf(data)
 
     def _on_rename_buf(self, data):
         del self.paths_to_ids[data['old_path']]
@@ -294,6 +301,9 @@ class FlooHandler(base.BaseHandler):
         username = self.get_username_by_id(user_id)
         msg.log('%s %s %s' % (username, action, path))
 
+    def _upload_file_by_path(self, rel_path):
+        return self._upload(utils.get_full_path(rel_path), self.get_view_text_by_path(rel_path))
+
     @utils.inlined_callbacks
     def _initial_upload(self, ig, missing_bufs, changed_bufs, cb):
         files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
@@ -320,12 +330,13 @@ class FlooHandler(base.BaseHandler):
                 'id': buf_id,
             })
 
-        def __upload(relpath):
-            buf_id = self.paths_to_ids.get(relpath)
-            text = self.bufs.get(buf_id, {}).get("buf")
+        def __upload(rel_path):
+            buf_id = self.paths_to_ids.get(rel_path)
+            text = self.bufs.get(buf_id, {}).get('buf')
+            # Only upload stuff that's not in self.bufs (new bufs). We already took care of everything else.
             if text is not None:
                 return len(text)
-            return self._upload(utils.get_full_path(relpath), text)
+            return self._upload(utils.get_full_path(rel_path), self.get_view_text_by_path(rel_path))
 
         self._rate_limited_upload(iter(files), size, upload_func=__upload)
         cb()
@@ -596,12 +607,32 @@ class FlooHandler(base.BaseHandler):
             files = files.union(set([utils.to_rel_path(x) for x in ig.files]))
         cb([files, size])
 
-    @utils.inlined_callbacks
     def upload(self, path):
-        files, size = yield self.get_files_from_ignore, path
-        if not (files):
+        if not utils.is_shared(path):
+            editor.error_message('Cannot share %s because is not in shared path %s.\n\nPlease move it there and try again.' % (path, G.PROJECT_PATH))
             return
-        self._rate_limited_upload(iter(files), size)
+        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
+        G.IGNORE = ig
+        is_dir = os.path.isdir(path)
+        if ig.is_ignored(path, is_dir, True):
+            editor.error_message('Cannot share %s because it is ignored.\n\nAdd an exclude rule (!%s) to your .flooignore file.' % (path, path))
+            return
+        rel_path = utils.to_rel_path(path)
+        if not is_dir:
+            self._upload_file_by_path(rel_path)
+            return
+
+        while True:
+            split = rel_path.split('/', 1)
+            print(split)
+            if len(split) != 2:
+                break
+            name, new_path = split
+            ig = ig.children.get(name)
+            print(ig, name)
+            if not ig:
+                break
+        self._rate_limited_upload(ig.list_paths(), ig.total_size, upload_func=self._upload_file_by_path)
 
     def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None):
         reactor.tick()
