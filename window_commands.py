@@ -355,6 +355,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace_url, agent_conn_kwargs=None, upload=None):
         agent_conn_kwargs = agent_conn_kwargs or {}
+        self.upload = upload
 
         def get_workspace_window():
             workspace_window = None
@@ -453,8 +454,13 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
                     utils.mkdir(d)
                 except Exception as e:
                     return sublime.error_message('Could not create directory %s: %s' % (d, str_e(e)))
+            G.PROJECT_PATH = d
 
-            result['upload'] = d
+            if self.upload:
+                result['upload'] = d
+            else:
+                result['upload'] = ""
+
             utils.add_workspace_to_persistent_json(result['owner'], result['workspace'], workspace_url, d)
             open_workspace_window(lambda: run_agent(**result))
 
@@ -489,6 +495,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         try:
             G.PROJECT_PATH = d['workspaces'][result['owner']][result['workspace']]['path']
         except Exception:
+            msg.log('%s/%s not in persistent.json' % (result['owner'], result['workspace']))
             G.PROJECT_PATH = ''
 
         msg.log('Project path is %s' % G.PROJECT_PATH)

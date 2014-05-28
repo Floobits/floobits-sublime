@@ -64,7 +64,7 @@ def plugin_loaded():
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
     if os.path.isdir(old_colab_dir) and not os.path.exists(G.BASE_DIR):
-        print('renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
+        print('Renaming %s to %s' % (old_colab_dir, G.BASE_DIR))
         os.rename(old_colab_dir, G.BASE_DIR)
         os.symlink(G.BASE_DIR, old_colab_dir)
 
@@ -90,5 +90,5 @@ if PY2:
 
     def warning():
         if not called_plugin_loaded:
-            print('Your computer is slow and could not start the Floobits reactor.  Please contact us or upgrade to Sublime Text 3.')
+            print('Your computer is slow and could not start the Floobits reactor. Please contact us (support@floobits.com) or upgrade to Sublime Text 3.')
     threading.Timer(20, warning).start()

@@ -80,7 +80,7 @@ def reload_settings():
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
     G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    if G.DEBUG == '1':
+    if G.DEBUG:
         msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
     else:
         msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
