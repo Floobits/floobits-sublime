@@ -622,16 +622,15 @@ class FlooHandler(base.BaseHandler):
             self._upload_file_by_path(rel_path)
             return
 
-        while True:
-            split = rel_path.split('/', 1)
-            print(split)
-            if len(split) != 2:
+        for p in rel_path.split('/'):
+            child = ig.children.get(p)
+            if not child:
                 break
-            name, new_path = split
-            ig = ig.children.get(name)
-            print(ig, name)
-            if not ig:
-                break
+            ig = child
+
+        if ig.path != path:
+            msg.warn("%s is not the same as %s", ig.path, path)
+
         self._rate_limited_upload(ig.list_paths(), ig.total_size, upload_func=self._upload_file_by_path)
 
     def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None):
