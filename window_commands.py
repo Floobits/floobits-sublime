@@ -43,6 +43,27 @@ def disconnect_dialog():
     return True
 
 
+def link_account(host, cb):
+    account = sublime.ok_cancel_dialog('No credentials found in ~/.floorc.json for %s.\n\n'
+                                       'Click "Link account" to open a web browser and add credentials.' % host,
+                                       'Link account')
+    if not account:
+        return
+    token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
+    agent = RequestCredentialsHandler(token)
+    if not agent:
+        sublime.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.\n
+We're really sorry. This should never happen.''' % host)
+        return
+
+    agent.once('end', cb)
+
+    try:
+        reactor.connect(agent, host, G.DEFAULT_PORT, True)
+    except Exception as e:
+        print(str_e(e))
+
+
 def create_or_link_account():
     agent = None
     account = sublime.ok_cancel_dialog('You need a Floobits account!\n\n'
@@ -183,7 +204,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                     if join_workspace(workspace_url):
                         return
 
-        auth = yield editor.select_auth, self.window, G.AUTH, None
+        auth = yield editor.select_auth, self.window, G.AUTH
         if not auth:
             return
 
@@ -433,19 +454,14 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
             try:
                 auth = G.AUTH.get(host)
                 if not auth:
-                    auth = yield editor.select_auth, self.window, G.AUTH, host
-                    if auth['host'] != host:
-                        del auth['host']
-                        s = utils.load_floorc_json()
-                        s['AUTH'][host] = auth
-                        utils.save_floorc_json(s)
-                        utils.reload_settings()
-                if auth is None:
-                    return
+                    success = yield link_account, host
+                    if not success:
+                        return
+                    auth = G.AUTH.get(host)
                 conn = SublimeConnection(owner, workspace, auth, upload)
                 reactor.connect(conn, host, port, secure)
             except Exception as e:
-                print(str_e(e))
+                msg.error(str_e(e))
 
         try:
             result = utils.parse_url(workspace_url)
@@ -462,7 +478,7 @@ Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Subl
         except Exception:
             G.PROJECT_PATH = ''
 
-        print('Project path is %s' % G.PROJECT_PATH)
+        msg.log('Project path is %s' % G.PROJECT_PATH)
 
         if not os.path.isdir(G.PROJECT_PATH):
             default_dir = None

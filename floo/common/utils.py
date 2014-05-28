@@ -112,7 +112,7 @@ def save_floorc_json(s):
     floorc_json = {}
     for k, v in s.items():
         floorc_json[k.lower()] = v
-    print('writing %s' % floorc_json)
+    msg.log('Writing %s' % floorc_json)
     with open(G.FLOORC_JSON_PATH, 'w') as fd:
         fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
 
@@ -411,7 +411,7 @@ def _unwind_generator(gen_expr, cb=None, res=None):
             if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
-                #TODO: catch not generator
+                # TODO: catch no generator
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:

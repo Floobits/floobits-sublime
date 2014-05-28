@@ -20,13 +20,11 @@ class BaseHandler(event_emitter.EventEmitter):
     BASE_FLOORC = BASE_FLOORC
     PROTOCOL = None
 
-    def __init__(self, auth):
+    def __init__(self):
         super(BaseHandler, self).__init__()
         self.joined_workspace = False
         G.AGENT = self
-        self.username = auth.get('username')
-        self.secret = auth.get('secret')
-        self.api_key = auth.get('api_key')
+        # TODO: removeme?
         utils.reload_settings()
 
     def build_protocol(self, *args):

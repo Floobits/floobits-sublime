@@ -22,6 +22,7 @@ You may want to check out our docs at https://%s/help/plugins"""
 class RequestCredentialsHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
 
+    # TODO: timeout after 60 seconds
     def __init__(self, token):
         super(RequestCredentialsHandler, self).__init__()
         self.token = token
@@ -45,11 +46,14 @@ class RequestCredentialsHandler(base.BaseHandler):
 
     def on_data(self, name, data):
         if name == 'credentials':
-            with open(G.FLOORC_PATH, 'w') as floorc_fd:
-                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data['credentials'].items()]) + '\n'
-                floorc_fd.write(floorc)
+            s = utils.load_floorc_json()
+            auth = s.get('AUTH', {})
+            auth[self.proto.host] = data['credentials']
+            s['AUTH'] = auth
+            utils.save_floorc_json(s)
             utils.reload_settings()
-            if not utils.can_auth():
+            success = utils.can_auth(self.proto.host)
+            if not success:
                 editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
                 api.send_error('No username or secret')
             else:
@@ -58,4 +62,5 @@ class RequestCredentialsHandler(base.BaseHandler):
                     text = WELCOME_MSG % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
                     fd.write(text)
                 editor.open_file(p)
-            self.proto.stop()
+            self.stop()
+            self.emit('end', success)

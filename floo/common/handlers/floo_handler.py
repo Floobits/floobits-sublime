@@ -43,7 +43,11 @@ class FlooHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
 
     def __init__(self, owner, workspace, auth, upload=None):
-        super(FlooHandler, self).__init__(auth)
+        self.username = auth.get('username')
+        self.secret = auth.get('secret')
+        self.api_key = auth.get('api_key')
+        # BaseHandler calls reload_settings()
+        super(FlooHandler, self).__init__()
         self.owner = owner
         self.workspace = workspace
         self.upload_path = upload and utils.unfuck_path(upload)

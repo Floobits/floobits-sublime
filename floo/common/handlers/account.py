@@ -20,6 +20,7 @@ except (ImportError, ValueError):
 
 class CreateAccountHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
+    # TODO: timeout after 60 seconds
 
     def on_connect(self):
         try:
