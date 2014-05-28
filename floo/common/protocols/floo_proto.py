@@ -139,8 +139,8 @@ class FlooProtocol(base.BaseProtocol):
 
         self._q.clear()
         self._buf_out = bytes()
-        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
-        self.retries = self.MAX_RETRIES
+        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self._retries = self.MAX_RETRIES
         self.emit('connect')
         self.connected = True
 
@@ -287,10 +287,11 @@ class FlooProtocol(base.BaseProtocol):
         raise NotImplementedError('error not implemented.')
 
     def stop(self):
-        self.retries = -1
+        self._retries = -1
         utils.cancel_timeout(self._reconnect_timeout)
         self._reconnect_timeout = None
         self.cleanup()
+        self.emit('stop')
         msg.log('Disconnected.')
 
     def reconnect(self):

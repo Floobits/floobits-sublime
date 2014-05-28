@@ -40,8 +40,14 @@ class _Reactor(object):
             handler.proto.stop()
         except Exception as e:
             msg.warn('Error stopping connection: %s' % str_e(e))
-        self._handlers.remove(handler)
-        self._protos.remove(handler.proto)
+        try:
+            self._handlers.remove(handler)
+        except Exception:
+            pass
+        try:
+            self._protos.remove(handler.proto)
+        except Exception:
+            pass
         if hasattr(handler, 'listener_factory'):
             return handler.listener_factory.stop()
         if not self._handlers and not self._protos:
