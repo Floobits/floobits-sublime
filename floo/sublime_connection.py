@@ -15,7 +15,7 @@ try:
     from .common.exc_fmt import str_e
     from .view import View
     from .common.handlers import floo_handler
-    from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group
+    from .sublime_utils import create_view, get_buf, send_summon, get_view_in_group, get_text
     assert G and msg and utils
 except ImportError:
     from floo import editor
@@ -23,7 +23,7 @@ except ImportError:
     from common.exc_fmt import str_e
     from common.handlers import floo_handler
     from view import View
-    from sublime_utils import create_view, get_buf, send_summon, get_view_in_group
+    from sublime_utils import create_view, get_buf, send_summon, get_view_in_group, get_text
 
 
 class SublimeConnection(floo_handler.FlooHandler):
@@ -168,6 +168,17 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def status_message(self, msg):
         sublime.status_message(msg)
+
+    def get_view_text_by_path(self, path):
+        for v in G.WORKSPACE_WINDOW.views():
+            if not v.file_name():
+                continue
+            try:
+                rel_path = utils.to_rel_path(v.file_name())
+            except ValueError:
+                continue
+            if path == rel_path:
+                return get_text(v)
 
     def get_view(self, buf_id):
         buf = self.bufs.get(buf_id)
