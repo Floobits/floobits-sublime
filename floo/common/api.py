@@ -43,6 +43,8 @@ except ImportError:
 def get_basic_auth(host):
     username = G.AUTH.get(host, {}).get('username')
     secret = G.AUTH.get(host, {}).get('secret')
+    if username is None or secret is None:
+        return
     basic_auth = ('%s:%s' % (username, secret)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
@@ -95,7 +97,9 @@ def hit_url(host, url, data, method):
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth(host))
+    auth = get_basic_auth(host)
+    if auth:
+        r.add_header('Authorization', 'Basic %s' % auth)
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
