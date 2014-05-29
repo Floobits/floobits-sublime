@@ -20,7 +20,6 @@ except (ImportError, ValueError):
 
 class CreateAccountHandler(base.BaseHandler):
     PROTOCOL = no_reconnect.NoReconnectProto
-    # TODO: timeout after 60 seconds
 
     def on_connect(self):
         try:
@@ -38,8 +37,8 @@ class CreateAccountHandler(base.BaseHandler):
 
     def on_data(self, name, data):
         if name == 'create_user':
-            del data['name']
             try:
+                del data['name']
                 floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
                 with open(G.FLOORC_PATH, 'w') as floorc_fd:
                     floorc_fd.write(floorc)
@@ -60,9 +59,10 @@ class CreateAccountHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug(traceback.format_exc())
                 msg.error(str_e(e))
-            try:
-                d = utils.get_persistent_data()
-                d['disable_account_creation'] = True
-                utils.update_persistent_data(d)
             finally:
-                self.proto.stop()
+                try:
+                    d = utils.get_persistent_data()
+                    d['disable_account_creation'] = True
+                    utils.update_persistent_data(d)
+                finally:
+                    self.stop()
