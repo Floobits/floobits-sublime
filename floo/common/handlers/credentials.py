@@ -25,12 +25,13 @@ class RequestCredentialsHandler(base.BaseHandler):
     def __init__(self, token):
         super(RequestCredentialsHandler, self).__init__()
         self.token = token
+        self.success = False
 
     def build_protocol(self, *args):
         proto = super(RequestCredentialsHandler, self).build_protocol(*args)
 
         def on_stop():
-            self.emit('end', False)
+            self.emit('end', self.success)
             self.stop()
 
         proto.once('stop', on_stop)
@@ -57,8 +58,8 @@ class RequestCredentialsHandler(base.BaseHandler):
             s['AUTH'] = auth
             utils.save_floorc_json(s)
             utils.reload_settings()
-            success = utils.can_auth(self.proto.host)
-            if not success:
+            self.success = utils.can_auth(self.proto.host)
+            if not self.success:
                 editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.proto.host)
                 api.send_error('No username or secret')
             else:
@@ -67,5 +68,4 @@ class RequestCredentialsHandler(base.BaseHandler):
                     text = WELCOME_MSG % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
                     fd.write(text)
                 editor.open_file(p)
-            self.emit('end', success)
             self.stop()
