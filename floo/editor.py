@@ -76,7 +76,7 @@ def select_auth(*args):
         v['host'] = k
 
     if len(auths) == 1:
-        return cb(auths.values()[0])
+        return cb(list(auths.values())[0])
 
     opts = [[h, 'Connect as %s' % a.get('username')] for h, a in auths.items()]
     opts.append(['Cancel', ''])
