@@ -39,9 +39,11 @@ class CreateAccountHandler(base.BaseHandler):
         if name == 'create_user':
             try:
                 del data['name']
-                floorc = self.BASE_FLOORC + '\n'.join(['%s %s' % (k, v) for k, v in data.items()]) + '\n'
-                with open(G.FLOORC_PATH, 'w') as floorc_fd:
-                    floorc_fd.write(floorc)
+                floorc_json = {
+                    'auth': {}
+                }
+                floorc_json['auth'][G.DEFAULT_HOST] = data
+                utils.save_floorc_json(floorc_json)
                 utils.reload_settings()
                 if utils.can_auth():
                     p = os.path.join(G.BASE_DIR, 'welcome.md')

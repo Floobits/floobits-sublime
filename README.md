@@ -20,7 +20,7 @@ If you'd rather create a symlink instead of copy/moving, run something like:
 
 # Configuration
 
-All configuration settings are stored in `~/.floorc`. If you don’t have a `~/.floorc` file, the plugin will create one and open it in Sublime Text. It will also open a web page showing the minimal information you’ll need to put in your `~/.floorc`. After saving the file, restart Sublime Text.
+All configuration settings are stored in `~/.floorc.json`. If you don’t have a `~/.floorc.json` file, the plugin will create one and open it in Sublime Text. It will also open a web page showing the minimal information you’ll need to put in your `~/.floorc.json`. After saving the file, restart Sublime Text.
 
 # Using Floobits to Collaborate
 

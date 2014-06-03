@@ -1,6 +1,6 @@
 [
   {
-    "caption": "Floobits - Settings (~/.floorc)",
+    "caption": "Floobits - Settings (~/.floorc.json)",
     "command": "floobits_open_settings"
   },
   {

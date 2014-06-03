@@ -5,19 +5,7 @@ except ValueError:
 from .. import msg, event_emitter, shared as G, utils
 
 
-BASE_FLOORC = '''# Floobits config
-
-# Logs messages to Sublime Text console instead of a special view
-#log_to_console 1
-
-# Enables debug mode
-#debug 1
-
-'''
-
-
 class BaseHandler(event_emitter.EventEmitter):
-    BASE_FLOORC = BASE_FLOORC
     PROTOCOL = None
 
     def __init__(self):

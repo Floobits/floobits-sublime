@@ -91,7 +91,7 @@
       "children": [
       {
         "command": "floobits_open_settings",
-        "caption": "Settings (~/.floorc)"
+        "caption": "Settings (~/.floorc.json)"
       },
       {
         "caption": "-"
