@@ -394,7 +394,7 @@ class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
                     subl = settings.get('sublime_executable', '/Applications/Sublime Text 2.app/Contents/SharedSupport/bin/subl')
                 if not os.path.exists(subl):
                     return sublime.error_message('''Can't find your Sublime Text executable at %s.
-Please add "sublime_executable /path/to/subl" to your ~/.floorc and restart Sublime Text''' % subl)
+Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and restart Sublime Text''' % subl)
             elif sublime.platform() == 'windows':
                 subl = sys.executable
             else:
