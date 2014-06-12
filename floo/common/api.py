@@ -160,7 +160,7 @@ def get_orgs_can_admin(host):
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
     if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
-        msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
+        msg.warn('Already sent %s errors this session. Not sending any more.\n%s %s' % (G.ERRORS_SENT, description, exception))
         return
     data = {
         'jsondump': {
@@ -170,9 +170,9 @@ def send_error(description=None, exception=None):
         'dir': G.COLAB_DIR,
     }
     if G.AGENT:
-        data['owner'] = G.AGENT.owner
-        data['username'] = G.AGENT.username
-        data['workspace'] = G.AGENT.workspace
+        data['owner'] = getattr(G.AGENT, "owner", None)
+        data['username'] = getattr(G.AGENT, "username", None)
+        data['workspace'] = getattr(G.AGENT, "workspace", None)
     if exception:
         data['message'] = {
             'description': str(exception),
@@ -208,6 +208,11 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     except Exception as e:
         msg.error(str_e(e))
         return False
+
+    host = result.get('host')
+    if not get_basic_auth(host):
+        raise ValueError('No auth credentials for %s. Please add a username and secret for %s in your ~/.floorc.json' % (host, host))
+
     try:
         w = get_workspace_by_url(workspace_url)
     except Exception as e:

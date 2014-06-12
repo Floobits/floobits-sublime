@@ -35,36 +35,36 @@ class CreateAccountHandler(base.BaseHandler):
             'version': G.__VERSION__
         })
 
-    def on_data(self, name, data):
-        if name == 'create_user':
+    def _on_create_user(self, data):
+        try:
+            del data['name']
+            floorc_json = {
+                'auth': {}
+            }
+            floorc_json['auth'][G.DEFAULT_HOST] = data
+            utils.save_floorc_json(floorc_json)
+            utils.reload_settings()
+            if utils.can_auth():
+                p = os.path.join(G.BASE_DIR, 'welcome.md')
+                with open(p, 'w') as fd:
+                    username = G.AUTH.get(self.proto.host, {}).get('username')
+                    text = editor.NEW_ACCOUNT_TXT.format(username=username, host=self.proto.host)
+                    fd.write(text)
+                d = utils.get_persistent_data()
+                d['auto_generated_account'] = True
+                utils.update_persistent_data(d)
+                G.AUTO_GENERATED_ACCOUNT = True
+                editor.open_file(p)
+            else:
+                editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
+                api.send_error('No username or secret')
+        except Exception as e:
+            msg.debug(traceback.format_exc())
+            msg.error(str_e(e))
+        finally:
             try:
-                del data['name']
-                floorc_json = {
-                    'auth': {}
-                }
-                floorc_json['auth'][G.DEFAULT_HOST] = data
-                utils.save_floorc_json(floorc_json)
-                utils.reload_settings()
-                if utils.can_auth():
-                    p = os.path.join(G.BASE_DIR, 'welcome.md')
-                    with open(p, 'w') as fd:
-                        text = editor.welcome_text % (G.AUTH.get(self.proto.host, {}).get('username'), self.proto.host)
-                        fd.write(text)
-                    d = utils.get_persistent_data()
-                    d['auto_generated_account'] = True
-                    utils.update_persistent_data(d)
-                    G.AUTO_GENERATED_ACCOUNT = True
-                    editor.open_file(p)
-                else:
-                    editor.error_message('Something went wrong. You will need to sign up for an account to use Floobits.')
-                    api.send_error('No username or secret')
-            except Exception as e:
-                msg.debug(traceback.format_exc())
-                msg.error(str_e(e))
+                d = utils.get_persistent_data()
+                d['disable_account_creation'] = True
+                utils.update_persistent_data(d)
             finally:
-                try:
-                    d = utils.get_persistent_data()
-                    d['disable_account_creation'] = True
-                    utils.update_persistent_data(d)
-                finally:
-                    self.stop()
+                self.stop()
