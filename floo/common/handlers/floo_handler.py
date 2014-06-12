@@ -312,22 +312,21 @@ class FlooHandler(base.BaseHandler):
     def _initial_upload(self, ig, missing_bufs, changed_bufs, cb):
         files, size = yield self.prompt_ignore, ig, G.PROJECT_PATH
 
-        for buf in missing_bufs:
-            self.send({'name': 'delete_buf', 'id': buf['id']})
+        missing_buf_ids = set([buf['id'] for buf in missing_bufs])
+        for buf_id in missing_buf_ids:
+            self.send({'name': 'delete_buf', 'id': buf_id})
 
-        # TODO: pace ourselves (send through the uploader...)
-        for buf in changed_bufs:
-            self.send({
-                'name': 'set_buf',
-                'id': buf['id'],
-                'buf': buf['buf'],
-                'md5': buf['md5'],
-                'encoding': buf['encoding'],
-            })
+        def __upload_buf(buf):
+            return self._upload(utils.get_full_path(buf['path']), buf['buf'])
+
+        changed_bufs_len = reduce(lambda a, buf: a + len(buf.get('buf', '')), changed_bufs, 0)
+        self._rate_limited_upload(iter(changed_bufs), changed_bufs_len, upload_func=__upload_buf)
 
         for p, buf_id in self.paths_to_ids.items():
             if p in files:
                 files.discard(p)
+                continue
+            if buf_id in missing_buf_ids:
                 continue
             self.send({
                 'name': 'delete_buf',
