@@ -6,8 +6,13 @@ try:
 except Exception:
     pass
 
-welcome_text = 'Welcome %s!\n\nYou\'re all set to collaborate. You should check out our docs at https://%s/help/plugins/sublime#usage. \
-You must run \'Floobits - Complete Sign Up\' in the command palette before you can sign in to floobits.com.'
+
+NEW_ACCOUNT_TXT = 'Welcome {username}!\n\nYou\'re all set to collaborate. You should check out our docs at https://{host}/help/plugins/sublime#usage. \
+You must run \'Floobits - Complete Sign Up\' so you can log in to the website.'
+
+LINKED_ACCOUNT_TXT = """Welcome {username}!\n\nYou are all set to collaborate.
+
+You may want to check out our docs at https://{host}/help/plugins/sublime#usage"""
 
 
 def name():
