@@ -4,7 +4,6 @@ import os
 import re
 import json
 import uuid
-import binascii
 import subprocess
 import webbrowser
 
@@ -49,8 +48,7 @@ def link_account(host, cb):
                                        'Link Account')
     if not account:
         return
-    token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-    agent = RequestCredentialsHandler(token)
+    agent = RequestCredentialsHandler()
     if not agent:
         sublime.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.\n
 We're really sorry. This should never happen.''' % host)
@@ -78,8 +76,7 @@ def create_or_link_account(force=False):
 
     def cb(index):
         if index == 0:
-            token = binascii.b2a_hex(uuid.uuid4().bytes).decode('utf-8')
-            agent = RequestCredentialsHandler(token)
+            agent = RequestCredentialsHandler()
         elif index == 1:
             agent = CreateAccountHandler()
         else:
