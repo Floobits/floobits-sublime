@@ -16,7 +16,9 @@ elif sublime.platform() == 'osx':
     try:
         p = subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         result = p.communicate()
-        if float(result[0].split('.')[1]) < 7:
+        v = float(result[0].decode('utf-8').split('.')[1])
+        print('Floobits detected OS X 10.%.0f' % v)
+        if v < 7:
             sublime.error_message('''Sorry, but the Floobits plugin doesn\'t work on 10.6 or earlier.
 Please upgrade your operating system if you want to use this plugin. :(''')
     except Exception as e:
