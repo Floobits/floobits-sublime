@@ -5,26 +5,15 @@ except ValueError:
 from .. import msg, event_emitter, shared as G, utils
 
 
-BASE_FLOORC = '''# Floobits config
-
-# Logs messages to Sublime Text console instead of a special view
-#log_to_console 1
-
-# Enables debug mode
-#debug 1
-
-'''
-
-
 class BaseHandler(event_emitter.EventEmitter):
-    BASE_FLOORC = BASE_FLOORC
     PROTOCOL = None
 
     def __init__(self):
         super(BaseHandler, self).__init__()
         self.joined_workspace = False
         G.AGENT = self
-        self.reload_settings()
+        # TODO: removeme?
+        utils.reload_settings()
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
@@ -64,15 +53,11 @@ class BaseHandler(event_emitter.EventEmitter):
     def stop(self):
         from .. import reactor
         reactor.reactor.stop_handler(self)
+        if G.AGENT is self:
+            G.AGENT = None
 
     def is_ready(self):
         return self.joined_workspace
-
-    def reload_settings(self):
-        utils.reload_settings()
-        self.username = G.USERNAME
-        self.secret = G.SECRET
-        self.api_key = G.API_KEY
 
     def tick(self):
         pass

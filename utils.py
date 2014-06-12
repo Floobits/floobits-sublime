@@ -1,4 +1,5 @@
 import os
+import errno
 import json
 import re
 import hashlib
@@ -15,12 +16,14 @@ except ImportError:
 try:
     from .. import editor
     from . import shared as G
+    from .exc_fmt import str_e
     from . import msg
     from .lib import DMP
     assert G and DMP
 except ImportError:
     import editor
     import msg
+    from exc_fmt import str_e
     import shared as G
     from lib import DMP
 
@@ -68,32 +71,8 @@ class FlooPatch(object):
         }
 
 
-class Waterfall(object):
-    def __init__(self):
-        self.chain = []
-
-    def add(self, f, *args, **kwargs):
-        self.chain.append(lambda: f(*args, **kwargs))
-
-    def call(self):
-        res = [f() for f in self.chain]
-        self.chain = []
-        return res
-
-
-def update_log_level():
-    try:
-        v = json.loads(G.DEBUG.lower())
-    except Exception:
-        v = G.DEBUG
-    if bool(v):
-        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
-    else:
-        msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
-
-
 def reload_settings():
-    floorc_settings = load_floorc()
+    floorc_settings = load_floorc_json()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
     if G.SHARE_DIR:
@@ -101,33 +80,50 @@ def reload_settings():
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
     G.COLAB_DIR = os.path.join(G.BASE_DIR, 'share')
     G.COLAB_DIR = os.path.realpath(G.COLAB_DIR)
-    update_log_level()
+    if G.DEBUG:
+        msg.LOG_LEVEL = msg.LOG_LEVELS['DEBUG']
+    else:
+        msg.LOG_LEVEL = msg.LOG_LEVELS['MSG']
     mkdir(G.COLAB_DIR)
+    return floorc_settings
 
 
-def load_floorc():
-    """try to read settings out of the .floorc file"""
+def load_floorc_json():
     s = {}
     try:
-        fd = open(G.FLOORC_PATH, 'r')
+        with open(G.FLOORC_JSON_PATH, 'r') as fd:
+            floorc_json = fd.read()
     except IOError as e:
-        if e.errno == 2:
+        if e.errno == errno.ENOENT:
             return s
         raise
 
-    default_settings = fd.read().split('\n')
-    fd.close()
+    try:
+        default_settings = json.loads(floorc_json)
+    except ValueError:
+        return s
 
-    for setting in default_settings:
-        # TODO: this is horrible
-        if len(setting) == 0 or setting[0] == '#':
-            continue
-        try:
-            name, value = setting.split(' ', 1)
-        except IndexError:
-            continue
-        s[name.upper()] = value
+    for k, v in default_settings.items():
+        s[k.upper()] = v
     return s
+
+
+def save_floorc_json(s):
+    floorc_json = {}
+    for k, v in s.items():
+        floorc_json[k.lower()] = v
+    msg.log('Writing %s' % floorc_json)
+    with open(G.FLOORC_JSON_PATH, 'w') as fd:
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
+
+
+def can_auth(host=None):
+    if host is None:
+        host = len(G.AUTH) and list(G.AUTH.keys())[0] or G.DEFAULT_HOST
+    auth = G.AUTH.get(host)
+    if not auth:
+        return False
+    return (auth.get('username') or auth.get('api_key')) and auth.get('secret')
 
 
 cancelled_timeouts = set()
@@ -266,6 +262,20 @@ def update_floo_file(path, data):
         floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
 
 
+def read_floo_file(path):
+    floo_file = os.path.join(path, '.floo')
+
+    info = {}
+    try:
+        floo_info = open(floo_file, 'rb').read().decode('utf-8')
+        info = json.loads(floo_info)
+    except (IOError, OSError):
+        pass
+    except Exception as e:
+        msg.warn("Couldn't read .floo file: %s: %s" % (floo_file, str_e(e)))
+    return info
+
+
 def get_persistent_data(per_path=None):
     per_data = {'recent_workspaces': [], 'workspaces': {}}
     per_path = per_path or os.path.join(G.BASE_DIR, 'persistent.json')
@@ -279,7 +289,7 @@ def get_persistent_data(per_path=None):
         persistent_data = json.loads(data)
     except Exception as e:
         msg.debug('Failed to parse %s. Recent workspace list will be empty.' % per_path)
-        msg.debug(str(e))
+        msg.debug(str_e(e))
         msg.debug(data)
         return per_data
     if 'recent_workspaces' not in persistent_data:
@@ -299,7 +309,7 @@ def update_persistent_data(data):
             seen.add(x['url'])
             recent_workspaces.append(x)
         except Exception as e:
-            msg.debug(str(e))
+            msg.debug(str_e(e))
 
     data['recent_workspaces'] = recent_workspaces
     per_path = os.path.join(G.BASE_DIR, 'persistent.json')
@@ -329,6 +339,22 @@ def add_workspace_to_persistent_json(owner, name, url, path):
     update_persistent_data(d)
 
 
+def update_recent_workspaces(workspace_url):
+    d = get_persistent_data()
+    recent_workspaces = d.get('recent_workspaces', [])
+    recent_workspaces.insert(0, {'url': workspace_url})
+    recent_workspaces = recent_workspaces[:100]
+    seen = set()
+    new = []
+    for r in recent_workspaces:
+        string = json.dumps(r)
+        if string not in seen:
+            new.append(r)
+            seen.add(string)
+    d['recent_workspaces'] = new
+    update_persistent_data(d)
+
+
 def get_workspace_by_path(path, _filter):
     path = unfuck_path(path)
     for owner, workspaces in get_persistent_data()['workspaces'].items():
@@ -352,8 +378,8 @@ def mkdir(path):
     try:
         os.makedirs(path)
     except OSError as e:
-        if e.errno != 17:
-            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, e))
+        if e.errno != errno.EEXIST:
+            editor.error_message('Cannot create directory {0}.\n{1}'.format(path, str_e(e)))
             raise
 
 
@@ -388,30 +414,41 @@ def save_buf(buf):
             else:
                 fd.write(buf['buf'])
     except Exception as e:
-        msg.error('Error saving buf: %s' % str(e))
+        msg.error('Error saving buf: %s' % str_e(e))
 
 
 def _unwind_generator(gen_expr, cb=None, res=None):
     try:
         while True:
-            arg0 = res
+            maybe_func = res
             args = []
+            # if the first arg is callable, we need to call it (and assume the last argument is a callback)
             if type(res) == tuple:
-                arg0 = res[0]
-                args = list(res[1:])
-            if not callable(arg0):
+                maybe_func = len(res) and res[0]
+
+            if not callable(maybe_func):
                 # send only accepts one argument... this is slightly dangerous if
                 # we ever just return a tuple of one elemetn
+                # TODO: catch no generator
                 if type(res) == tuple and len(res) == 1:
                     res = gen_expr.send(res[0])
                 else:
                     res = gen_expr.send(res)
-            else:
-                def f(*args):
-                    return _unwind_generator(gen_expr, cb, args)
-                args.append(f)
-                return arg0(*args)
-        # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
+                continue
+
+            def f(*args):
+                return _unwind_generator(gen_expr, cb, args)
+
+            try:
+                args = list(res)[1:]
+            except:
+                # assume not iterable
+                args = []
+
+            args.append(f)
+            return maybe_func(*args)
+
+    # TODO: probably shouldn't catch StopIteration to return since that can occur by accident...
     except StopIteration:
         pass
     except __StopUnwindingException as e:

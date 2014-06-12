@@ -1,8 +1,3 @@
-try:
-    unicode()
-except NameError:
-    unicode = str
-
 import sys
 import base64
 import json
@@ -36,15 +31,21 @@ except (AttributeError, ImportError, ValueError):
 try:
     from .. import editor
     from . import msg, shared as G, utils
+    from .exc_fmt import str_e
 except ImportError:
     import editor
     import msg
     import shared as G
     import utils
+    from exc_fmt import str_e
 
 
-def get_basic_auth():
-    basic_auth = ('%s:%s' % (G.USERNAME, G.SECRET)).encode('utf-8')
+def get_basic_auth(host):
+    username = G.AUTH.get(host, {}).get('username')
+    secret = G.AUTH.get(host, {}).get('secret')
+    if username is None or secret is None:
+        return
+    basic_auth = ('%s:%s' % (username, secret)).encode('utf-8')
     basic_auth = base64.encodestring(basic_auth)
     return basic_auth.decode('ascii').replace('\n', '')
 
@@ -62,8 +63,8 @@ class APIResponse():
             self.body = json.loads(r.read().decode("utf-8"))
 
 
-def proxy_api_request(url, data, method):
-    args = ['python', '-m', 'floo.proxy', '--url', url]
+def proxy_api_request(host, url, data, method):
+    args = ['python', '-m', 'floo.proxy',  '--host', host, '--url', url]
     if data:
         args += ["--data", json.dumps(data)]
     if method:
@@ -90,95 +91,100 @@ def user_agent():
     )
 
 
-def hit_url(url, data, method):
+def hit_url(host, url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
-    r.add_header('Authorization', 'Basic %s' % get_basic_auth())
+    auth = get_basic_auth(host)
+    if auth:
+        r.add_header('Authorization', 'Basic %s' % auth)
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
     return urlopen(r, timeout=5)
 
 
-def api_request(url, data=None, method=None):
+def api_request(host, url, data=None, method=None):
     if data:
         method = method or 'POST'
     else:
         method = method or 'GET'
     if ssl is False:
-        return proxy_api_request(url, data, method)
+        return proxy_api_request(host, url, data, method)
     try:
-        r = hit_url(url, data, method)
+        r = hit_url(host, url, data, method)
     except HTTPError as e:
         r = e
     return APIResponse(r)
 
 
-def create_workspace(post_data):
-    api_url = 'https://%s/api/workspace' % G.DEFAULT_HOST
-    return api_request(api_url, post_data)
+def create_workspace(host, post_data):
+    api_url = 'https://%s/api/workspace' % host
+    return api_request(host, api_url, post_data)
 
 
-def update_workspace(owner, workspace, data):
-    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
-    return api_request(api_url, data, method='PUT')
+def update_workspace(workspace_url, data):
+    result = utils.parse_url(workspace_url)
+    api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
+    return api_request(result['host'], api_url, data, method='PUT')
 
 
 def get_workspace_by_url(url):
     result = utils.parse_url(url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
-    return api_request(api_url)
+    return api_request(result['host'], api_url)
 
 
-def get_workspace(owner, workspace):
-    api_url = 'https://%s/api/workspace/%s/%s' % (G.DEFAULT_HOST, owner, workspace)
-    return api_request(api_url)
+def get_workspace(host, owner, workspace):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
+    return api_request(host, api_url)
 
 
-def get_workspaces():
-    api_url = 'https://%s/api/workspace/can/view' % (G.DEFAULT_HOST)
-    return api_request(api_url)
+def get_workspaces(host):
+    api_url = 'https://%s/api/workspace/can/view' % (host)
+    return api_request(host, api_url)
 
 
-def get_orgs():
-    api_url = 'https://%s/api/orgs' % (G.DEFAULT_HOST)
-    return api_request(api_url)
+def get_orgs(host):
+    api_url = 'https://%s/api/orgs' % (host)
+    return api_request(host, api_url)
 
 
-def get_orgs_can_admin():
-    api_url = 'https://%s/api/orgs/can/admin' % (G.DEFAULT_HOST)
-    return api_request(api_url)
+def get_orgs_can_admin(host):
+    api_url = 'https://%s/api/orgs/can/admin' % (host)
+    return api_request(host, api_url)
 
 
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
-    if G.ERRORS_SENT > G.MAX_ERROR_REPORTS:
-        msg.warn('Already sent %s errors this session. Not sending any more.' % G.ERRORS_SENT)
+    if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
+        msg.warn('Already sent %s errors this session. Not sending any more.\n%s %s' % (G.ERRORS_SENT, description, exception))
         return
     data = {
         'jsondump': {
             'error_count': G.ERROR_COUNT
         },
-        'username': G.USERNAME,
+        'message': {},
         'dir': G.COLAB_DIR,
     }
     if G.AGENT:
-        data['owner'] = G.AGENT.owner
-        data['workspace'] = G.AGENT.workspace
-    if description:
-        data['description'] = description
+        data['owner'] = getattr(G.AGENT, "owner", None)
+        data['username'] = getattr(G.AGENT, "username", None)
+        data['workspace'] = getattr(G.AGENT, "workspace", None)
     if exception:
         data['message'] = {
-            'msg': str(exception),
+            'description': str(exception),
             'stack': traceback.format_exc(exception)
         }
-        msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+    msg.log('Floobits plugin error! Sending exception report: %s' % data['message'])
+    if description:
+        data['message']['description'] = description
     try:
+        # TODO: use G.AGENT.proto.host?
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
-        r = api_request(api_url, data)
+        r = api_request(G.DEFAULT_HOST, api_url, data)
         G.ERRORS_SENT += 1
         return r
     except Exception as e:
@@ -200,12 +206,17 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     try:
         result = utils.parse_url(workspace_url)
     except Exception as e:
-        msg.error(unicode(e))
+        msg.error(str_e(e))
         return False
+
+    host = result.get('host')
+    if not get_basic_auth(host):
+        raise ValueError('No auth credentials for %s. Please add a username and secret for %s in your ~/.floorc.json' % (host, host))
+
     try:
         w = get_workspace_by_url(workspace_url)
     except Exception as e:
-        editor.error_message('Error opening url %s: %s' % (workspace_url, str(e)))
+        editor.error_message('Error opening url %s: %s' % (workspace_url, str_e(e)))
         return False
 
     if w.code >= 400:
@@ -221,7 +232,7 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
                 pass
             utils.update_persistent_data(d)
         except Exception as e:
-            msg.debug(unicode(e))
+            msg.debug(str_e(e))
         return False
 
     msg.debug('workspace: %s', json.dumps(w.body))
@@ -232,7 +243,7 @@ def prejoin_workspace(workspace_url, dir_to_share, api_args):
     if set(anon_perms) != set(new_anon_perms):
         msg.debug(str(anon_perms), str(new_anon_perms))
         w.body['perms']['AnonymousUser'] = new_anon_perms
-        response = update_workspace(w.body['owner'], w.body['name'], w.body)
+        response = update_workspace(workspace_url, w.body)
         msg.debug(str(response.body))
     utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
     return result

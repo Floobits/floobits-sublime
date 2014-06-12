@@ -5,9 +5,11 @@ try:
     from . import shared as G
     assert G
     unicode = str
+    from .exc_fmt import str_e
     python2 = False
 except ImportError:
     python2 = True
+    from exc_fmt import str_e
     import shared as G
 
 
@@ -71,7 +73,7 @@ class MSG(object):
                 fd.write(b'\n')
                 fd.close()
             except Exception as e:
-                safe_print(unicode(e))
+                safe_print(str_e(e))
             safe_print(msg)
         else:
             editor_log(msg)

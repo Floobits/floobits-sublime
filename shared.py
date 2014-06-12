@@ -4,9 +4,7 @@ __VERSION__ = ''
 __PLUGIN_VERSION__ = ''
 
 # Config settings
-USERNAME = ''
-SECRET = ''
-API_KEY = ''
+AUTH = {}
 
 DEBUG = False
 SOCK_DEBUG = False
@@ -26,7 +24,7 @@ SECURE = True
 ERROR_COUNT = 0
 ERRORS_SENT = 0
 # Don't spam us with error reports
-MAX_ERROR_REPORTS = 2
+MAX_ERROR_REPORTS = 3
 
 PROXY_PORT = 0  # Random port
 SHARE_DIR = None
@@ -35,7 +33,7 @@ PROJECT_PATH = ''
 WORKSPACE_WINDOW = None
 
 PERMS = []
-STALKER_MODE = False
+FOLLOW_MODE = False
 SPLIT_MODE = False
 
 AUTO_GENERATED_ACCOUNT = False
@@ -46,8 +44,10 @@ CHAT_VIEW_PATH = None
 
 TICK_TIME = 100
 AGENT = None
+IGNORE = None
 
 IGNORE_MODIFIED_EVENTS = False
 VIEW_TO_HASH = {}
 
 FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))
+FLOORC_JSON_PATH = os.path.expanduser(os.path.join('~', '.floorc.json'))

@@ -15,11 +15,13 @@ except ImportError:
 try:
     from ... import editor
     from .. import api, cert, msg, shared as G, utils
+    from ..exc_fmt import str_e
     from . import base, proxy
     assert cert and G and msg and proxy and utils
 except (ImportError, ValueError):
     from floo import editor
     from floo.common import api, cert, msg, shared as G, utils
+    from floo.common.exc_fmt import str_e
     import base
     import proxy
 
@@ -96,19 +98,20 @@ class FlooProtocol(base.BaseProtocol):
                 before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
-                msg.error('Unable to parse json: %s' % str(e))
+                msg.error('Unable to parse json: %s' % str_e(e))
                 msg.error('Data: %s' % before)
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
                 continue
+
             name = data.get('name')
             try:
                 msg.debug('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
             except Exception as e:
-                api.send_error('Error handling %s event.' % name, e)
+                api.send_error('Error handling %s event.' % name, str_e(e))
                 if name == 'room_info':
-                    editor.error_message('Error joining workspace: %s' % str(e))
+                    editor.error_message('Error joining workspace: %s' % str_e(e))
                     self.stop()
             self._buf_in = after
 
@@ -136,8 +139,8 @@ class FlooProtocol(base.BaseProtocol):
 
         self._q.clear()
         self._buf_out = bytes()
-        self.reconnect_delay = self.INITIAL_RECONNECT_DELAY
-        self.retries = self.MAX_RETRIES
+        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self._retries = self.MAX_RETRIES
         self.emit('connect')
         self.connected = True
 
@@ -214,7 +217,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
         except Exception as e:
-            msg.error('Error in SSL handshake:', e)
+            msg.error('Error in SSL handshake:', str_e(e))
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False
@@ -276,7 +279,7 @@ class FlooProtocol(base.BaseProtocol):
 
         # sock_debug('empty select')
         self._empty_reads += 1
-        if self._empty_reads > (2000 / G.TICK_TIME):
+        if self._empty_reads > (3000 / G.TICK_TIME):
             msg.error('No data from sock.recv() {0} times.'.format(self._empty_reads))
             return self.reconnect()
 
@@ -284,10 +287,11 @@ class FlooProtocol(base.BaseProtocol):
         raise NotImplementedError('error not implemented.')
 
     def stop(self):
-        self.retries = -1
+        self._retries = -1
         utils.cancel_timeout(self._reconnect_timeout)
         self._reconnect_timeout = None
         self.cleanup()
+        self.emit('stop')
         msg.log('Disconnected.')
 
     def reconnect(self):
