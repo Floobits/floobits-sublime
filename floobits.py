@@ -90,5 +90,6 @@ if PY2:
 
     def warning():
         if not called_plugin_loaded:
-            print('Your computer is slow and could not start the Floobits reactor. Please contact us (support@floobits.com) or upgrade to Sublime Text 3.')
+            print('Your computer is slow and could not start the Floobits reactor. ' +
+                  'Please contact us (support@floobits.com) or upgrade to Sublime Text 3.')
     threading.Timer(20, warning).start()
