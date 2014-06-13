@@ -1,6 +1,7 @@
 import os.path
 import webbrowser
 import re
+import json
 
 try:
     from . import api, msg, utils, reactor, shared as G
@@ -15,6 +16,8 @@ except (ImportError, ValueError):
 
 
 class FlooUI(object):
+    agent = None
+
     def __make_agent(self, owner, workspace, auth, created_workspace, d):
         """@returns new Agent()"""
         raise NotImplemented()
@@ -67,14 +70,9 @@ class FlooUI(object):
             'Cancel (see https://floobits.com/help/floorc)'
         ]
 
-        (choice, index) = yield self.user_select, context, 'You need a Floobits account to use Floobits! Do you want to:', choices
+        (choice, index) = yield self.user_select, context, 'You need a Floobits account to use Floobits! Do you want to:', choices, None
 
-        agent = None
-        if index == 0:
-            agent = RequestCredentialsHandler()
-        elif index == 1:
-            agent = CreateAccountHandler()
-        else:
+        if index == -1:
             d = utils.get_persistent_data()
             if not d.get('disable_account_creation'):
                 d['disable_account_creation'] = True
@@ -82,6 +80,12 @@ class FlooUI(object):
                 print('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
             cb(None)
             return
+
+        agent = None
+        if index == 0:
+            agent = RequestCredentialsHandler()
+        else:
+            agent = CreateAccountHandler()
 
         agent.once('end', cb)
 
@@ -108,11 +112,18 @@ class FlooUI(object):
             if not auth:
                 msg.error("Something went really wrong.")
                 return
+        if self.agent:
+            try:
+                self.agent.stop()
+            except:
+                pass
+
         self.agent = self.__make_agent(owner, workspace, self, auth, get_bufs and d)
         reactor.reactor.connect(self.agent, host, G.DEFAULT_PORT, True)
         url = self.agent.workspace_url
         utils.add_workspace_to_persistent_json(owner, workspace, url, d)
         utils.update_recent_workspaces(url)
+        return self.agent
 
     @utils.inlined_callbacks
     def create_workspace(self, context, host, owner, name, perms, dir_to_share, cb):
@@ -172,7 +183,7 @@ class FlooUI(object):
             prompt = 'Workspace %s/%s already exists. Choose another name: ' % (owner, name)
 
     @utils.inlined_callbacks
-    def join_workspace(self, context, host, name, owner, current_directory, line_endings=None):
+    def join_workspace(self, context, host, name, owner, cwd=None, possible_dirs=None, line_endings=None):
         if line_endings is not None:
             editor.line_endings = line_endings.find("unix") >= 0 and "\n" or "\r\n"
         utils.reload_settings()
@@ -183,16 +194,17 @@ class FlooUI(object):
                 return
             utils.reload_settings()
 
-        info = utils.read_floo_file(current_directory)
-        dot_floo_url = info and info.get('url')
-        try:
-            parsed_url = utils.parse_url(dot_floo_url)
-        except Exception:
-            parsed_url = None
+        if cwd is not None:
+            info = utils.read_floo_file(cwd)
+            dot_floo_url = info and info.get('url')
+            try:
+                parsed_url = utils.parse_url(dot_floo_url)
+            except Exception:
+                parsed_url = None
 
-        if parsed_url and parsed_url['host'] == host and parsed_url['workspace'] == name and parsed_url['owner'] == owner:
-            self.remote_connect(context, host, owner, name, current_directory)
-            return
+            if parsed_url and parsed_url['host'] == host and parsed_url['workspace'] == name and parsed_url['owner'] == owner:
+                self.remote_connect(context, host, owner, name, cwd)
+                return
 
         try:
             d = utils.get_persistent_data()['workspaces'][owner][name]['path']
@@ -203,7 +215,21 @@ class FlooUI(object):
             self.remote_connect(context, host, owner, name, d)
             return
 
-        d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
+        possible_dirs = possible_dirs or []
+        default_dir = None
+        for d in possible_dirs:
+            floo_file = os.path.join(d, '.floo')
+            try:
+                floo_info = open(floo_file, 'r').read()
+                floorl = json.loads(floo_info).get('url')
+                parsed_url = utils.parse_url(floorl)
+                if parsed_url['host'] == host and parsed_url['workspace'] == name and parsed_url['owner'] == owner:
+                    default_dir = d
+                    break
+            except Exception:
+                pass
+
+        d = default_dir or d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
         while True:
             d = yield self.user_charfield, context, 'Save workspace files to: ', d
             if not d:
@@ -281,7 +307,7 @@ class FlooUI(object):
         if len(hosts) == 1:
             host = hosts[0]
         else:
-            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts
+            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts, None
             if not host:
                 return
 
@@ -300,6 +326,6 @@ class FlooUI(object):
         if len(choices) == 1:
             owner = choices[0]
         else:
-            owner = yield self.user_select, context, 'Create workspace owned by', choices
+            owner = yield self.user_select, context, 'Create workspace owned by', choices, None
 
         yield self.create_workspace, host, owner, workspace_name, perms, dir_to_share
