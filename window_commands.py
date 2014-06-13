@@ -161,24 +161,7 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def on_input(self, workspace_url):
         if disconnect_dialog():
-            self.window.run_command('floobits_join_workspace', {
-                'workspace_url': workspace_url,
-            })
-
-
-class FloobitsJoinWorkspaceCommand(sublime_plugin.WindowCommand):
-
-    def run(self, workspace_url, upload=None):
-        try:
-            d = utils.parse_url(workspace_url)
-        except Exception as e:
-            return sublime.error_message(str_e(e))
-
-        test_dirs = []
-        for w in sublime.windows():
-            test_dirs += w.folders()
-
-        SublimeUI.join_workspace(self, self.window, d['host'], d['workspace'], d['workspace_owner'], upload, test_dirs)
+            SublimeUI.join_workspace_by_url(self.window, workspace_url, self.window.folders())
 
 
 class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
@@ -230,7 +213,8 @@ class FloobitsSummonCommand(FloobitsBaseCommand):
 
 class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
     def _get_recent_workspaces(self):
-        self.recent_workspaces = utils.get_persistent_data()['recent_workspaces']
+        self.persistent_data = utils.get_persistent_data()
+        self.recent_workspaces = self.persistent_data['recent_workspaces']
 
         try:
             recent_workspaces = [x.get('url') for x in self.recent_workspaces if x.get('url') is not None]
@@ -246,8 +230,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
         if item == -1:
             return
         workspace = self.recent_workspaces[item]
-        if disconnect_dialog():
-            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace['url']})
+        SublimeUI.join_workspace_by_url(self.window, workspace['url'])
 
     def is_enabled(self):
         return bool(len(self._get_recent_workspaces()) > 0)

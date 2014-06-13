@@ -182,10 +182,16 @@ class FlooUI(object):
 
             prompt = 'Workspace %s/%s already exists. Choose another name: ' % (owner, name)
 
+    def join_workspace_by_url(self, context, workspace_url, possible_dirs=None):
+        try:
+            d = utils.parse_url(workspace_url)
+        except Exception as e:
+            return editor.error_message(str_e(e))
+
+        return self.join_workspace(context, d['host'], d['workspace'], d['workspace_owner'], possible_dirs)
+
     @utils.inlined_callbacks
-    def join_workspace(self, context, host, name, owner, cwd=None, possible_dirs=None, line_endings=None):
-        if line_endings is not None:
-            editor.line_endings = line_endings.find("unix") >= 0 and "\n" or "\r\n"
+    def join_workspace(self, context, host, name, owner, possible_dirs=None):
         utils.reload_settings()
 
         if not utils.can_auth():
@@ -194,16 +200,18 @@ class FlooUI(object):
                 return
             utils.reload_settings()
 
-        if cwd is not None:
-            info = utils.read_floo_file(cwd)
-            dot_floo_url = info and info.get('url')
+        possible_dirs = possible_dirs or []
+        for d in possible_dirs:
+            info = utils.read_floo_file(d)
+            if not info:
+                continue
             try:
-                parsed_url = utils.parse_url(dot_floo_url)
+                parsed_url = utils.parse_url(info['url'])
             except Exception:
                 parsed_url = None
 
             if parsed_url and parsed_url['host'] == host and parsed_url['workspace'] == name and parsed_url['owner'] == owner:
-                self.remote_connect(context, host, owner, name, cwd)
+                self.remote_connect(context, host, owner, name, d)
                 return
 
         try:
@@ -215,21 +223,7 @@ class FlooUI(object):
             self.remote_connect(context, host, owner, name, d)
             return
 
-        possible_dirs = possible_dirs or []
-        default_dir = None
-        for d in possible_dirs:
-            floo_file = os.path.join(d, '.floo')
-            try:
-                floo_info = open(floo_file, 'r').read()
-                floorl = json.loads(floo_info).get('url')
-                parsed_url = utils.parse_url(floorl)
-                if parsed_url['host'] == host and parsed_url['workspace'] == name and parsed_url['owner'] == owner:
-                    default_dir = d
-                    break
-            except Exception:
-                pass
-
-        d = default_dir or d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
+        d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
         while True:
             d = yield self.user_charfield, context, 'Save workspace files to: ', d
             if not d:
@@ -248,16 +242,13 @@ class FlooUI(object):
                 return
 
     @utils.inlined_callbacks
-    def share_dir(self, context, dir_to_share, ask_about_dir, perms, line_endings=None):
+    def share_dir(self, context, dir_to_share, ask_about_dir, perms):
         utils.reload_settings()
         if not utils.can_auth():
             success = yield self.create_or_link_account, context, G.DEFAULT_HOST
             if not success:
                 return
             utils.reload_settings()
-
-        if line_endings is not None:
-            editor.line_endings = line_endings.find("unix") >= 0 and "\n" or "\r\n"
 
         if not dir_to_share:
             if not ask_about_dir:
