@@ -23,7 +23,7 @@ class FlooUI(object):
         """@returns True/False"""
         raise NotImplemented()
 
-    def user_select(self, context, prompt, choices, cb):
+    def user_select(self, context, prompt, choices_big, choices_small, cb):
         """@returns (choice, index)"""
         raise NotImplemented()
 
