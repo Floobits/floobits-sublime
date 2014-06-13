@@ -120,133 +120,25 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
-        self.api_args = api_args
+        perms = api_args.get('perms').get('AnonymousUser', [])
         utils.reload_settings()
+
         if not utils.can_auth():
             return create_or_link_account()
+
         if paths:
             if len(paths) != 1:
                 return sublime.error_message('Only one folder at a time, please. :(')
-            return self.on_input(paths[0])
+            return SublimeUI.share_dir(self.window, paths[0], None, perms)
+
         if dir_to_share is None:
             folders = self.window.folders()
             if folders:
                 dir_to_share = folders[0]
             else:
                 dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
-        self.window.show_input_panel('Directory to share:', dir_to_share, self.on_input, None, None)
 
-    @utils.inlined_callbacks
-    def on_input(self, dir_to_share):
-        file_to_share = None
-        dir_to_share = os.path.expanduser(dir_to_share)
-        dir_to_share = os.path.realpath(utils.unfuck_path(dir_to_share))
-        workspace_name = os.path.basename(dir_to_share)
-        workspace_url = None
-
-        # TODO: use prejoin_workspace instead
-        def find_workspace(workspace_url):
-            r = api.get_workspace_by_url(workspace_url)
-            if r.code < 400:
-                return r
-            try:
-                result = utils.parse_url(workspace_url)
-                d = utils.get_persistent_data()
-                del d['workspaces'][result['owner']][result['name']]
-                utils.update_persistent_data(d)
-            except Exception as e:
-                msg.debug(str_e(e))
-
-        def join_workspace(workspace_url):
-            try:
-                w = find_workspace(workspace_url)
-            except Exception as e:
-                sublime.error_message('Error: %s' % str_e(e))
-                return False
-            if not w:
-                return False
-            msg.debug('workspace: %s', json.dumps(w.body))
-            # if self.api_args:
-            anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
-            new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
-            # TODO: warn user about making a private workspace public
-            if set(anon_perms) != set(new_anon_perms):
-                msg.debug(str(anon_perms), str(new_anon_perms))
-                w.body['perms']['AnonymousUser'] = new_anon_perms
-                response = api.update_workspace(workspace_url, w.body)
-                msg.debug(str(response.body))
-            utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
-            self.window.run_command('floobits_join_workspace', {'workspace_url': workspace_url})
-            return True
-
-        if os.path.isfile(dir_to_share):
-            file_to_share = dir_to_share
-            dir_to_share = os.path.dirname(dir_to_share)
-
-        try:
-            utils.mkdir(dir_to_share)
-        except Exception:
-            sublime.error_message('The directory %s doesn\'t exist and I can\'t create it.' % dir_to_share)
-            return
-
-        floo_file = os.path.join(dir_to_share, '.floo')
-
-        info = {}
-        try:
-            floo_info = open(floo_file, 'r').read()
-            info = json.loads(floo_info)
-        except (IOError, OSError):
-            pass
-        except Exception:
-            msg.error('Couldn\'t read the floo_info file: %s' % floo_file)
-
-        workspace_url = info.get('url')
-        try:
-            utils.parse_url(workspace_url)
-        except Exception:
-            workspace_url = None
-
-        if workspace_url and join_workspace(workspace_url):
-            return
-
-        for owner, workspaces in utils.get_persistent_data()['workspaces'].items():
-            for name, workspace in workspaces.items():
-                if workspace['path'] == dir_to_share:
-                    workspace_url = workspace['url']
-                    if join_workspace(workspace_url):
-                        return
-
-        auth = yield editor.select_auth, self.window, G.AUTH
-        if not auth:
-            return
-
-        username = auth.get('username')
-        host = auth['host']
-
-        def on_done(owner):
-            msg.log('Colab dir: %s, Username: %s, Workspace: %s/%s' % (G.COLAB_DIR, username, owner[0], workspace_name))
-            self.window.run_command('floobits_create_workspace', {
-                'workspace_name': workspace_name,
-                'dir_to_share': dir_to_share,
-                'upload': file_to_share or dir_to_share,
-                'api_args': self.api_args,
-                'owner': owner[0],
-                'host': host,
-            })
-
-        try:
-            r = api.get_orgs_can_admin(host)
-        except IOError as e:
-            sublime.error_message('Error getting org list: %s' % str_e(e))
-            return
-
-        if r.code >= 400 or len(r.body) == 0:
-            on_done([username])
-            return
-
-        orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
-        orgs.insert(0, [username, 'Create workspace owned by %s' % username])
-        self.window.show_quick_panel(orgs, lambda index: index < 0 or on_done(orgs[index]))
+        SublimeUI.share_dir(self.window, None, dir_to_share, perms)
 
 
 class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):

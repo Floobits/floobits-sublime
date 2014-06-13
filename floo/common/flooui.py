@@ -248,21 +248,34 @@ class FlooUI(object):
                 return
 
     @utils.inlined_callbacks
-    def share_dir(self, context, dir_to_share, perms, line_endings=None):
+    def share_dir(self, context, dir_to_share, ask_about_dir, perms, line_endings=None):
         utils.reload_settings()
-        if line_endings is not None:
-            editor.line_endings = line_endings.find("unix") >= 0 and "\n" or "\r\n"
-        dir_to_share = os.path.expanduser(dir_to_share)
-        dir_to_share = utils.unfuck_path(dir_to_share)
-        workspace_name = os.path.basename(dir_to_share)
-        dir_to_share = os.path.realpath(dir_to_share)
-        msg.debug('%s %s' % (workspace_name, dir_to_share))
-
         if not utils.can_auth():
             success = yield self.create_or_link_account, context, G.DEFAULT_HOST
             if not success:
                 return
             utils.reload_settings()
+
+        if line_endings is not None:
+            editor.line_endings = line_endings.find("unix") >= 0 and "\n" or "\r\n"
+
+        if not dir_to_share:
+            if not ask_about_dir:
+                raise ValueError("I need a thing to share.")
+            dir_to_share = yield self.user_charfield, 'Directory to share:', ask_about_dir
+
+        if not dir_to_share:
+            return
+
+        dir_to_share = os.path.expanduser(dir_to_share)
+        dir_to_share = os.path.realpath(dir_to_share)
+        dir_to_share = utils.unfuck_path(dir_to_share)
+
+        if os.path.isfile(dir_to_share):
+            dir_to_share = os.path.dirname(dir_to_share)
+
+        workspace_name = os.path.basename(dir_to_share)
+        msg.debug('%s %s' % (workspace_name, dir_to_share))
 
         if os.path.isfile(dir_to_share):
             # file_to_share = dir_to_share
@@ -300,10 +313,10 @@ class FlooUI(object):
             return
 
         if not G.AUTH:
+            msg.warn('no auth')
             return
 
-        auths = dict(G.AUTH)
-        hosts = list(auths.keys())
+        hosts = list(G.AUTH.keys())
         if len(hosts) == 1:
             host = hosts[0]
         else:
@@ -316,6 +329,9 @@ class FlooUI(object):
         except IOError as e:
             editor.error_message('Error getting org list: %s' % str_e(e))
             return
+
+        # orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
+        # orgs.insert(0, [username, 'Create workspace owned by %s' % username])
 
         choices = [G.AUTH[host]['username']]
         if r.code >= 400:
