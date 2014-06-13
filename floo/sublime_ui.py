@@ -117,7 +117,7 @@ class SublimeUI(flooui.FlooUI):
         context.show_input_panel(prompt, initial, cb, None, None)
 
     @utils.inlined_callbacks
-    def __handle_window(self, abs_path, cb):
+    def get_a_window(self, abs_path, cb):
         """opens a project in a window or something"""
         if PY2:
             yield open_workspace_window2
@@ -128,4 +128,4 @@ class SublimeUI(flooui.FlooUI):
         if workspace_window is None:
             workspace_window = yield utils.set_timeout, busy_find_workspace_window, 50
         G.WORKSPACE_WINDOW = workspace_window
-        cb()
+        cb(workspace_window)

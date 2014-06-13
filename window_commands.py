@@ -1,7 +1,6 @@
 # coding: utf-8
 import sys
 import os
-import re
 import json
 import webbrowser
 
@@ -11,20 +10,15 @@ import sublime
 PY2 = sys.version_info < (3, 0)
 
 try:
-    from .floo import editor, sublime_ui
-    from .floo.sublime_connection import SublimeConnection
+    from .floo import sublime_ui
     from .floo.common import api, reactor, msg, shared as G, utils
     from .floo.common.exc_fmt import str_e
-    from .floo.common.handlers.account import CreateAccountHandler
-    from .floo.common.handlers.credentials import RequestCredentialsHandler
     assert api and G and msg and utils
 except (ImportError, ValueError):
-    from floo import editor, sublime_ui
-    from floo.common import api, reactor, msg, shared as G, utils
+    from floo import sublime_ui
+    from floo.common import reactor, msg, shared as G, utils
     from floo.common.exc_fmt import str_e
-    from floo.common.handlers.account import CreateAccountHandler
-    from floo.common.handlers.credentials import RequestCredentialsHandler
-    from floo.sublime_connection import SublimeConnection
+
 
 reactor = reactor.reactor
 
@@ -40,64 +34,6 @@ def disconnect_dialog():
             G.AGENT = None
         return disconnect
     return True
-
-
-def link_account(host, cb):
-    account = sublime.ok_cancel_dialog('No credentials found in ~/.floorc.json for %s.\n\n'
-                                       'Click "Link Account" to open a web browser and add credentials.' % host,
-                                       'Link Account')
-    if not account:
-        return
-    agent = RequestCredentialsHandler()
-    if not agent:
-        sublime.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.\n
-We're really sorry. This should never happen.''' % host)
-        return
-
-    agent.once('end', cb)
-
-    try:
-        reactor.connect(agent, host, G.DEFAULT_PORT, True)
-    except Exception as e:
-        print(str_e(e))
-
-
-def create_or_link_account(force=False):
-    disable_account_creation = utils.get_persistent_data().get('disable_account_creation')
-    if disable_account_creation and not force:
-        print('We could not automatically create or link your floobits account. Please go to floobits.com and sign up to use this plugin.')
-        return
-
-    opts = [
-        ['Use existing Floobits account.', '(opens web page)'],
-        ['Create a new Floobits account.', ''],
-        ['Cancel', ''],
-    ]
-
-    def cb(index):
-        if index == 0:
-            agent = RequestCredentialsHandler()
-        elif index == 1:
-            agent = CreateAccountHandler()
-        else:
-            d = utils.get_persistent_data()
-            if d.get('disable_account_creation'):
-                return
-            d['disable_account_creation'] = True
-            utils.update_persistent_data(d)
-            sublime.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
-        try:
-            reactor.connect(agent, G.DEFAULT_HOST, G.DEFAULT_PORT, True)
-        except Exception as e:
-            print(str_e(e))
-
-    def get_workspace_window():
-        w = sublime.active_window()
-        if w is None:
-            return utils.set_timeout(get_workspace_window, 50)
-        sublime.message_dialog('Thank you for installing the Floobits plugin!\n\nLet\'s set up your editor to work with Floobits.')
-        w.show_quick_panel(opts, cb)
-    get_workspace_window()
 
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
@@ -121,10 +57,6 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
         perms = api_args.get('perms').get('AnonymousUser', [])
-        utils.reload_settings()
-
-        if not utils.can_auth():
-            return create_or_link_account()
 
         if paths:
             if len(paths) != 1:
@@ -411,7 +343,9 @@ class FloobitsSetup(FloobitsBaseCommand):
         return not utils.can_auth()
 
     def run(self):
-        create_or_link_account(True)
+        def f(x):
+            print(x)
+        SublimeUI.create_or_link_account(self.window, G.DEFAULT_HOST, True, f)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

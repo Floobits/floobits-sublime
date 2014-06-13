@@ -25,14 +25,12 @@ Please upgrade your operating system if you want to use this plugin. :(''')
         print(e)
 
 try:
-    from .window_commands import create_or_link_account
     from .floo import version
     from .floo.listener import Listener
     from .floo.common import migrations, reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
-    from window_commands import create_or_link_account
     from floo import version
     from floo.listener import Listener
     from floo.common import migrations, reactor, shared as G, utils
@@ -81,9 +79,13 @@ def plugin_loaded():
 
     # Sublime plugin API stuff can't be called right off the bat
     if not utils.can_auth():
-        utils.set_timeout(create_or_link_account, 1)
-
-    utils.set_timeout(global_tick, 1)
+        def setup():
+            w = sublime.active_window()
+            if not w:
+                return
+            w.run_command("floobits-setup")
+        sublime.set_timeout(setup, 0)
+    sublime.set_timeout(global_tick, 1)
 
 # Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
 if PY2:

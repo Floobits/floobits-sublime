@@ -1,7 +1,6 @@
 import os.path
 import webbrowser
 import re
-import json
 
 try:
     from . import api, msg, utils, reactor, shared as G
@@ -34,7 +33,7 @@ class FlooUI(object):
         """@returns String"""
         raise NotImplemented()
 
-    def __handle_window(self, abs_path, cb):
+    def get_a_window(self, abs_path, cb):
         """opens a project in a window or something"""
         raise NotImplemented()
 
@@ -59,7 +58,12 @@ class FlooUI(object):
             print(str_e(e))
 
     @utils.inlined_callbacks
-    def create_or_link_account(self, context, host, cb):
+    def create_or_link_account(self, context, host, force, cb):
+        disable_account_creation = utils.get_persistent_data().get('disable_account_creation')
+        if disable_account_creation and not force:
+            print('We could not automatically create or link your floobits account. Please go to floobits.com and sign up to use this plugin.')
+            return
+
         if host != "floobits.com":
             self.link_account(host, cb)
             return
@@ -195,7 +199,7 @@ class FlooUI(object):
         utils.reload_settings()
 
         if not utils.can_auth():
-            success = yield self.create_or_link_account, context, host
+            success = yield self.create_or_link_account, context, host, False
             if not success:
                 return
             utils.reload_settings()
@@ -245,7 +249,7 @@ class FlooUI(object):
     def share_dir(self, context, dir_to_share, ask_about_dir, perms):
         utils.reload_settings()
         if not utils.can_auth():
-            success = yield self.create_or_link_account, context, G.DEFAULT_HOST
+            success = yield self.create_or_link_account, context, G.DEFAULT_HOST, False
             if not success:
                 return
             utils.reload_settings()
