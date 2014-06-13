@@ -506,7 +506,7 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
             for w in sublime.windows():
                 if default_dir:
                     break
-                for d in self.window.folders():
+                for d in w.folders():
                     floo_file = os.path.join(d, '.floo')
                     try:
                         floo_info = open(floo_file, 'r').read()
