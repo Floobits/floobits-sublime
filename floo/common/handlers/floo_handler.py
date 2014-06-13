@@ -222,7 +222,7 @@ class FlooHandler(base.BaseHandler):
 
             def _on_load():
                 v = self.get_view(buf_id)
-                if v:
+                if v and 'buf' in buf:
                     v.update(buf, message=False)
             self.on_load[buf_id]['patch'] = _on_load
             return
