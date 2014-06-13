@@ -4,12 +4,12 @@ import re
 
 try:
     from . import api, msg, utils, reactor, shared as G
-    from .handlers import RequestCredentialsHandler, CreateAccountHandler
+    from .handlers import account, credentials
     from .. import editor
     from ..common.exc_fmt import str_e
 except (ImportError, ValueError):
     from floo.common.exc_fmt import str_e
-    from floo.common.handlers import RequestCredentialsHandler, CreateAccountHandler
+    from floo.common.handlers import account, credentials
     from floo.common import api, msg, utils, reactor, shared as G
     from floo import editor
 
@@ -17,7 +17,7 @@ except (ImportError, ValueError):
 class FlooUI(object):
     agent = None
 
-    def __make_agent(self, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, owner, workspace, auth, created_workspace, d):
         """@returns new Agent()"""
         raise NotImplemented()
 
@@ -44,7 +44,7 @@ class FlooUI(object):
         if not yes:
             return
 
-        agent = RequestCredentialsHandler()
+        agent = credentials.RequestCredentialsHandler()
         if not agent:
             self.error_message('''A configuration error occured earlier. Please go to %s and sign up to use this plugin.\n
     We're really sorry. This should never happen.''' % host)
@@ -87,9 +87,9 @@ class FlooUI(object):
 
         agent = None
         if index == 0:
-            agent = RequestCredentialsHandler()
+            agent = credentials.RequestCredentialsHandler()
         else:
-            agent = CreateAccountHandler()
+            agent = account.CreateAccountHandler()
 
         agent.once('end', cb)
 
@@ -122,12 +122,12 @@ class FlooUI(object):
             except:
                 pass
 
-        self.agent = self.__make_agent(owner, workspace, self, auth, get_bufs and d)
+        G.WORKSPACE_WINDOW = yield self.get_a_window, d
+        self.agent = self._make_agent(owner, workspace, auth, get_bufs, d)
         reactor.reactor.connect(self.agent, host, G.DEFAULT_PORT, True)
         url = self.agent.workspace_url
         utils.add_workspace_to_persistent_json(owner, workspace, url, d)
         utils.update_recent_workspaces(url)
-        return self.agent
 
     @utils.inlined_callbacks
     def create_workspace(self, context, host, owner, name, perms, dir_to_share, cb):
@@ -192,7 +192,7 @@ class FlooUI(object):
         except Exception as e:
             return editor.error_message(str_e(e))
 
-        return self.join_workspace(context, d['host'], d['workspace'], d['workspace_owner'], possible_dirs)
+        return self.join_workspace(context, d['host'], d['workspace'], d['owner'], possible_dirs)
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):

@@ -22,20 +22,13 @@ def get_workspace_window(abs_path):
     workspace_window = None
     for w in sublime.windows():
         for f in w.folders():
-            if utils.unfuck_path(f) == utils.unfuck_path(G.PROJECT_PATH):
+            if utils.unfuck_path(f) == utils.unfuck_path(abs_path):
                 workspace_window = w
                 break
     return workspace_window
 
 
-def busy_find_workspace_window(cb):
-    workspace_window = get_workspace_window()
-    if workspace_window is None:
-        return utils.set_timeout(busy_find_workspace_window, 50, cb)
-    cb(workspace_window)
-
-
-def open_workspace_window2(cb):
+def open_workspace_window2(abs_path, cb):
     if sublime.platform() == 'linux':
         subl = open('/proc/self/cmdline').read().split(chr(0))[0]
     elif sublime.platform() == 'osx':
@@ -53,7 +46,7 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
         raise Exception('WHAT PLATFORM ARE WE ON?!?!?')
 
     command = [subl]
-    if get_workspace_window() is None:
+    if get_workspace_window(abs_path) is None:
         command.append('--new-window')
     command.append('--add')
     command.append(G.PROJECT_PATH)
@@ -65,7 +58,7 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
     cb()
 
 
-def open_workspace_window3(cb):
+def open_workspace_window3(abs_path, cb):
     def finish(w):
         msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
         w.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
@@ -91,7 +84,7 @@ def open_workspace_window3(cb):
             return finish(w)
         return utils.set_timeout(wait_empty_window, 50, i + 1)
 
-    w = get_workspace_window() or get_empty_window()
+    w = get_workspace_window(abs_path) or get_empty_window()
     if w:
         return finish(w)
 
@@ -100,7 +93,7 @@ def open_workspace_window3(cb):
 
 
 class SublimeUI(flooui.FlooUI):
-    def __make_agent(self, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, owner, workspace, auth, created_workspace, d):
         """@returns new Agent()"""
         return SublimeConnection(owner, workspace, auth, created_workspace and d)
 
@@ -120,12 +113,13 @@ class SublimeUI(flooui.FlooUI):
     def get_a_window(self, abs_path, cb):
         """opens a project in a window or something"""
         if PY2:
-            yield open_workspace_window2
+            yield open_workspace_window2, abs_path
         else:
-            yield open_workspace_window3
+            yield open_workspace_window3, abs_path
 
-        workspace_window = get_workspace_window()
-        if workspace_window is None:
-            workspace_window = yield utils.set_timeout, busy_find_workspace_window, 50
-        G.WORKSPACE_WINDOW = workspace_window
+        while True:
+            workspace_window = get_workspace_window(abs_path)
+            if workspace_window is not None:
+                break
+            yield lambda cb: utils.set_timeout(cb, 50)
         cb(workspace_window)
