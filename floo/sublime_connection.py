@@ -38,11 +38,11 @@ class SublimeConnection(floo_handler.FlooHandler):
             if 'patch' not in G.PERMS:
                 continue
             if 'buf' not in buf:
-                msg.debug('No data for buf %s %s yet. Skipping sending patch' % (buf['id'], buf['path']))
+                msg.debug('No data for buf ', buf['id'], ' ', buf['path'], ' yet. Skipping sending patch')
                 continue
             view = View(v, buf)
             if view.is_loading():
-                msg.debug('View for buf %s is not ready. Ignoring change event' % buf['id'])
+                msg.debug('View for buf ', buf['id'], ' is not ready. Ignoring change event')
                 continue
             if view.native_id in reported:
                 continue
@@ -114,9 +114,9 @@ class SublimeConnection(floo_handler.FlooHandler):
         remote_len = to_remove_len + to_upload_len
         to_fetch_len = len(to_fetch)
 
-        msg.log('To fetch: %s' % ', '.join(to_fetch))
-        msg.log('To upload: %s' % ', '.join(to_upload))
-        msg.log('To remove: %s' % ', '.join(to_remove))
+        msg.log('To fetch: ', ', '.join(to_fetch))
+        msg.log('To upload: ', ', '.join(to_upload))
+        msg.log('To remove: ', ', '.join(to_remove))
 
         if not to_fetch:
             overwrite_local = 'Fetch nothing'
@@ -233,7 +233,7 @@ class SublimeConnection(floo_handler.FlooHandler):
 
     def delete_buf(self, path, unlink=False):
         if not utils.is_shared(path):
-            msg.error('Skipping deleting %s because it is not in shared path %s.' % (path, G.PROJECT_PATH))
+            msg.error('Skipping deleting ', path, ' because it is not in shared path ', G.PROJECT_PATH, '.')
             return
         if os.path.isdir(path):
             for dirpath, dirnames, filenames in os.walk(path):
@@ -243,13 +243,13 @@ class SublimeConnection(floo_handler.FlooHandler):
                 for f in filenames:
                     f_path = os.path.join(dirpath, f)
                     if f[0] == '.':
-                        msg.log('Not deleting buf for hidden file %s' % f_path)
+                        msg.log('Not deleting buf for hidden file ', f_path)
                     else:
                         self.delete_buf(f_path, unlink)
             return
         buf_to_delete = self.get_buf_by_path(path)
         if buf_to_delete is None:
-            msg.error('%s is not in this workspace' % path)
+            msg.error(path, ' is not in this workspace')
             return
         msg.log('deleting buffer ', utils.to_rel_path(path))
         event = {
@@ -385,14 +385,14 @@ class SublimeConnection(floo_handler.FlooHandler):
         buf = get_buf(view)
         if not buf:
             return
-        msg.debug('clearing highlights in %s, buf id %s' % (buf['path'], buf['id']))
+        msg.debug('clearing highlights in ', buf['path'], ', buf id ', buf['id'])
         for user_id, username in self.workspace_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
     def summon(self, view):
         buf = get_buf(view)
         if buf:
-            msg.debug('summoning selection in view %s, buf id %s' % (buf['path'], buf['id']))
+            msg.debug('summoning selection in view ', buf['path'], ', buf id ', buf['id'])
             self.selection_changed.append((view, buf, True))
         else:
             path = view.file_name()
@@ -415,7 +415,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 G.WORKSPACE_WINDOW.focus_view(view)
                 G.WORKSPACE_WINDOW.run_command("close_file")
             except Exception as e:
-                msg.debug('Error closing view: %s' % str_e(e))
+                msg.debug('Error closing view: ', str_e(e))
         super(self.__class__, self)._on_delete_buf(data)
 
     def _on_create_buf(self, data):

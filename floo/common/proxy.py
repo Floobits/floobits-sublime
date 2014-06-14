@@ -31,7 +31,7 @@ class FlooConn(base.BaseHandler):
         pass
 
     def on_connect(self):
-        msg.log("have an conn!")
+        msg.log('Connection established.')
         self.proto.proxy = self.proxy
 
 
@@ -46,7 +46,7 @@ class ProxyProtocol(floo_proto.FlooProtocol):
         self.connected = True
 
     def reconnect(self):
-        msg.error("client connection died")
+        msg.error('Client connection died!')
         sys.exit(1)
 
     def stop(self):
@@ -57,7 +57,7 @@ class ProxyServer(base.BaseHandler):
     PROTOCOL = ProxyProtocol
 
     def on_connect(self):
-        msg.log("have an conn!")
+        msg.log('Connection established.')
         reactor.reactor.connect(FlooConn(self), G.DEFAULT_HOST, G.DEFAULT_PORT, True)
 
 
@@ -80,5 +80,5 @@ def main():
     utils.set_timeout(on_ready, 100)
     reactor.reactor.block()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

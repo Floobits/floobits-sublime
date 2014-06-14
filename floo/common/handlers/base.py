@@ -17,15 +17,15 @@ class BaseHandler(event_emitter.EventEmitter):
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
-        self.proto.on("data", self.on_data)
-        self.proto.on("connect", self.on_connect)
+        self.proto.on('data', self.on_data)
+        self.proto.on('connect', self.on_connect)
         return self.proto
 
     def send(self, *args, **kwargs):
         self.proto.put(*args, **kwargs)
 
     def on_data(self, name, data):
-        handler = getattr(self, "_on_%s" % name, None)
+        handler = getattr(self, '_on_%s' % name, None)
         if handler:
             return handler(data)
         msg.debug('unknown name!', name, 'data:', data)
@@ -39,10 +39,10 @@ class BaseHandler(event_emitter.EventEmitter):
         return editor.codename()
 
     def _on_error(self, data):
-        message = 'Error from server! Message: %s' % str(data.get('msg'))
+        message = 'Error from Floobits server: %s' % str(data.get('msg'))
         msg.error(message)
         if data.get('flash'):
-            editor.error_message('Error from Floobits server: %s' % str(data.get('msg')))
+            editor.error_message(message)
 
     def _on_disconnect(self, data):
         message = 'Disconnected from server! Reason: %s' % str(data.get('reason'))

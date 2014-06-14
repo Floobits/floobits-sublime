@@ -3,7 +3,6 @@ import sys
 import os
 import re
 import json
-import uuid
 import subprocess
 import webbrowser
 
@@ -165,7 +164,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
                 return False
             if not w:
                 return False
-            msg.debug('workspace: %s', json.dumps(w.body))
+            msg.debug('workspace: ', json.dumps(w.body))
             # if self.api_args:
             anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
             new_anon_perms = self.api_args.get('perms').get('AnonymousUser', [])
@@ -198,7 +197,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         except (IOError, OSError):
             pass
         except Exception:
-            msg.error('Couldn\'t read the floo_info file: %s' % floo_file)
+            msg.error('Couldn\'t read the floo_info file: ', floo_file)
 
         workspace_url = info.get('url')
         try:
@@ -224,7 +223,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         host = auth['host']
 
         def on_done(owner):
-            msg.log('Colab dir: %s, Username: %s, Workspace: %s/%s' % (G.COLAB_DIR, username, owner[0], workspace_name))
+            msg.log('Colab dir: ', G.COLAB_DIR, ', Username: ', username, ', Workspace: ', owner[0], '/', workspace_name)
             self.window.run_command('floobits_create_workspace', {
                 'workspace_name': workspace_name,
                 'dir_to_share': dir_to_share,
@@ -281,11 +280,11 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
             msg.debug(str(self.api_args))
             r = api.create_workspace(self.host, self.api_args)
         except Exception as e:
-            msg.error('Unable to create workspace: %s' % str_e(e))
+            msg.error('Unable to create workspace: ', str_e(e))
             return sublime.error_message('Unable to create workspace: %s' % str_e(e))
 
         workspace_url = 'https://%s/%s/%s' % (self.host, self.owner, workspace_name)
-        msg.log('Created workspace %s' % workspace_url)
+        msg.log('Created workspace ', workspace_url)
 
         if r.code < 400:
             utils.add_workspace_to_persistent_json(self.owner, workspace_name, workspace_url, self.dir_to_share)
@@ -294,7 +293,7 @@ class FloobitsCreateWorkspaceCommand(sublime_plugin.WindowCommand):
                 'upload': dir_to_share
             })
 
-        msg.error('Unable to create workspace: %s' % r.body)
+        msg.error('Unable to create workspace: ', r.body)
         if r.code not in [400, 402, 409]:
             try:
                 r.body = r.body['detail']
@@ -403,17 +402,17 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
             command.append('--add')
             command.append(G.PROJECT_PATH)
 
-            msg.debug('command:', command)
+            msg.debug('command: ', command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             poll_result = p.poll()
-            msg.debug('poll:', poll_result)
+            msg.debug('poll: ', poll_result)
 
             set_workspace_window(cb)
 
         def open_workspace_window3(cb):
             def finish(w):
                 G.WORKSPACE_WINDOW = w
-                msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
+                msg.debug('Setting project data. Path:', G.PROJECT_PATH)
                 G.WORKSPACE_WINDOW.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
                 cb()
 
@@ -496,10 +495,10 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
         try:
             G.PROJECT_PATH = d['workspaces'][result['owner']][result['workspace']]['path']
         except Exception:
-            msg.log('%s/%s not in persistent.json' % (result['owner'], result['workspace']))
+            msg.log(result['owner'], '/', result['workspace'], ' not in persistent.json')
             G.PROJECT_PATH = ''
 
-        msg.log('Project path is %s' % G.PROJECT_PATH)
+        msg.log('Project path is ', G.PROJECT_PATH)
 
         if not os.path.isdir(G.PROJECT_PATH):
             default_dir = None

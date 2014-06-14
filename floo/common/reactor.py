@@ -39,7 +39,7 @@ class _Reactor(object):
         try:
             handler.proto.stop()
         except Exception as e:
-            msg.warn('Error stopping connection: %s' % str_e(e))
+            msg.warn('Error stopping connection: ', str_e(e))
         try:
             self._handlers.remove(handler)
         except Exception:
@@ -115,7 +115,7 @@ class _Reactor(object):
             # TODO: with multiple FDs, must call select with just one until we find the error :(
             if len(readable) == 1:
                 readable[0].reconnect()
-                return msg.error('Error in select(): %s' % str_e(e))
+                return msg.error('Error in select(): ', str_e(e))
             raise Exception("can't handle more than one fd exception in reactor")
 
         for fileno in _except:
@@ -127,7 +127,7 @@ class _Reactor(object):
             try:
                 fd.write()
             except Exception as e:
-                msg.error('Couldn\'t write to socket: %s' % str_e(e))
+                msg.error('Couldn\'t write to socket: ', str_e(e))
                 return self._reconnect(fd, _in)
 
         for fileno in _in:
@@ -135,7 +135,7 @@ class _Reactor(object):
             try:
                 fd.read()
             except Exception as e:
-                msg.error('Couldn\'t read from socket: %s' % str_e(e))
+                msg.error('Couldn\'t read from socket: ', str_e(e))
                 fd.reconnect()
 
 reactor = _Reactor()

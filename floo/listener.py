@@ -50,7 +50,7 @@ class Listener(sublime_plugin.EventListener):
         return view.file_name()
 
     def on_new(self, view):
-        msg.debug('new', self.name(view))
+        msg.debug('Sublime new ', self.name(view))
 
     @if_connected
     def reenable_follow_mode(self, agent):
@@ -66,7 +66,7 @@ class Listener(sublime_plugin.EventListener):
 
     @if_connected
     def on_clone(self, view, agent):
-        msg.debug('Sublime cloned %s' % self.name(view))
+        msg.debug('Sublime cloned ', self.name(view))
         buf = get_buf(view)
         if not buf:
             return
@@ -79,11 +79,11 @@ class Listener(sublime_plugin.EventListener):
 
     @if_connected
     def on_close(self, view, agent):
-        msg.debug('Sublime closed view %s' % self.name(view))
+        msg.debug('Sublime closed view ', self.name(view))
 
     @if_connected
     def on_load(self, view, agent):
-        msg.debug('Sublime loaded %s' % self.name(view))
+        msg.debug('Sublime loaded ', self.name(view))
         buf = get_buf(view)
         if not buf:
             return
@@ -143,7 +143,7 @@ class Listener(sublime_plugin.EventListener):
             if not is_shared:
                 return cleanup()
             if G.IGNORE and G.IGNORE.is_ignored(view.file_name(), log=True):
-                msg.log('%s is ignored. Not creating buffer.' % view.file_name())
+                msg.log(view.file_name(), ' is ignored. Not creating buffer.')
                 return cleanup()
             msg.log('Creating new buffer ', name, view.file_name())
             event = {
@@ -153,14 +153,14 @@ class Listener(sublime_plugin.EventListener):
             }
         elif name != old_name:
             if is_shared:
-                msg.log('renamed buffer {0} to {1}'.format(old_name, name))
+                msg.log('renamed buffer ', old_name, ' to ', name)
                 event = {
                     'name': 'rename_buf',
                     'id': buf['id'],
                     'path': name
                 }
             else:
-                msg.log('deleting buffer from shared: {0}'.format(name))
+                msg.log('deleting buffer from shared: ', name)
                 event = {
                     'name': 'delete_buf',
                     'id': buf['id'],
@@ -190,7 +190,7 @@ class Listener(sublime_plugin.EventListener):
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
 
-        msg.debug('changed view %s buf id %s' % (buf['path'], buf['id']))
+        msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
 
         self.disable_follow_mode(2000)
         buf['forced_patch'] = False
@@ -206,7 +206,7 @@ class Listener(sublime_plugin.EventListener):
     def on_activated(self, view, agent):
         buf = get_buf(view)
         if buf:
-            msg.debug('activated view %s buf id %s' % (buf['path'], buf['id']))
+            msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
             self.on_modified(view)
             agent.selection_changed.append((view, buf, False))
 
