@@ -56,7 +56,7 @@ class View(object):
     def update(self, buf, message=True):
         self.buf = buf
         if message:
-            msg.log('Floobits synced data for consistency: %s' % buf['path'])
+            msg.log('Floobits synced data for consistency: ', buf['path'])
         G.VIEW_TO_HASH[self.view.buffer_id()] = buf['md5']
         self.view.set_read_only(False)
         try:
@@ -65,7 +65,7 @@ class View(object):
                 self.set_status('Floobits synced data for consistency.')
             utils.set_timeout(self.set_status, 5000, '')
         except Exception as e:
-            msg.error('Exception updating view: %s' % str_e(e))
+            msg.error('Exception updating view: ', str_e(e))
         if 'patch' not in G.PERMS:
             self.set_status('You don\'t have write permission. Buffer is read-only.')
             self.view.set_read_only(True)
@@ -95,7 +95,7 @@ class View(object):
         raise NotImplemented()
 
     def highlight(self, ranges, user_id):
-        msg.debug('highlighting ranges %s' % (ranges))
+        msg.debug('highlighting ranges ', ranges)
         raise NotImplemented()
 
     def rename(self, name):

@@ -118,7 +118,7 @@ def conn_log(action, item):
     except Exception:
         pass
     if G.SOCK_DEBUG:
-        msg.log('%s: %s' % (action, item))
+        msg.log(action, ': ', item)
     sys.stdout.flush()
 
 eventStream.on('to_floobits', lambda x: conn_log('to_floobits', x))
@@ -156,7 +156,7 @@ class FlooConn(base.BaseHandler):
         pass
 
     def on_connect(self):
-        msg.log('have a remote conn!')
+        msg.log('Remote connection estabished.')
         eventStream.emit('remote_conn')
 
 
