@@ -68,6 +68,9 @@ class FlooUI(object):
             self.link_account(host, cb)
             return
 
+        if not G.EXPERT_MODE:
+            editor.message_dialog('Thank you for installing the Floobits plugin!\n\nLet\'s set up your editor to work with Floobits.')
+
         choices = [
             'Use an existing Floobits account',
             'Create a new Floobits account',
