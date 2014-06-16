@@ -6,7 +6,7 @@ import getpass
 try:
     from . import base
     from .. import msg, api, shared as G, utils
-    from ....floo import editor
+    from ... import editor
     from ..exc_fmt import str_e
     from ..protocols import no_reconnect
     assert api and G and msg and utils
