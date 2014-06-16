@@ -79,16 +79,7 @@ def plugin_loaded():
 
     # Sublime plugin API stuff can't be called right off the bat
     if not utils.can_auth():
-        def setup():
-            print(sublime.active_window(), sublime.windows())
-            # w = sublime.active_window()
-            # if not w:
-            #     w = sublime.windows()
-            #     if not w:
-            #         return
-            #     w = w[0]
-            sublime.run_command("floobits_setup")
-        sublime.set_timeout(setup, 0)
+        sublime.set_timeout(lambda: sublime.run_command("floobits_setup"), 0)
     sublime.set_timeout(global_tick, 1)
 
 # Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
