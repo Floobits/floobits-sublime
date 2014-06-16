@@ -9,7 +9,10 @@
       {
         "id": "floobits_setup",
         "caption": "Setup",
-        "command": "floobits_setup"
+        "command": "floobits_setup",
+        "args": {
+          "force": true
+        }
       },
       {
         "caption": "Help",

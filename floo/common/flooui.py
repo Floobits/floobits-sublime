@@ -84,7 +84,7 @@ class FlooUI(object):
             if not d.get('disable_account_creation'):
                 d['disable_account_creation'] = True
                 utils.update_persistent_data(d)
-                print('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
+                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
             cb(None)
             return
 
