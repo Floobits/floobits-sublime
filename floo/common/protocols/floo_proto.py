@@ -98,8 +98,8 @@ class FlooProtocol(base.BaseProtocol):
                 before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
-                msg.error('Unable to parse json: %s' % str_e(e))
-                msg.error('Data: %s' % before)
+                msg.error('Unable to parse json: ', str_e(e))
+                msg.error('Data: ', before)
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
                 continue
@@ -131,7 +131,7 @@ class FlooProtocol(base.BaseProtocol):
             elif e.errno in connect_errno:
                 return utils.set_timeout(self._connect, 20, attempts + 1)
             else:
-                msg.error('Error connecting:', e)
+                msg.error('Error connecting:', str_e(e))
                 return self.reconnect()
         if self._secure:
             sock_debug('SSL-wrapping socket')
@@ -217,7 +217,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
         except Exception as e:
-            msg.error('Error in SSL handshake:', str_e(e))
+            msg.error('Error in SSL handshake: ', str_e(e))
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False
@@ -310,8 +310,8 @@ class FlooProtocol(base.BaseProtocol):
     def put(self, item):
         if not item:
             return
-        msg.debug('writing %s' % item.get('name', 'NO NAME'))
+        msg.debug('writing ', item.get('name', 'NO NAME'))
         self._q.append(json.dumps(item) + '\n')
         qsize = len(self._q)
-        msg.debug('%s items in q' % qsize)
+        msg.debug(qsize, ' items in q')
         return qsize

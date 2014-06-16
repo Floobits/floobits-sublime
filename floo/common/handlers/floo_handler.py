@@ -94,7 +94,7 @@ class FlooHandler(base.BaseHandler):
             'id': buf_id
         })
         buf = self.bufs[buf_id]
-        msg.warn('Syncing buffer %s for consistency.' % buf['path'])
+        msg.warn('Syncing buffer ', buf['path'], ' for consistency.')
         if 'buf' in buf:
             del buf['buf']
 
@@ -143,7 +143,7 @@ class FlooHandler(base.BaseHandler):
         buf_id = data['id']
         buf = self.bufs[buf_id]
         if 'buf' not in buf:
-            msg.debug('buf %s not populated yet. not patching' % buf['path'])
+            msg.debug('buf ', buf['path'], ' not populated yet. not patching')
             return
 
         if buf['encoding'] == 'base64':
@@ -170,14 +170,14 @@ class FlooHandler(base.BaseHandler):
                 buf['buf'] = patch.current
                 buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
                 buf['forced_patch'] = True
-                msg.debug('forcing patch for %s' % buf['path'])
+                msg.debug('forcing patch for ', buf['path'])
                 self.send(patch.to_json())
                 old_text = view_text
             else:
-                msg.debug('forced patch is true. not sending another patch for buf %s' % buf['path'])
+                msg.debug('forced patch is true. not sending another patch for buf ', buf['path'])
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
-            msg.warn('starting md5s don\'t match for %s. this is dangerous!' % buf['path'])
+            msg.warn('starting md5s don\'t match for ', buf['path'], '. this is dangerous!')
 
         t = DMP.patch_apply(dmp_patches, old_text)
 
@@ -207,7 +207,7 @@ class FlooHandler(base.BaseHandler):
             del buf['timeout_id']
 
         if not clean_patch:
-            msg.log('Couldn\'t patch %s cleanly.' % buf['path'])
+            msg.log('Couldn\'t patch ', buf['path'], ' cleanly.')
             return self.get_buf(buf_id, view)
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
@@ -218,11 +218,11 @@ class FlooHandler(base.BaseHandler):
         buf['md5'] = cur_hash
 
         if not view:
-            msg.debug('No view. Not saving buffer %s' % buf_id)
+            msg.debug('No view. Not saving buffer ', buf_id)
 
             def _on_load():
                 v = self.get_view(buf_id)
-                if v:
+                if v and 'buf' in buf:
                     v.update(buf, message=False)
             self.on_load[buf_id]['patch'] = _on_load
             return
@@ -233,7 +233,7 @@ class FlooHandler(base.BaseHandler):
         buf_id = data['id']
         buf = self.bufs.get(buf_id)
         if not buf:
-            return msg.warn('no buf found: %s.  Hopefully you didn\'t need that' % data)
+            return msg.warn('no buf found: ', data, '. Hopefully you didn\'t need that.')
         timeout_id = buf.get('timeout_id')
         if timeout_id:
             utils.cancel_timeout(timeout_id)
@@ -250,7 +250,7 @@ class FlooHandler(base.BaseHandler):
 
         view = self.get_view(buf_id)
         if not view:
-            msg.debug('No view for buf %s. Saving to disk.' % buf_id)
+            msg.debug('No view for buf ', buf_id, '. Saving to disk.')
             return utils.save_buf(data)
 
         view.update(data)
@@ -291,7 +291,7 @@ class FlooHandler(base.BaseHandler):
                 del self.paths_to_ids[buf['path']]
                 del self.bufs[buf_id]
         except KeyError:
-            msg.debug('KeyError deleting buf id %s' % buf_id)
+            msg.debug('KeyError deleting buf id ', buf_id)
         # TODO: if data['unlink'] == True, add to ignore?
         action = 'removed'
         path = utils.get_full_path(data['path'])
@@ -300,10 +300,10 @@ class FlooHandler(base.BaseHandler):
             try:
                 utils.rm(path)
             except Exception as e:
-                msg.debug('Error deleting %s: %s' % (path, str_e(e)))
+                msg.debug('Error deleting ', path, ': ', str_e(e))
         user_id = data.get('user_id')
         username = self.get_username_by_id(user_id)
-        msg.log('%s %s %s' % (username, action, path))
+        msg.log(username, ' ', action, ' ', path)
 
     def _upload_file_by_path(self, rel_path):
         return self._upload(utils.get_full_path(rel_path), self.get_view_text_by_path(rel_path))
@@ -403,14 +403,14 @@ class FlooHandler(base.BaseHandler):
                 buf['view'] = view
                 G.VIEW_TO_HASH[view.native_id] = view_md5
                 if view_md5 == buf['md5']:
-                    msg.debug('md5 sum matches view. not getting buffer %s' % buf['path'])
+                    msg.debug('md5 sum matches view. not getting buffer ', buf['path'])
                 else:
                     changed_bufs.append(buf)
                     buf['md5'] = view_md5
                 continue
 
             try:
-                if buf['encoding'] == "utf8":
+                if buf['encoding'] == 'utf8':
                     if io:
                         buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
                         buf_buf = buf_fd.read()
@@ -425,13 +425,13 @@ class FlooHandler(base.BaseHandler):
                 buf_fd.close()
                 buf['buf'] = buf_buf
                 if md5 == buf['md5']:
-                    msg.debug('md5 sum matches. not getting buffer %s' % buf['path'])
+                    msg.debug('md5 sum matches. not getting buffer ', buf['path'])
                 else:
-                    msg.debug('md5 differs. possibly getting buffer later %s' % buf['path'])
+                    msg.debug('md5 differs. possibly getting buffer later ', buf['path'])
                     changed_bufs.append(buf)
                     buf['md5'] = md5
             except Exception as e:
-                msg.debug('Error calculating md5 for %s, %s' % (buf['path'], str_e(e)))
+                msg.debug('Error calculating md5 for ', buf['path'], ', ', str_e(e))
                 missing_bufs.append(buf)
 
         ignored = []
@@ -492,12 +492,12 @@ class FlooHandler(base.BaseHandler):
             G.PERMS = user_info['perms']
 
     def _on_join(self, data):
-        msg.log('%s joined the workspace' % data['username'])
+        msg.log(data['username'], ' joined the workspace')
         user_id = str(data['user_id'])
         self.workspace_info['users'][user_id] = data
 
     def _on_part(self, data):
-        msg.log('%s left the workspace' % data['username'])
+        msg.log(data['username'], ' left the workspace')
         user_id = str(data['user_id'])
         try:
             del self.workspace_info['users'][user_id]
@@ -535,7 +535,7 @@ class FlooHandler(base.BaseHandler):
         user_id = str(data.get('user_id'))
         username = self.get_username_by_id(user_id)
         if not username:
-            msg.debug('Unknown user for id %s. Not handling request_perms event.' % user_id)
+            msg.debug('Unknown user for id ', user_id, '. Not handling request_perms event.')
             return
 
         perm_mapping = {
@@ -562,7 +562,7 @@ class FlooHandler(base.BaseHandler):
         user_id = str(data['user_id'])
         user = self.workspace_info['users'].get(user_id)
         if user is None:
-            msg.log('No user for id %s. Not handling perms event' % user_id)
+            msg.log('No user for id ', user_id, '. Not handling perms event')
             return
         perms = set(user['perms'])
         if action == 'add':
@@ -632,7 +632,7 @@ class FlooHandler(base.BaseHandler):
             ig = child
 
         if ig.path != path:
-            msg.warn("%s is not the same as %s", ig.path, path)
+            msg.warn(ig.path, ' is not the same as ', path)
 
         self._rate_limited_upload(ig.list_paths(), ig.total_size, upload_func=self._upload_file_by_path)
 
@@ -671,7 +671,7 @@ class FlooHandler(base.BaseHandler):
                     # work around python 3 encoding issue
                     buf = text.encode('utf8')
                 except Exception as e:
-                    msg.debug('Error encoding buf %s: %s' % (path, str_e(e)))
+                    msg.debug('Error encoding buf ', path, ': ', str_e(e))
                     # We're probably in python 2 so it's ok to do this
                     buf = text
             size = len(buf)
@@ -682,7 +682,7 @@ class FlooHandler(base.BaseHandler):
                 if text is None:
                     buf_md5 = hashlib.md5(buf).hexdigest()
                     if existing_buf['md5'] == buf_md5:
-                        msg.log('%s already exists and has the same md5. Skipping.' % path)
+                        msg.log(path, ' already exists and has the same md5. Skipping.')
                         return size
                     existing_buf['md5'] = buf_md5
                 msg.log('Setting buffer ', rel_path)
@@ -720,9 +720,9 @@ class FlooHandler(base.BaseHandler):
             }
             self.send(event)
         except (IOError, OSError):
-            msg.error('Failed to open %s.' % path)
+            msg.error('Failed to open ', path)
         except Exception as e:
-            msg.error('Failed to create buffer %s: %s' % (path, str_e(e)))
+            msg.error('Failed to create buffer ', path, ': ', str_e(e))
         return size
 
     def stop(self):

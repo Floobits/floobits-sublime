@@ -104,7 +104,7 @@ class FlooUI(object):
         try:
             utils.mkdir(os.path.dirname(G.PROJECT_PATH))
         except Exception as e:
-            msg.error("Couldn't create directory %s: %s" % (G.PROJECT_PATH, str_e(e)))
+            msg.error("Couldn't create directory", G.PROJECT_PATH, str_e(e))
             return
 
         auth = G.AUTH.get(host)
@@ -148,17 +148,17 @@ class FlooUI(object):
                 api_args['name'] = name
                 r = api.create_workspace(host, api_args)
             except Exception as e:
-                msg.error('Unable to create workspace: %s' % str_e(e))
+                msg.error('Unable to create workspace', str_e(e))
                 editor.error_message('Unable to create workspace: %s' % str_e(e))
                 return
 
             if r.code < 400:
                 workspace_url = 'https://%s/%s/%s' % (host, owner, name)
-                msg.log('Created workspace %s' % workspace_url)
+                msg.log('Created workspace', workspace_url)
                 self.remote_connect(context, host, owner, name, dir_to_share, True)
                 return
 
-            msg.error('Unable to create workspace: %s' % r.body)
+            msg.error('Unable to create workspace', r.body)
 
             if r.code not in (400, 402, 409):
                 try:
@@ -239,7 +239,7 @@ class FlooUI(object):
                     return
                 utils.mkdir(d)
                 if not os.path.isdir(d):
-                    msg.error("Couldn't create directory %s" % d)
+                    msg.error("Couldn't create directory", d)
                     continue
             if os.path.isdir(d):
                 self.remote_connect(context, host, owner, name, d)
@@ -270,7 +270,7 @@ class FlooUI(object):
             dir_to_share = os.path.dirname(dir_to_share)
 
         workspace_name = os.path.basename(dir_to_share)
-        msg.debug('%s %s' % (workspace_name, dir_to_share))
+        msg.debug('', workspace_name, dir_to_share)
 
         if os.path.isfile(dir_to_share):
             # file_to_share = dir_to_share
@@ -279,7 +279,7 @@ class FlooUI(object):
         try:
             utils.mkdir(dir_to_share)
         except Exception:
-            msg.error("The directory %s doesn't exist and I can't create it." % dir_to_share)
+            msg.error("The directory", dir_to_share, "doesn't exist and I can't create it.")
             return
 
         info = utils.read_floo_file(dir_to_share)

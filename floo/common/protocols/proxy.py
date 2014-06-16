@@ -69,7 +69,7 @@ class ProxyProtocol(event_emitter.EventEmitter):
                 break
             self.buf[0] = after
             try:
-                msg.debug("Floobits SSL proxy output: %s" % before.decode('utf-8', 'ignore'))
+                msg.debug('Floobits SSL proxy output: ', before.decode('utf-8', 'ignore'))
             except Exception:
                 pass
 
@@ -83,14 +83,14 @@ class ProxyProtocol(event_emitter.EventEmitter):
         self.cleanup()
 
     def connect(self, args):
-        msg.debug('Running proxy with args %s in %s' % (args, G.PLUGIN_PATH))
+        msg.debug('Running proxy with args ', args, ' in ', G.PLUGIN_PATH)
         self._proc = proc = subprocess.Popen(args, cwd=G.PLUGIN_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         line = proc.stdout.readline().decode('utf-8')
         self.fd = proc.stdout.fileno()
         fl = fcntl.fcntl(self.fd, fcntl.F_GETFL)
         fcntl.fcntl(self.fd, fcntl.F_SETFL, fl | os.O_NONBLOCK | os.O_ASYNC)
 
-        msg.log("Read line from Floobits SSL proxy: %s" % line)
+        msg.log('Read line from Floobits SSL proxy: ', line)
         match = re.search('Now listening on <(\d+)>', line)
         if not match:
             raise Exception("Couldn't find port in line from proxy: %s" % line)

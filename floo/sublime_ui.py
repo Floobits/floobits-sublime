@@ -60,8 +60,7 @@ Please add "sublime_executable": "/path/to/subl" to your ~/.floorc.json and rest
 
 def open_workspace_window3(abs_path, cb):
     def finish(w):
-        msg.debug('Setting project data. Path: %s' % G.PROJECT_PATH)
-        w.set_project_data({'folders': [{'path': G.PROJECT_PATH}]})
+        w.set_project_data({'folders': [{'path': abs_path}]})
         cb(w)
 
     def get_empty_window():
