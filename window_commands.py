@@ -335,7 +335,7 @@ class FloobitsFollowSplit(FloobitsBaseCommand):
             })
 
 
-class FloobitsSetup(FloobitsBaseCommand):
+class FloobitsSetupCommand(sublime_plugin.ApplicationCommand):
     def is_visible(self):
         return True
 
@@ -345,7 +345,11 @@ class FloobitsSetup(FloobitsBaseCommand):
     def run(self):
         def f(x):
             print(x)
-        SublimeUI.create_or_link_account(self.window, G.DEFAULT_HOST, True, f)
+        w = sublime.active_window()
+        if not w:
+            msg.warn("no window to run command")
+            return
+        SublimeUI.create_or_link_account(w, G.DEFAULT_HOST, True, f)
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

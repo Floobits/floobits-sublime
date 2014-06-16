@@ -76,7 +76,7 @@ class FlooUI(object):
 
         (choice, index) = yield self.user_select, context, 'You need a Floobits account to use Floobits! Do you want to:', choices, None
 
-        if index == -1:
+        if index == -1 or index == 2:
             d = utils.get_persistent_data()
             if not d.get('disable_account_creation'):
                 d['disable_account_creation'] = True
