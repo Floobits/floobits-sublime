@@ -48,7 +48,7 @@ class FloobitsOpenSettingsCommand(sublime_plugin.WindowCommand):
     def run(self):
         window = sublime.active_window()
         if window:
-            window.open_file(G.FLOORC_PATH)
+            window.open_file(G.FLOORC_JSON_PATH)
 
 
 class FloobitsShareDirCommand(FloobitsBaseCommand):
