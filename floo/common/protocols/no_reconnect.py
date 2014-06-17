@@ -25,6 +25,6 @@ class NoReconnectProto(floo_proto.FlooProtocol):
         else:
             if not G.OUTBOUND_FILTERING:
                 G.OUTBOUND_FILTERING = True
-                return super(NoReconnectProto, self).reconnect()
+                return self.connect()
             editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.host)
         self.stop()
