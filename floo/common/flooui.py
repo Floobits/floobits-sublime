@@ -179,8 +179,9 @@ class FlooUI(object):
                 return
 
             if r.code == 400:
-                name = re.sub('[^A-Za-z0-9_\-\.]', '-', name)
-                prompt = 'Invalid name. Workspace names must match the regex [A-Za-z0-9_\-\.]. Choose another name: '
+                # TODO: strip leading dots/dashes/etc
+                name = re.sub('[^A-Za-z0-9_\-\.]', '_', name)
+                prompt = 'Workspace names may only contain [A-Za-z0-9_\-\.]. Choose another name: '
                 continue
 
             prompt = 'Workspace %s/%s already exists. Choose another name: ' % (owner, name)
