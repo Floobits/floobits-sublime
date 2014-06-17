@@ -245,21 +245,20 @@ class FlooUI(object):
                 return
 
     @utils.inlined_callbacks
-    def share_dir(self, context, dir_to_share, ask_about_dir, api_args):
+    def prompt_share_dir(self, context, ask_about_dir, api_args):
+        dir_to_share = yield self.user_charfield, 'Directory to share:', ask_about_dir
+        if not dir_to_share:
+            return
+        self.share_dir(context, dir_to_share, api_args)
+
+    @utils.inlined_callbacks
+    def share_dir(self, context, dir_to_share, api_args):
         utils.reload_settings()
         if not utils.can_auth():
             success = yield self.create_or_link_account, context, G.DEFAULT_HOST, False
             if not success:
                 return
             utils.reload_settings()
-
-        if not dir_to_share:
-            if not ask_about_dir:
-                raise ValueError("I need a thing to share.")
-            dir_to_share = yield self.user_charfield, 'Directory to share:', ask_about_dir
-
-        if not dir_to_share:
-            return
 
         dir_to_share = os.path.expanduser(dir_to_share)
         dir_to_share = os.path.realpath(dir_to_share)
