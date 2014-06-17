@@ -132,8 +132,8 @@ class FlooProtocol(base.BaseProtocol):
             elif e.errno in connect_errno:
                 return utils.set_timeout(self._connect, 20, host, port, attempts + 1)
             else:
-                msg.error('Error connecting: ', str_e(e))
                 G.OUTBOUND_FILTERING = self._retries % 4 == 0
+                msg.error('Error connecting: ', str_e(e), G.OUTBOUND_FILTERING)
                 return self.reconnect()
         if self._secure:
             sock_debug('SSL-wrapping socket')

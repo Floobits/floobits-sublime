@@ -1,11 +1,11 @@
 try:
-    from .. import api
+    from .. import api, shared as G
     from ... import editor
     from ..exc_fmt import str_e
     from ..protocols import floo_proto
 except (ImportError, ValueError):
     from floo import editor
-    from floo.common import api
+    from floo.common import api, shared as G
     from floo.common.exc_fmt import str_e
     from floo.common.protocols import floo_proto
 
@@ -23,5 +23,8 @@ class NoReconnectProto(floo_proto.FlooProtocol):
             print(str_e(e))
             editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.host)
         else:
-            editor.error_message(PORT_BLOCK_MSG % self.host)
+            if not G.OUTBOUND_FILTERING:
+                G.OUTBOUND_FILTERING = True
+                return super(NoReconnectProto, self).reconnect()
+            editor.error_message('Something went wrong. See https://%s/help/floorc to complete the installation.' % self.host)
         self.stop()
