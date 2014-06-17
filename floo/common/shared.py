@@ -26,6 +26,11 @@ ERRORS_SENT = 0
 # Don't spam us with error reports
 MAX_ERROR_REPORTS = 3
 
+# For people who have outbound ports blocked (schools and BigCos)
+OUTBOUND_FILTER_PROXY_HOST = 'proxy.floobits.com'
+OUTBOUND_FILTER_PROXY_PORT = 443
+OUTBOUND_FILTERING = False
+
 PROXY_PORT = 0  # Random port
 SHARE_DIR = None
 COLAB_DIR = ''
