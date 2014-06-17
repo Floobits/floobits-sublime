@@ -154,8 +154,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
             ['Cancel', 'Disconnect and resolve conflict manually.'],
         ]
-        # TODO: sublime text doesn't let us focus a window. so use the active window. super lame
-        # G.WORKSPACE_WINDOW.show_quick_panel(opts, cb)
+
         w = sublime.active_window() or G.WORKSPACE_WINDOW
         w.show_quick_panel(opts, cb)
 

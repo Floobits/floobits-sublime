@@ -25,14 +25,12 @@ Please upgrade your operating system if you want to use this plugin. :(''')
         print(e)
 
 try:
-    from .window_commands import create_or_link_account
     from .floo import version
     from .floo.listener import Listener
     from .floo.common import migrations, reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
-    from window_commands import create_or_link_account
     from floo import version
     from floo.listener import Listener
     from floo.common import migrations, reactor, shared as G, utils
@@ -51,11 +49,28 @@ def global_tick():
 called_plugin_loaded = False
 
 
+@utils.inlined_callbacks
+def setup():
+    # hop into main thread
+    yield lambda cb: utils.set_timeout(cb, 50)
+
+    while True:
+        # stupid yielding loop until we get a window from st2
+        w = sublime.active_window()
+        if w is not None:
+            break
+        yield lambda cb: utils.set_timeout(cb, 50)
+
+    global_tick()
+    w.run_command("floobits_setup")
+
+
 # Sublime 3 calls this once the plugin API is ready
 def plugin_loaded():
     global called_plugin_loaded
     if called_plugin_loaded:
         return
+    print('loaded')
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
@@ -78,12 +93,7 @@ def plugin_loaded():
 
     d = utils.get_persistent_data()
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
-
-    # Sublime plugin API stuff can't be called right off the bat
-    if not utils.can_auth():
-        utils.set_timeout(create_or_link_account, 1)
-
-    utils.set_timeout(global_tick, 1)
+    setup()
 
 # Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
 if PY2:
