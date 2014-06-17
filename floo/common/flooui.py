@@ -272,7 +272,6 @@ class FlooUI(object):
         msg.debug('', workspace_name, dir_to_share)
 
         if os.path.isfile(dir_to_share):
-            # file_to_share = dir_to_share
             dir_to_share = os.path.dirname(dir_to_share)
 
         try:
@@ -293,7 +292,6 @@ class FlooUI(object):
         if workspace_url:
             parsed_url = prejoin(workspace_url)
             if parsed_url:
-                # TODO: make sure we create_flooignorei
                 self.remote_connect(context, parsed_url['host'], parsed_url['owner'], parsed_url['workspace'], dir_to_share)
                 return
 
@@ -320,9 +318,6 @@ class FlooUI(object):
         except IOError as e:
             editor.error_message('Error getting org list: %s' % str_e(e))
             return
-
-        # orgs = [[org['name'], 'Create workspace owned by %s' % org['name']] for org in r.body]
-        # orgs.insert(0, [username, 'Create workspace owned by %s' % username])
 
         choices = [G.AUTH[host]['username']]
         if r.code >= 400:
