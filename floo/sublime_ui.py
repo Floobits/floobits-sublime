@@ -102,7 +102,20 @@ class SublimeUI(flooui.FlooUI):
 
     def user_select(self, context, prompt, choices_big, choices_small, cb):
         """@returns (choice, index)"""
-        context.show_quick_panel(choices_big, lambda i: i < 0 and cb(None, -1) or cb(choices_big[i], i))
+        choices = choices_big
+
+        if choices_small:
+            choices = [list(x) for x in zip(choices_big, choices_small)]
+
+        def _cb(i):
+            if i < 0:
+                return cb(None, -1)
+            choice = choices[i]
+            if choices_small:
+                return cb(choice[0], i)
+            return cb(choices, i)
+
+        context.show_quick_panel(choices, _cb)
 
     def user_charfield(self, context, prompt, initial, cb):
         """@returns String"""

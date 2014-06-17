@@ -56,12 +56,10 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
-        perms = api_args.get('perms').get('AnonymousUser', [])
-
         if paths:
             if len(paths) != 1:
                 return sublime.error_message('Only one folder at a time, please. :(')
-            return SublimeUI.share_dir(self.window, paths[0], None, perms)
+            return SublimeUI.share_dir(self.window, paths[0], None, api_args)
 
         if dir_to_share is None:
             folders = self.window.folders()
@@ -70,7 +68,7 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
             else:
                 dir_to_share = os.path.expanduser(os.path.join('~', 'share_me'))
 
-        SublimeUI.share_dir(self.window, None, dir_to_share, perms)
+        SublimeUI.share_dir(self.window, None, dir_to_share, api_args)
 
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):

@@ -134,16 +134,11 @@ class FlooUI(object):
         utils.update_recent_workspaces(url)
 
     @utils.inlined_callbacks
-    def create_workspace(self, context, host, owner, name, perms, dir_to_share, cb):
+    def create_workspace(self, context, host, owner, name, api_args, dir_to_share, cb):
         prompt = 'Workspace name: '
 
-        api_args = {
-            'name': name,
-            'owner': owner,
-        }
-
-        if perms:
-            api_args['perms'] = {"AnonymousUser": perms}
+        api_args['name'] = name
+        api_args['owner'] = owner,
 
         while True:
             new_name = yield self.user_charfield, context, prompt, name
@@ -250,7 +245,7 @@ class FlooUI(object):
                 return
 
     @utils.inlined_callbacks
-    def share_dir(self, context, dir_to_share, ask_about_dir, perms):
+    def share_dir(self, context, dir_to_share, ask_about_dir, api_args):
         utils.reload_settings()
         if not utils.can_auth():
             success = yield self.create_or_link_account, context, G.DEFAULT_HOST, False
@@ -288,22 +283,19 @@ class FlooUI(object):
 
         info = utils.read_floo_file(dir_to_share)
 
-        workspace_url = info.get('url')
-        if workspace_url:
-            try:
-                parsed_url = api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
-            except ValueError as e:
-                pass
-            if parsed_url:
-                # TODO: make sure we create_flooignore
-                self.remote_connect(context, parsed_url['host'], parsed_url['owner'], parsed_url['workspace'], dir_to_share)
-                return
-
         def prejoin(workspace_url):
             try:
-                return api.prejoin_workspace(workspace_url, dir_to_share, {'perms': perms})
+                return api.prejoin_workspace(workspace_url, dir_to_share, api_args)
             except ValueError:
                 pass
+
+        workspace_url = info.get('url')
+        if workspace_url:
+            parsed_url = prejoin(workspace_url)
+            if parsed_url:
+                # TODO: make sure we create_flooignorei
+                self.remote_connect(context, parsed_url['host'], parsed_url['owner'], parsed_url['workspace'], dir_to_share)
+                return
 
         parsed_url = utils.get_workspace_by_path(dir_to_share, prejoin)
         if parsed_url:
@@ -318,7 +310,8 @@ class FlooUI(object):
         if len(hosts) == 1:
             host = hosts[0]
         else:
-            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts, None
+            little = ["%s on %s" % (a['username'], h) for h, a in G.AUTH.items()]
+            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts, little
             if not host:
                 return
 
@@ -340,6 +333,7 @@ class FlooUI(object):
         if len(choices) == 1:
             owner = choices[0]
         else:
-            (owner, index) = yield self.user_select, context, 'Create workspace owned by', choices, None
+            little = ['Create workspace owned by %s' % s for s in choices]
+            (owner, index) = yield self.user_select, context, 'Create workspace owned by', choices, little
 
-        yield self.create_workspace, context, host, owner, workspace_name, perms, dir_to_share
+        yield self.create_workspace, context, host, owner, workspace_name, api_args, dir_to_share
