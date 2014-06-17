@@ -143,7 +143,7 @@ class FlooUI(object):
         }
 
         if perms:
-            api_args['perms'] = perms
+            api_args['perms'] = {"AnonymousUser": perms}
 
         while True:
             new_name = yield self.user_charfield, context, prompt, name
