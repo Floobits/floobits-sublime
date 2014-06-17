@@ -152,7 +152,7 @@ class FlooUI(object):
                 api_args['name'] = name
                 r = api.create_workspace(host, api_args)
             except Exception as e:
-                msg.error('Unable to create workspace', str_e(e))
+                msg.error('Unable to create workspace ', str_e(e))
                 editor.error_message('Unable to create workspace: %s' % str_e(e))
                 return
 
@@ -227,7 +227,7 @@ class FlooUI(object):
         except Exception:
             d = ''
 
-        if os.path.isdir(d):
+        if d and os.path.isdir(d):
             self.remote_connect(context, host, owner, name, d)
             return
 
@@ -296,7 +296,6 @@ class FlooUI(object):
                 pass
             if parsed_url:
                 # TODO: make sure we create_flooignore
-                # utils.add_workspace_to_persistent_json(parsed_url['owner'], parsed_url['workspace'], workspace_url, dir_to_share)
                 self.remote_connect(context, parsed_url['host'], parsed_url['owner'], parsed_url['workspace'], dir_to_share)
                 return
 
@@ -341,6 +340,6 @@ class FlooUI(object):
         if len(choices) == 1:
             owner = choices[0]
         else:
-            owner = yield self.user_select, context, 'Create workspace owned by', choices, None
+            (owner, index) = yield self.user_select, context, 'Create workspace owned by', choices, None
 
-        yield self.create_workspace, host, owner, workspace_name, perms, dir_to_share
+        yield self.create_workspace, context, host, owner, workspace_name, perms, dir_to_share
