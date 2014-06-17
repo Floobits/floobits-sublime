@@ -111,9 +111,9 @@ class SublimeUI(flooui.FlooUI):
             if i < 0:
                 return cb(None, -1)
             choice = choices[i]
-            if choices_small:
-                return cb(choice[0], i)
-            return cb(choices, i)
+            if not choices_small:
+                return cb(choices, i)
+            return cb(choice[0], i)
 
         context.show_quick_panel(choices, _cb)
 

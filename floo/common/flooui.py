@@ -138,7 +138,7 @@ class FlooUI(object):
         prompt = 'Workspace name: '
 
         api_args['name'] = name
-        api_args['owner'] = owner,
+        api_args['owner'] = owner
 
         while True:
             new_name = yield self.user_charfield, context, prompt, name
@@ -157,7 +157,7 @@ class FlooUI(object):
                 self.remote_connect(context, host, owner, name, dir_to_share, True)
                 return
 
-            msg.error('Unable to create workspace', r.body)
+            msg.error('Unable to create workspace: ', r.body)
 
             if r.code not in (400, 402, 409):
                 try:
