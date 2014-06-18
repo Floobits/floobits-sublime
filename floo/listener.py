@@ -186,12 +186,10 @@ class Listener(sublime_plugin.EventListener):
         if buf['encoding'] != 'utf8':
             return msg.warn('Floobits does not support patching binary files at this time')
 
-        print('on_modified')
         text = text.encode('utf-8')
         view_md5 = hashlib.md5(text).hexdigest()
         bid = view.buffer_id()
         if view_md5 == G.VIEW_TO_HASH.get(bid):
-            print("will discard", view.file_name())
             self._highlights.add(bid)
             return
 
@@ -225,7 +223,6 @@ class Listener(sublime_plugin.EventListener):
         if discard:
             self._highlights.discard(bid)
         if agent.joined_workspace:
-            print("sending", view.file_name(), discard)
             agent.send({
                 'id': buf['id'],
                 'name': 'highlight',
