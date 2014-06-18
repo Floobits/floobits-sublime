@@ -96,6 +96,10 @@ class MSG(object):
 
 
 def msg_format(message, *args, **kwargs):
+    try:
+        message = unicode(message)
+    except UnicodeEncodeError:
+        message = str(message)
     for arg in args:
         try:
             message += unicode(arg)
