@@ -350,6 +350,9 @@ class FlooHandler(base.BaseHandler):
         self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
+
+        self.proto.reset_retries()
+
         if G.OUTBOUND_FILTERING:
             msg.error('Detected outbound port blocking! See https://floobits.com/help/network for more info.')
 

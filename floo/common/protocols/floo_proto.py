@@ -141,9 +141,6 @@ class FlooProtocol(base.BaseProtocol):
 
         self._q.clear()
         self._buf_out = bytes()
-        if not self.proxy:
-            self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
-            self._retries = self.MAX_RETRIES
         self.emit('connect')
         self.connected = True
 
@@ -324,6 +321,10 @@ class FlooProtocol(base.BaseProtocol):
             # Only use proxy.floobits.com if we're trying to connect to floobits.com
             G.OUTBOUND_FILTERING = self._retries % 4 == 0
         self._retries -= 1
+
+    def reset_retries(self):
+        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self._retries = self.MAX_RETRIES
 
     def put(self, item):
         if not item:
