@@ -27,12 +27,12 @@ def pp_e(e):
     # py3k has __traceback__
     tb = getattr(e, "__traceback__", None)
     if tb is not None:
-        return "\n".join(traceback.format_tb(tb))
+        return "\n".join(traceback.format_tb(tb)) + str_e(e)
 
     # in case of sys.exc_clear()
     _, _, tb = sys.exc_info()
     if tb is not None:
-        return "\n".join(traceback.format_tb(tb))
+        return "\n".join(traceback.format_tb(tb)) + str_e(e)
 
     return str_e(e)
 
