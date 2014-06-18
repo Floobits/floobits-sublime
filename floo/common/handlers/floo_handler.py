@@ -350,6 +350,8 @@ class FlooHandler(base.BaseHandler):
         self.joined_workspace = True
         self.workspace_info = data
         G.PERMS = data['perms']
+        if G.OUTBOUND_FILTERING:
+            msg.error('Detected outbound port blocking! See https://floobits.com/help/network for more info.')
 
         read_only = False
         if 'patch' not in data['perms']:
