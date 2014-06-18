@@ -45,12 +45,11 @@ class ProxyProtocol(event_emitter.EventEmitter):
         self.fd = None
         self._proc = None
         self.buf = [b'']
-        try:
-            self.reactor._protos.remove(self)
-        except Exception:
-            pass
 
     def read(self):
+        if self.fd is None:
+            msg.debug('self.fd is None. Read called after cleanup.')
+            return
         data = b''
         while True:
             try:
@@ -77,10 +76,11 @@ class ProxyProtocol(event_emitter.EventEmitter):
         self.cleanup()
 
     def reconnect(self):
-        self.cleanup()
+        self.stop()
 
     def stop(self):
         self.cleanup()
+        self.emit('stop')
 
     def connect(self, args):
         msg.debug('Running proxy with args ', args, ' in ', G.PLUGIN_PATH)

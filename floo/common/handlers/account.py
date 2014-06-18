@@ -21,6 +21,13 @@ except (ImportError, ValueError):
 class CreateAccountHandler(base.BaseHandler):
     PROTOCOL = no_reconnect.NoReconnectProto
 
+    def __init__(self, *args, **kwargs):
+        d = utils.get_persistent_data()
+        if not d.get('disable_account_creation'):
+            d['disable_account_creation'] = True
+            utils.update_persistent_data(d)
+        super(CreateAccountHandler, self).__init__(*args, **kwargs)
+
     def on_connect(self):
         try:
             username = getpass.getuser()

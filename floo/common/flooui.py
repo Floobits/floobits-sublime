@@ -59,12 +59,10 @@ class FlooUI(object):
 
     @utils.inlined_callbacks
     def create_or_link_account(self, context, host, force, cb):
-        disable_account_creation = utils.get_persistent_data().get('disable_account_creation')
-
         if host != "floobits.com":
             self.link_account(context, host, cb)
             return
-
+        disable_account_creation = utils.get_persistent_data().get('disable_account_creation')
         if disable_account_creation and not force:
             print('We could not automatically create or link your floobits account. Please go to floobits.com and sign up to use this plugin.')
             return

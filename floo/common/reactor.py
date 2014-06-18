@@ -4,11 +4,11 @@ import select
 try:
     from . import api, msg
     from .. import editor
-    from ..common.exc_fmt import str_e
+    from ..common.exc_fmt import str_e, pp_e
     from ..common.handlers import tcp_server
     assert msg and tcp_server
 except (ImportError, ValueError):
-    from floo.common.exc_fmt import str_e
+    from floo.common.exc_fmt import str_e, pp_e
     from floo.common.handlers import tcp_server
     from floo.common import api, msg
     from floo import editor
@@ -128,6 +128,7 @@ class _Reactor(object):
                 fd.write()
             except Exception as e:
                 msg.error('Couldn\'t write to socket: ', str_e(e))
+                msg.debug('Couldn\'t write to socket: ', pp_e(e))
                 return self._reconnect(fd, _in)
 
         for fileno in _in:
@@ -136,6 +137,7 @@ class _Reactor(object):
                 fd.read()
             except Exception as e:
                 msg.error('Couldn\'t read from socket: ', str_e(e))
+                msg.debug('Couldn\'t read from socket: ', pp_e(e))
                 fd.reconnect()
 
 reactor = _Reactor()
