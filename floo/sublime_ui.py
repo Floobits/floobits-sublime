@@ -114,6 +114,10 @@ class SublimeUI(flooui.FlooUI):
 
         context.show_quick_panel(choices, _cb)
 
+    def user_dir(self, context, prompt, initial, cb):
+        """@returns a String directory (probably not expanded)"""
+        self.user_charfield(context, prompt, initial, cb)
+
     def user_charfield(self, context, prompt, initial, cb):
         """@returns String"""
         context.show_input_panel(prompt, initial, cb, None, None)
