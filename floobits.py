@@ -58,7 +58,7 @@ def setup():
         now = time.time()
         old_time = settings.get("floobits-id")
         settings.set("floobits-id", now)
-        interval = utils.set_interval(reactor.tick, G.TICK_TIME, now)
+        interval = utils.set_interval(reactor.tick, G.TICK_TIME)
 
         def shutdown():
             print("shutting down old instance", old_time)
