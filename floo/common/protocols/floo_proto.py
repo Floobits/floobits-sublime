@@ -83,6 +83,7 @@ class FlooProtocol(base.BaseProtocol):
         args = ('python', '-m', 'floo.proxy', '--host=%s' % host, '--port=%s' % str(port), '--ssl=%s' % str(bool(self.secure)))
 
         self._proc = proxy.ProxyProtocol()
+        self._proc.once('stop', self.reconnect)
         self._port = self._proc.connect(args)
         return self._port
 
@@ -132,8 +133,7 @@ class FlooProtocol(base.BaseProtocol):
             elif e.errno in connect_errno:
                 return utils.set_timeout(self._connect, 20, host, port, attempts + 1)
             else:
-                G.OUTBOUND_FILTERING = self._retries % 4 == 0
-                msg.error('Error connecting: ', str_e(e), G.OUTBOUND_FILTERING)
+                msg.error('Error connecting: ', str_e(e))
                 return self.reconnect()
         if self._secure:
             sock_debug('SSL-wrapping socket')
@@ -141,8 +141,9 @@ class FlooProtocol(base.BaseProtocol):
 
         self._q.clear()
         self._buf_out = bytes()
-        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
-        self._retries = self.MAX_RETRIES
+        if not self.proxy:
+            self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
+            self._retries = self.MAX_RETRIES
         self.emit('connect')
         self.connected = True
 
@@ -318,6 +319,7 @@ class FlooProtocol(base.BaseProtocol):
             self._reconnect_timeout = utils.set_timeout(self.connect, self._reconnect_delay)
         elif self._retries == 0:
             editor.error_message('Floobits Error! Too many reconnect failures. Giving up.')
+        G.OUTBOUND_FILTERING = self._retries % 4 == 0
         self._retries -= 1
 
     def put(self, item):
