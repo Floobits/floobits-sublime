@@ -1,6 +1,7 @@
 # coding: utf-8
 import sys
 import os
+import time
 import subprocess
 import threading
 
@@ -53,7 +54,17 @@ def setup():
             if w is not None:
                 break
             yield lambda cb: sublime.set_timeout(cb, 50)
-        utils.set_interval(reactor.tick, G.TICK_TIME)
+        settings = sublime.load_settings("myplugin.sublime-settings")
+        now = time.time()
+        old_time = settings.get("floobits-id")
+        settings.set("floobits-id", now)
+        interval = utils.set_interval(reactor.tick, G.TICK_TIME, now)
+
+        def shutdown():
+            print("shutting down old instance", old_time)
+            utils.cancel_timeout(interval)
+
+        settings.add_on_change("floobits-id", shutdown)
         w.run_command("floobits_setup")
     except Exception as e:
         print(str_e(e))
