@@ -1,6 +1,7 @@
 import os
 import hashlib
 import sublime
+import time
 import collections
 
 try:
@@ -28,6 +29,8 @@ except ImportError:
 
 class SublimeConnection(floo_handler.FlooHandler):
 
+    highlights = {}
+
     def tick(self):
         reported = set()
         while self.views_changed:
@@ -54,31 +57,6 @@ class SublimeConnection(floo_handler.FlooHandler):
             self.send(patch.to_json())
 
         reported = set()
-        while self.selection_changed:
-            v, buf, summon = self.selection_changed.pop()
-
-            if not self.joined_workspace:
-                msg.debug('Not connected. Discarding selection change.')
-                continue
-            # consume highlight events to avoid leak
-            if 'highlight' not in G.PERMS:
-                continue
-
-            view = View(v, buf)
-            vb_id = view.native_id
-            if vb_id in reported:
-                continue
-
-            reported.add(vb_id)
-            highlight_json = {
-                'id': buf['id'],
-                'name': 'highlight',
-                'ranges': view.get_selections(),
-                'ping': summon,
-                'summon': summon,
-                'following': G.FOLLOW_MODE,
-            }
-            self.send(highlight_json)
 
         self._status_timeout += 1
         if self._status_timeout > (2000 / G.TICK_TIME):

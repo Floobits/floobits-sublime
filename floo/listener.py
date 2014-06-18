@@ -1,3 +1,4 @@
+import time
 import hashlib
 import sublime_plugin
 import collections
@@ -43,6 +44,8 @@ class Listener(sublime_plugin.EventListener):
 
     def __init__(self, *args, **kwargs):
         sublime_plugin.EventListener.__init__(self, *args, **kwargs)
+        self._highlights = set()
+        self._view_selections = {}
         self.between_save_events = collections.defaultdict(lambda: [0, ""])
         self.disable_follow_mode_timeout = None
 
@@ -183,9 +186,13 @@ class Listener(sublime_plugin.EventListener):
         if buf['encoding'] != 'utf8':
             return msg.warn('Floobits does not support patching binary files at this time')
 
+        print('on_modified')
         text = text.encode('utf-8')
         view_md5 = hashlib.md5(text).hexdigest()
-        if view_md5 == G.VIEW_TO_HASH.get(view.buffer_id()):
+        bid = view.buffer_id()
+        if view_md5 == G.VIEW_TO_HASH.get(bid):
+            print("will discard", view.file_name())
+            self._highlights.add(bid)
             return
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
@@ -199,8 +206,34 @@ class Listener(sublime_plugin.EventListener):
     @if_connected
     def on_selection_modified(self, view, agent, buf=None):
         buf = is_view_loaded(view)
-        if buf:
-            agent.selection_changed.append((view, buf, False))
+        if not buf or 'highlight' not in G.PERMS:
+            return
+        c = [[x.a, x.b] for x in view.sel()]
+        bid = view.buffer_id()
+        previous = self._view_selections.get(bid, {})
+        now = time.time()
+        if previous.get("sel") == c:
+            t = previous.get("time", 0)
+            if now - t < 1:
+                return
+
+        previous["time"] = now
+        previous["sel"] = c
+        self._view_selections[bid] = previous
+
+        discard = bid in self._highlights
+        if discard:
+            self._highlights.discard(bid)
+        if agent.joined_workspace:
+            print("sending", view.file_name(), discard)
+            agent.send({
+                'id': buf['id'],
+                'name': 'highlight',
+                'ranges': c,
+                'ping': False,
+                'summon': False,
+                'following': discard,
+            })
 
     @if_connected
     def on_activated(self, view, agent):
@@ -209,21 +242,3 @@ class Listener(sublime_plugin.EventListener):
             msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
             self.on_modified(view)
             agent.selection_changed.append((view, buf, False))
-
-    # ST3 calls on_window_command, but not on_post_window_command
-    # resurrect when on_post_window_command works.
-    # def on_window_command(self, window, command_name, args):
-    #     if command_name not in ("show_quick_panel", "show_input_panel"):
-    #         return
-    #     self.pending_commands += 1
-    #     if not G.AGENT:
-    #         return
-    #     G.AGENT.temp_disable_follow = True
-
-    # def on_post_window_command(self, window, command_name, args):
-    #     if command_name not in ("show_quick_panel", "show_input_panel", "show_panel"):
-    #         return
-    #     self.pending_commands -= 1
-    #     if not G.AGENT or self.pending_commands > 0:
-    #         return
-    #     G.AGENT.temp_disable_follow = False

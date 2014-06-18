@@ -67,6 +67,7 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
             j += 1
         region = sublime.Region(start + i, stop - j)
         replace_str = data[i:data_len - j]
+        print('replacing')
         self.view.replace(edit, region, replace_str)
         G.VIEW_TO_HASH[self.view.buffer_id()] = hashlib.md5(sutils.get_text(self.view).encode('utf-8')).hexdigest()
         new_offset = len(replace_str) - ((stop - j) - (start + i))
