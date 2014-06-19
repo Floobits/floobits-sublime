@@ -317,7 +317,7 @@ class FlooHandler(base.BaseHandler):
             self.send({'name': 'delete_buf', 'id': buf_id})
 
         def __upload_buf(buf):
-            return self._upload(utils.get_full_path(buf['path']), buf['buf'])
+            return self._upload(utils.get_full_path(buf['path']), buf.get('buf'))
 
         changed_bufs_len = reduce(lambda a, buf: a + len(buf.get('buf', '')), changed_bufs, 0)
         self._rate_limited_upload(iter(changed_bufs), changed_bufs_len, upload_func=__upload_buf)
