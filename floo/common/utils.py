@@ -131,6 +131,14 @@ timeout_ids = set()
 
 
 def set_timeout(func, timeout, *args, **kwargs):
+    return _set_timeout(func, timeout, False, *args, **kwargs)
+
+
+def set_interval(func, timeout, *args, **kwargs):
+    return _set_timeout(func, timeout, True, *args, **kwargs)
+
+
+def _set_timeout(func, timeout, repeat, *args, **kwargs):
     timeout_id = set_timeout._top_timeout_id
     if timeout_id > 100000:
         set_timeout._top_timeout_id = 0
@@ -148,7 +156,13 @@ def set_timeout(func, timeout, *args, **kwargs):
         if timeout_id in cancelled_timeouts:
             cancelled_timeouts.remove(timeout_id)
             return
+
         func(*args, **kwargs)
+
+        if repeat:
+            editor.set_timeout(timeout_func, timeout)
+            timeout_ids.add(timeout_id)
+
     editor.set_timeout(timeout_func, timeout)
     timeout_ids.add(timeout_id)
     return timeout_id

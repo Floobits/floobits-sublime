@@ -1,6 +1,7 @@
 # coding: utf-8
 import sys
 import os
+import time
 import subprocess
 import threading
 
@@ -38,31 +39,35 @@ except (ImportError, ValueError):
 assert Listener and version
 
 reactor = reactor.reactor
-
-
-def global_tick():
-    # XXX: A couple of sublime 2 users have had reactor == None here
-    reactor.tick()
-    utils.set_timeout(global_tick, G.TICK_TIME)
-
-
 called_plugin_loaded = False
 
 
 @utils.inlined_callbacks
 def setup():
     # hop into main thread
-    yield lambda cb: utils.set_timeout(cb, 50)
+    try:
+        yield lambda cb: sublime.set_timeout(cb, 50)
 
-    while True:
-        # stupid yielding loop until we get a window from st2
-        w = sublime.active_window()
-        if w is not None:
-            break
-        yield lambda cb: utils.set_timeout(cb, 50)
+        while True:
+            # stupid yielding loop until we get a window from st2
+            w = sublime.active_window()
+            if w is not None:
+                break
+            yield lambda cb: sublime.set_timeout(cb, 50)
+        settings = sublime.load_settings("myplugin.sublime-settings")
+        now = time.time()
+        old_time = settings.get("floobits-id")
+        settings.set("floobits-id", now)
+        interval = utils.set_interval(reactor.tick, G.TICK_TIME)
 
-    global_tick()
-    w.run_command("floobits_setup")
+        def shutdown():
+            print("shutting down old instance", old_time)
+            utils.cancel_timeout(interval)
+
+        settings.add_on_change("floobits-id", shutdown)
+        w.run_command("floobits_setup")
+    except Exception as e:
+        print(str_e(e))
 
 
 # Sublime 3 calls this once the plugin API is ready
