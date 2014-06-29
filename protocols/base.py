@@ -37,6 +37,9 @@ class BaseProtocol(event_emitter.EventEmitter):
     def reconnect(self):
         raise NotImplementedError("reconnect not implemented.")
 
+    def reset_retries(self):
+        raise NotImplementedError("reset_retries not implemented.")
+
     def stop(self):
         self.cleanup()
 

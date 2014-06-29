@@ -45,7 +45,7 @@ def sock_debug(*args, **kwargs):
 
 class FlooProtocol(base.BaseProtocol):
     ''' Base FD Interface'''
-    MAX_RETRIES = 20
+    MAX_RETRIES = 12
     INITIAL_RECONNECT_DELAY = 500
 
     def __init__(self, host, port, secure=True):
@@ -75,15 +75,17 @@ class FlooProtocol(base.BaseProtocol):
             self._port = None
             self._secure = False
 
-    def start_proxy(self):
+    def start_proxy(self, host, port):
         if G.PROXY_PORT:
             self._port = int(G.PROXY_PORT)
             msg.log('SSL proxy in debug mode: Port is set to %s' % self._port)
             return
-        args = ('python', '-m', 'floo.proxy', '--host=%s' % self.host, '--port=%s' % str(self.port), '--ssl=%s' % str(bool(self.secure)))
+        args = ('python', '-m', 'floo.proxy', '--host=%s' % host, '--port=%s' % str(port), '--ssl=%s' % str(bool(self.secure)))
 
         self._proc = proxy.ProxyProtocol()
+        self._proc.once('stop', self.reconnect)
         self._port = self._proc.connect(args)
+        return self._port
 
     def _handle(self, data):
         self._buf_in += data
@@ -98,8 +100,8 @@ class FlooProtocol(base.BaseProtocol):
                 before = before.decode('utf-8', 'ignore')
                 data = json.loads(before)
             except Exception as e:
-                msg.error('Unable to parse json: %s' % str_e(e))
-                msg.error('Data: %s' % before)
+                msg.error('Unable to parse json: ', str_e(e))
+                msg.error('Data: ', before)
                 # XXXX: THIS LOSES DATA
                 self._buf_in = after
                 continue
@@ -115,7 +117,7 @@ class FlooProtocol(base.BaseProtocol):
                     self.stop()
             self._buf_in = after
 
-    def _connect(self, attempts=0):
+    def _connect(self, host, port, attempts=0):
         if attempts > (self.proxy and 500 or 500):
             msg.error('Connection attempt timed out.')
             return self.reconnect()
@@ -123,15 +125,15 @@ class FlooProtocol(base.BaseProtocol):
             msg.debug('_connect: No socket')
             return
         try:
-            self._sock.connect((self._host, self._port))
+            self._sock.connect((host, port))
             select.select([self._sock], [self._sock], [], 0)
         except socket.error as e:
             if e.errno == iscon_errno:
                 pass
             elif e.errno in connect_errno:
-                return utils.set_timeout(self._connect, 20, attempts + 1)
+                return utils.set_timeout(self._connect, 20, host, port, attempts + 1)
             else:
-                msg.error('Error connecting:', e)
+                msg.error('Error connecting: ', str_e(e))
                 return self.reconnect()
         if self._secure:
             sock_debug('SSL-wrapping socket')
@@ -139,8 +141,6 @@ class FlooProtocol(base.BaseProtocol):
 
         self._q.clear()
         self._buf_out = bytes()
-        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
-        self._retries = self.MAX_RETRIES
         self.emit('connect')
         self.connected = True
 
@@ -168,11 +168,20 @@ class FlooProtocol(base.BaseProtocol):
         utils.cancel_timeout(self._reconnect_timeout)
         self._reconnect_timeout = None
         self.cleanup()
+        host = self._host
+        port = self._port
 
         self._empty_selects = 0
 
+        # TODO: Horrible code here
         if self.proxy:
-            self.start_proxy()
+            if G.OUTBOUND_FILTERING:
+                port = self.start_proxy(G.OUTBOUND_FILTER_PROXY_HOST, G.OUTBOUND_FILTER_PROXY_PORT)
+            else:
+                port = self.start_proxy(self.host, self.port)
+        elif G.OUTBOUND_FILTERING:
+            host = G.OUTBOUND_FILTER_PROXY_HOST
+            port = G.OUTBOUND_FILTER_PROXY_PORT
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.setblocking(False)
@@ -182,9 +191,11 @@ class FlooProtocol(base.BaseProtocol):
         conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
         if self.port != self._port or self.host != self._host:
             conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
+        if host != self._host:
+            conn_msg += ' (proxying through %s:%s)' % (host, port)
         msg.log(conn_msg)
         editor.status_message(conn_msg)
-        self._connect()
+        self._connect(host, port)
 
     def cleanup(self, *args, **kwargs):
         try:
@@ -217,7 +228,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
         except Exception as e:
-            msg.error('Error in SSL handshake:', str_e(e))
+            msg.error('Error in SSL handshake: ', str_e(e))
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False
@@ -305,13 +316,21 @@ class FlooProtocol(base.BaseProtocol):
             self._reconnect_timeout = utils.set_timeout(self.connect, self._reconnect_delay)
         elif self._retries == 0:
             editor.error_message('Floobits Error! Too many reconnect failures. Giving up.')
+
+        if self.host == 'floobits.com':
+            # Only use proxy.floobits.com if we're trying to connect to floobits.com
+            G.OUTBOUND_FILTERING = self._retries % 4 == 0
         self._retries -= 1
+
+    def reset_retries(self):
+        self._reconnect_delay = self.INITIAL_RECONNECT_DELAY
+        self._retries = self.MAX_RETRIES
 
     def put(self, item):
         if not item:
             return
-        msg.debug('writing %s' % item.get('name', 'NO NAME'))
+        msg.debug('writing ', item.get('name', 'NO NAME'))
         self._q.append(json.dumps(item) + '\n')
         qsize = len(self._q)
-        msg.debug('%s items in q' % qsize)
+        msg.debug(qsize, ' items in q')
         return qsize
