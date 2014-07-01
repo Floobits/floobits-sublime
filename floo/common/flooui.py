@@ -1,23 +1,26 @@
 import os.path
 import webbrowser
 import re
+import json
 
 try:
-    from . import api, msg, utils, reactor, shared as G
+    from . import api, msg, utils, reactor, shared as G, event_emitter
     from .handlers import account, credentials
     from .. import editor
     from ..common.exc_fmt import str_e
 except (ImportError, ValueError):
     from floo.common.exc_fmt import str_e
     from floo.common.handlers import account, credentials
-    from floo.common import api, msg, utils, reactor, shared as G
+    from floo.common import api, msg, utils, reactor, shared as G, event_emitter
     from floo import editor
 
 
-class FlooUI(object):
-    agent = None
+class FlooUI(event_emitter.EventEmitter):
+    def __init__(self):
+        super(FlooUI, self).__init__()
+        self.agent = None
 
-    def _make_agent(self, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, context, owner, workspace, auth, created_workspace, d):
         """@returns new Agent()"""
         raise NotImplemented()
 
@@ -31,6 +34,10 @@ class FlooUI(object):
 
     def user_charfield(self, context, prompt, initial, cb):
         """@returns String"""
+        raise NotImplemented()
+
+    def user_dir(self, context, prompt, initial, cb):
+        """@returns a String directory (probably not expanded)"""
         raise NotImplemented()
 
     def get_a_window(self, abs_path, cb):
@@ -100,6 +107,77 @@ class FlooUI(object):
         except Exception as e:
             print(str_e(e))
 
+    def open_workspace(self):
+        if not self.agent:
+            return
+        try:
+            webbrowser.open(self.agent.workspace_url, new=2, autoraise=True)
+        except Exception as e:
+            msg.error("Couldn't open a browser: %s" % (str_e(e)))
+
+    def open_workspace_settings(self):
+        if not self.agent:
+            return
+        try:
+            webbrowser.open(self.agent.workspace_url + '/settings', new=2, autoraise=True)
+        except Exception as e:
+            msg.error("Couldn't open a browser: %s" % (str_e(e)))
+
+    def pinocchio(self, host=None):
+        floorc = utils.load_floorc_json()
+        auth = floorc.get('AUTH', {}).get(host or G.DEFAULT_HOST, {})
+        username = auth.get('username')
+        secret = auth.get('secret')
+        if not (username and secret):
+            return self.error_message('You don\'t seem to have a Floobits account of any sort')
+        webbrowser.open('https://%s/%s/pinocchio/%s' % (G.DEFAULT_HOST, username, secret))
+
+    def prejoin_workspace(self, workspace_url, dir_to_share, api_args):
+        try:
+            result = utils.parse_url(workspace_url)
+        except Exception as e:
+            msg.error(str_e(e))
+            return False
+
+        host = result.get('host')
+        if not api.get_basic_auth(host):
+            raise ValueError('No auth credentials for %s. Please add a username and secret for %s in your ~/.floorc.json' % (host, host))
+
+        try:
+            w = api.get_workspace_by_url(workspace_url)
+        except Exception as e:
+            editor.error_message('Error opening url %s: %s' % (workspace_url, str_e(e)))
+            return False
+
+        if w.code >= 400:
+            try:
+                d = utils.get_persistent_data()
+                try:
+                    del d['workspaces'][result['owner']][result['name']]
+                except Exception:
+                    pass
+                try:
+                    del d['recent_workspaces'][workspace_url]
+                except Exception:
+                    pass
+                utils.update_persistent_data(d)
+            except Exception as e:
+                msg.debug(str_e(e))
+            return False
+
+        msg.debug('workspace: ', json.dumps(w.body))
+        anon_perms = w.body.get('perms', {}).get('AnonymousUser', [])
+        msg.debug('api args: ', api_args)
+        new_anon_perms = api_args.get('perms', {}).get('AnonymousUser', [])
+        # TODO: prompt/alert user if going from private to public
+        if set(anon_perms) != set(new_anon_perms):
+            msg.debug(str(anon_perms), str(new_anon_perms))
+            w.body['perms']['AnonymousUser'] = new_anon_perms
+            response = api.update_workspace(workspace_url, w.body)
+            msg.debug(str(response.body))
+        utils.add_workspace_to_persistent_json(w.body['owner'], w.body['name'], workspace_url, dir_to_share)
+        return result
+
     @utils.inlined_callbacks
     def remote_connect(self, context, host, owner, workspace, d, get_bufs=False):
         G.PROJECT_PATH = os.path.realpath(d)
@@ -118,6 +196,12 @@ class FlooUI(object):
             if not auth:
                 msg.error("Something went really wrong.")
                 return
+
+        res = api.get_workspace(host, owner, workspace)
+        if res.code == 404:
+            msg.error("The workspace https://%s/%s/%s does not exist" % (host, owner, workspace))
+            return
+
         if self.agent:
             try:
                 self.agent.stop()
@@ -125,14 +209,15 @@ class FlooUI(object):
                 pass
 
         G.WORKSPACE_WINDOW = yield self.get_a_window, d
-        self.agent = self._make_agent(owner, workspace, auth, get_bufs, d)
+        self.agent = self._make_agent(context, owner, workspace, auth, get_bufs, d)
+        self.emit("agent", self.agent)
         reactor.reactor.connect(self.agent, host, G.DEFAULT_PORT, True)
         url = self.agent.workspace_url
         utils.add_workspace_to_persistent_json(owner, workspace, url, d)
         utils.update_recent_workspaces(url)
 
     @utils.inlined_callbacks
-    def create_workspace(self, context, host, owner, name, api_args, dir_to_share, cb):
+    def create_workspace(self, context, host, owner, name, api_args, dir_to_share):
         prompt = 'Workspace name: '
 
         api_args['name'] = name
@@ -151,7 +236,7 @@ class FlooUI(object):
 
             if r.code < 400:
                 workspace_url = 'https://%s/%s/%s' % (host, owner, name)
-                msg.log('Created workspace', workspace_url)
+                msg.log('Created workspace ', workspace_url)
                 self.remote_connect(context, host, owner, name, dir_to_share, True)
                 return
 
@@ -196,6 +281,10 @@ class FlooUI(object):
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
         utils.reload_settings()
 
+        # legacy urls in emacs...
+        if owner and owner[:2] == "r/":
+            owner = owner[2:]
+
         if not utils.can_auth():
             success = yield self.create_or_link_account, context, host, False
             if not success:
@@ -227,7 +316,7 @@ class FlooUI(object):
 
         d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
         while True:
-            d = yield self.user_charfield, context, 'Save workspace files to: ', d
+            d = yield self.user_dir, context, 'Save workspace files to: ', d
             if not d:
                 return
             d = os.path.realpath(os.path.expanduser(d))
@@ -245,7 +334,7 @@ class FlooUI(object):
 
     @utils.inlined_callbacks
     def prompt_share_dir(self, context, ask_about_dir, api_args):
-        dir_to_share = yield self.user_charfield, 'Directory to share:', ask_about_dir
+        dir_to_share = yield self.user_dir, 'Directory to share: ', ask_about_dir
         if not dir_to_share:
             return
         self.share_dir(context, dir_to_share, api_args)
@@ -282,7 +371,7 @@ class FlooUI(object):
 
         def prejoin(workspace_url):
             try:
-                return api.prejoin_workspace(workspace_url, dir_to_share, api_args)
+                return self.prejoin_workspace(workspace_url, dir_to_share, api_args)
             except ValueError:
                 pass
 
@@ -329,4 +418,7 @@ class FlooUI(object):
             little = ['Create workspace owned by %s' % s for s in choices]
             (owner, index) = yield self.user_select, context, 'Create workspace owned by', choices, little
 
-        yield self.create_workspace, context, host, owner, workspace_name, api_args, dir_to_share
+        if not owner or index < 0:
+            return
+
+        self.create_workspace(context, host, owner, workspace_name, api_args, dir_to_share)

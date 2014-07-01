@@ -716,7 +716,7 @@ class FlooHandler(base.BaseHandler):
                 buf = base64.b64encode(buf).decode('utf-8')
                 encoding = 'base64'
 
-            msg.log('Creating buffer ', rel_path)
+            msg.log('Creating buffer ', rel_path, ' (', len(buf), ' bytes)')
             event = {
                 'name': 'create_buf',
                 'buf': buf,
