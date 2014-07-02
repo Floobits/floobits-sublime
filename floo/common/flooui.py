@@ -387,18 +387,9 @@ class FlooUI(event_emitter.EventEmitter):
             self.remote_connect(context, parsed_url['host'], parsed_url['owner'], parsed_url['workspace'], dir_to_share)
             return
 
-        if not G.AUTH:
-            msg.warn('no auth')
+        host = yield self._get_host, context
+        if not host:
             return
-
-        hosts = list(G.AUTH.keys())
-        if len(hosts) == 1:
-            host = hosts[0]
-        else:
-            little = ["%s on %s" % (a['username'], h) for h, a in G.AUTH.items()]
-            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts, little
-            if not host:
-                return
 
         try:
             r = api.get_orgs_can_admin(host)
@@ -422,3 +413,60 @@ class FlooUI(event_emitter.EventEmitter):
             return
 
         self.create_workspace(context, host, owner, workspace_name, api_args, dir_to_share)
+
+    @utils.inlined_callbacks
+    def _get_host(self, context, cb):
+        if not G.AUTH:
+            msg.warn('no auth')
+            return
+
+        hosts = list(G.AUTH.keys())
+        if len(hosts) == 1:
+            host = hosts[0]
+        else:
+            little = ["%s on %s" % (a['username'], h) for h, a in G.AUTH.items()]
+            (host, index) = yield self.user_select, context, 'Which Floobits account should be used?', hosts, little
+            if not host:
+                cb(None)
+                return
+        cb(host)
+
+    @utils.inlined_callbacks
+    def delete_workspace(self, context):
+        host = yield self._get_host, context
+        if not host:
+            return
+
+        api_url = 'https://%s/api/workspaces/can/admin' % (host)
+
+        try:
+            r = api.api_request(host, api_url)
+        except IOError as e:
+            editor.error_message('Error getting workspaces can admin %s' % str_e(e))
+            return
+
+        if r.code >= 400:
+            editor.error_message('Error getting workspace list: %s' % r.body)
+            return
+
+        choices = ['%s/%s' % (workspace['owner'], workspace['name']) for workspace in r.body]
+        (workspace, index) = yield self.user_select, context, 'Select workpace to delete', choices, []
+
+        if not workspace:
+            return
+
+        if G.EXPERT_MODE:
+            yes = True
+        else:
+            yes = yield self.user_y_or_n, context, 'Really delete %s?' % workspace, 'Yes'
+
+        if not yes:
+            return
+
+        workspace = r.body[index]
+
+        try:
+            api.delete_workspace(host, workspace['owner'], workspace['name'])
+        except IOError as e:
+            editor.error_message('Error deleting workspace' % str_e(e))
+            return

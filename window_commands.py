@@ -71,6 +71,17 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
         SublimeUI.prompt_share_dir(self.window, dir_to_share, api_args)
 
 
+class FloobitsDeleteWorkspaceCommand(FloobitsBaseCommand):
+    def is_visible(self):
+        return True
+
+    def is_enabled(self):
+        return utils.can_auth()
+
+    def run(self, force=False):
+        SublimeUI.delete_workspace(self.window)
+
+
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace=None):

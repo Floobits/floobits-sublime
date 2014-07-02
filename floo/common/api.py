@@ -126,6 +126,11 @@ def create_workspace(host, post_data):
     return api_request(host, api_url, post_data)
 
 
+def delete_workspace(host, owner, workspace):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
+    return api_request(host, api_url, method='DELETE')
+
+
 def update_workspace(workspace_url, data):
     result = utils.parse_url(workspace_url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
