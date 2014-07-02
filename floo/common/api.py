@@ -50,15 +50,18 @@ def get_basic_auth(host):
 
 class APIResponse():
     def __init__(self, r):
+        self.body = None
         if isinstance(r, bytes):
             r = r.decode('utf-8')
         if isinstance(r, str_instances):
             lines = r.split('\n')
             self.code = int(lines[0])
-            self.body = json.loads('\n'.join(lines[1:]))
+            if self.code != 204:
+                self.body = json.loads('\n'.join(lines[1:]))
         else:
             self.code = r.code
-            self.body = json.loads(r.read().decode("utf-8"))
+            if self.code != 204:
+                self.body = json.loads(r.read().decode("utf-8"))
 
 
 def proxy_api_request(host, url, data, method):
