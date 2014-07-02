@@ -50,18 +50,18 @@ def setup():
             return sublime.set_timeout(_setup, 50)
 
         try:
-            settings = sublime.load_settings("myplugin.sublime-settings")
+            settings = sublime.load_settings('Floobits.sublime-settings')
             now = time.time()
-            old_time = settings.get("floobits-id")
-            settings.set("floobits-id", now)
+            old_time = settings.get('floobits-id')
+            settings.set('floobits-id', now)
             interval = utils.set_interval(reactor.tick, G.TICK_TIME)
 
             def shutdown():
-                print("shutting down old instance", old_time)
+                print('Floobits plugin updated. Shutting down old instance.', old_time)
                 utils.cancel_timeout(interval)
 
-            settings.add_on_change("floobits-id", shutdown)
-            w.run_command("floobits_setup")
+            settings.add_on_change('floobits-id', shutdown)
+            w.run_command('floobits_setup')
         except Exception as e:
             print(str_e(e))
 
