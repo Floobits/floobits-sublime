@@ -238,4 +238,4 @@ class Listener(sublime_plugin.EventListener):
         if buf:
             msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
             self.on_modified(view)
-            agent.selection_changed.append((view, buf, False))
+            self.on_selection_modified(view)

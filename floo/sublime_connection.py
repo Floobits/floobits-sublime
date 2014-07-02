@@ -184,7 +184,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.temp_ignore_highlight = {}
         self.temp_ignore_highlight = {}
         self.views_changed = []
-        self.selection_changed = []
         self.ignored_saves = collections.defaultdict(int)
         self._status_timeout = 0
         self.last_highlight = None
@@ -366,21 +365,33 @@ class SublimeConnection(floo_handler.FlooHandler):
         for user_id, username in self.workspace_info['users'].items():
             view.erase_regions('floobits-highlight-%s' % user_id)
 
-    def summon(self, view):
-        buf = get_buf(view)
+    def summon(self, subl_view):
+        if 'highlight' not in G.PERMS:
+            return
+        buf = get_buf(subl_view)
         if buf:
-            msg.debug('summoning selection in view ', buf['path'], ', buf id ', buf['id'])
-            self.selection_changed.append((view, buf, True))
-        else:
-            path = view.file_name()
-            if not utils.is_shared(path):
-                sublime.error_message('Can\'t summon because %s is not in shared path %s.' % (path, G.PROJECT_PATH))
-                return
-            share = sublime.ok_cancel_dialog('This file isn\'t shared. Would you like to share it?', 'Share')
-            if share:
-                sel = [[x.a, x.b] for x in view.sel()]
-                self.create_buf_cbs[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
-                self.upload(path)
+            msg.debug('summoning selection in subl_view ', buf['path'], ', buf id ', buf['id'])
+            c = [[x.a, x.b] for x in subl_view.sel()]
+            if self.joined_workspace:
+                self.send({
+                    'id': buf['id'],
+                    'name': 'highlight',
+                    'ranges': c,
+                    'ping': True,
+                    'summon': True,
+                    'following': False,
+                })
+            return
+
+        path = subl_view.file_name()
+        if not utils.is_shared(path):
+            sublime.error_message('Can\'t summon because %s is not in shared path %s.' % (path, G.PROJECT_PATH))
+            return
+        share = sublime.ok_cancel_dialog('This file isn\'t shared. Would you like to share it?', 'Share')
+        if share:
+            sel = [[x.a, x.b] for x in subl_view.sel()]
+            self.create_buf_cbs[utils.to_rel_path(path)] = lambda buf_id: send_summon(buf_id, sel)
+            self.upload(path)
 
     def _on_delete_buf(self, data):
         # TODO: somehow tell the user about this
