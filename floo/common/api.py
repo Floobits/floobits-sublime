@@ -149,7 +149,7 @@ def get_workspace(host, owner, workspace):
 
 
 def get_workspaces(host):
-    api_url = 'https://%s/api/workspace/can/view' % (host)
+    api_url = 'https://%s/api/workspaces/can/view' % (host)
     return api_request(host, api_url)
 
 
