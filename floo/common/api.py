@@ -50,15 +50,18 @@ def get_basic_auth(host):
 
 class APIResponse():
     def __init__(self, r):
+        self.body = None
         if isinstance(r, bytes):
             r = r.decode('utf-8')
         if isinstance(r, str_instances):
             lines = r.split('\n')
             self.code = int(lines[0])
-            self.body = json.loads('\n'.join(lines[1:]))
+            if self.code != 204:
+                self.body = json.loads('\n'.join(lines[1:]))
         else:
             self.code = r.code
-            self.body = json.loads(r.read().decode("utf-8"))
+            if self.code != 204:
+                self.body = json.loads(r.read().decode("utf-8"))
 
 
 def proxy_api_request(host, url, data, method):
@@ -123,6 +126,11 @@ def create_workspace(host, post_data):
     return api_request(host, api_url, post_data)
 
 
+def delete_workspace(host, owner, workspace):
+    api_url = 'https://%s/api/workspace/%s/%s' % (host, owner, workspace)
+    return api_request(host, api_url, method='DELETE')
+
+
 def update_workspace(workspace_url, data):
     result = utils.parse_url(workspace_url)
     api_url = 'https://%s/api/workspace/%s/%s' % (result['host'], result['owner'], result['workspace'])
@@ -141,7 +149,7 @@ def get_workspace(host, owner, workspace):
 
 
 def get_workspaces(host):
-    api_url = 'https://%s/api/workspace/can/view' % (host)
+    api_url = 'https://%s/api/workspaces/can/view' % (host)
     return api_request(host, api_url)
 
 

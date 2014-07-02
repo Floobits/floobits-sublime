@@ -27,6 +27,10 @@
     "command": "floobits_prompt_join_workspace"
   },
   {
+    "caption": "Floobits - Delete Workspace",
+    "command": "floobits_delete_workspace"
+  },
+  {
     "caption": "Floobits - Open Workspace Settings (in Browser)",
     "command": "floobits_open_workspace_settings"
   },

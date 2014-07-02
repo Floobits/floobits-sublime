@@ -123,7 +123,7 @@ def can_auth(host=None):
     auth = G.AUTH.get(host)
     if not auth:
         return False
-    return (auth.get('username') or auth.get('api_key')) and auth.get('secret')
+    return bool((auth.get('username') or auth.get('api_key')) and auth.get('secret'))
 
 
 cancelled_timeouts = set()

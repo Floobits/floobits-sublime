@@ -42,32 +42,31 @@ reactor = reactor.reactor
 called_plugin_loaded = False
 
 
-@utils.inlined_callbacks
 def setup():
+    def _setup():
+        # stupid yielding loop until we get a window from st2
+        w = sublime.active_window()
+        if w is None:
+            return sublime.set_timeout(_setup, 50)
+
+        try:
+            settings = sublime.load_settings('Floobits.sublime-settings')
+            now = time.time()
+            old_time = settings.get('floobits-id')
+            settings.set('floobits-id', now)
+            interval = utils.set_interval(reactor.tick, G.TICK_TIME)
+
+            def shutdown():
+                print('Floobits plugin updated. Shutting down old instance.', old_time)
+                utils.cancel_timeout(interval)
+
+            settings.add_on_change('floobits-id', shutdown)
+            w.run_command('floobits_setup')
+        except Exception as e:
+            print(str_e(e))
+
     # hop into main thread
-    try:
-        yield lambda cb: sublime.set_timeout(cb, 50)
-
-        while True:
-            # stupid yielding loop until we get a window from st2
-            w = sublime.active_window()
-            if w is not None:
-                break
-            yield lambda cb: sublime.set_timeout(cb, 50)
-        settings = sublime.load_settings("myplugin.sublime-settings")
-        now = time.time()
-        old_time = settings.get("floobits-id")
-        settings.set("floobits-id", now)
-        interval = utils.set_interval(reactor.tick, G.TICK_TIME, now)
-
-        def shutdown():
-            print("shutting down old instance", old_time)
-            utils.cancel_timeout(interval)
-
-        settings.add_on_change("floobits-id", shutdown)
-        w.run_command("floobits_setup")
-    except Exception as e:
-        print(str_e(e))
+    sublime.set_timeout(_setup, 50)
 
 
 # Sublime 3 calls this once the plugin API is ready
