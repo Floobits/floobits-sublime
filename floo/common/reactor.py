@@ -113,10 +113,13 @@ class _Reactor(object):
             _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
-            if len(readable) == 1:
-                readable[0].reconnect()
-                return msg.error('Error in select(): ', str_e(e))
-            raise Exception("can't handle more than one fd exception in reactor")
+            for fileno in readable:
+                try:
+                    select.select([fileno], [], [], 0)
+                except (select.error, socket.error, Exception) as e:
+                    fd_map[fileno].reconnect()
+                    msg.error('Error in select(): ', fileno, str_e(e))
+            return
 
         for fileno in _except:
             fd = fd_map[fileno]
