@@ -409,7 +409,7 @@ class FlooUI(event_emitter.EventEmitter):
             little = ['Create workspace owned by %s' % s for s in choices]
             (owner, index) = yield self.user_select, context, 'Create workspace owned by', choices, little
 
-        if not owner or index < 0:
+        if not owner:
             return
 
         self.create_workspace(context, host, owner, workspace_name, api_args, dir_to_share)
@@ -432,9 +432,10 @@ class FlooUI(event_emitter.EventEmitter):
         cb(host)
 
     @utils.inlined_callbacks
-    def delete_workspace(self, context):
+    def delete_workspace(self, context, cb):
         host = yield self._get_host, context
         if not host:
+            cb()
             return
 
         api_url = 'https://%s/api/workspaces/can/admin' % (host)
@@ -443,16 +444,19 @@ class FlooUI(event_emitter.EventEmitter):
             r = api.api_request(host, api_url)
         except IOError as e:
             editor.error_message('Error getting workspaces can admin %s' % str_e(e))
+            cb()
             return
 
         if r.code >= 400:
             editor.error_message('Error getting workspace list: %s' % r.body)
+            cb()
             return
 
         choices = ['%s/%s' % (workspace['owner'], workspace['name']) for workspace in r.body]
         (workspace, index) = yield self.user_select, context, 'Select workpace to delete', choices, []
 
         if not workspace:
+            cb()
             return
 
         if G.EXPERT_MODE:
@@ -461,6 +465,7 @@ class FlooUI(event_emitter.EventEmitter):
             yes = yield self.user_y_or_n, context, 'Really delete %s?' % workspace, 'Yes'
 
         if not yes:
+            cb()
             return
 
         workspace = r.body[index]
@@ -469,4 +474,4 @@ class FlooUI(event_emitter.EventEmitter):
             api.delete_workspace(host, workspace['owner'], workspace['name'])
         except IOError as e:
             editor.error_message('Error deleting workspace' % str_e(e))
-            return
+        cb()
