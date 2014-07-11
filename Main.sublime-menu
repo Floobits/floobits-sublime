@@ -8,7 +8,7 @@
     "children": [
       {
         "id": "floobits_setup",
-        "caption": "Setup",
+        "caption": "Set up",
         "command": "floobits_setup",
         "args": {
           "force": true

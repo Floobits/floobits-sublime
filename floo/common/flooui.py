@@ -46,8 +46,8 @@ class FlooUI(event_emitter.EventEmitter):
 
     @utils.inlined_callbacks
     def link_account(self, context, host, cb):
-        prompt = 'No credentials found in ~/.floorc.json for %s.  Would you like to download them (opens a browser)?.' % host
-        yes = yield self.user_y_or_n, context,  prompt, "Download"
+        prompt = 'No credentials found in ~/.floorc.json for %s. Would you like to sign in? (opens a browser)' % host
+        yes = yield self.user_y_or_n, context,  prompt, 'Sign in'
         if not yes:
             return
 
@@ -78,19 +78,20 @@ class FlooUI(event_emitter.EventEmitter):
             editor.message_dialog('Thank you for installing the Floobits plugin!\n\nLet\'s set up your editor to work with Floobits.')
 
         choices = [
-            'Use an existing Floobits account',
-            'Create a new Floobits account',
+            'Sign in to Floobits',
+            'Create a Floobits account',
             'Cancel (see https://floobits.com/help/floorc)'
         ]
 
-        (choice, index) = yield self.user_select, context, 'You need a Floobits account to use Floobits! Do you want to:', choices, None
+        (choice, index) = yield self.user_select, context, 'You need an account to use Floobits! Do you want to:', choices, None
 
         if index == -1 or index == 2:
             d = utils.get_persistent_data()
             if not d.get('disable_account_creation'):
                 d['disable_account_creation'] = True
                 utils.update_persistent_data(d)
-                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
+                # TODO: this instruction is only useful for Sublime Text
+                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Set up''')
             cb(None)
             return
 
