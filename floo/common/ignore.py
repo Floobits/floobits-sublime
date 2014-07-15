@@ -136,7 +136,7 @@ class Ignore(object):
 
     def get_children(self):
         children = list(self.children.values())
-        for c in children:
+        for c in self.children.values():
             children += c.get_children()
         return children
 
