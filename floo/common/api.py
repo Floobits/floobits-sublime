@@ -10,6 +10,8 @@ try:
 except ImportError:
     ssl = False
 
+PY2 = sys.version_info < (3, 0)
+
 
 try:
     import __builtin__
@@ -118,6 +120,12 @@ def api_request(host, url, data=None, method=None):
         r = hit_url(host, url, data, method)
     except HTTPError as e:
         r = e
+    except URLError as e:
+        msg.warn('Error hitting url ', url, ': ', e)
+        r = e
+        if not PY2:
+            msg.warn('Retrying using system python...')
+            return proxy_api_request(host, url, data, method)
     return APIResponse(r)
 
 
