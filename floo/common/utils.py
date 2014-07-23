@@ -28,6 +28,12 @@ except ImportError:
     from lib import DMP
 
 
+class JOIN_ACTION(object):
+    PROMPT = 1
+    UPLOAD = 2
+    DOWNLOAD = 3
+
+
 class FlooPatch(object):
     def __init__(self, current, buf):
         self.buf = buf

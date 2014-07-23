@@ -20,7 +20,7 @@ class FlooUI(event_emitter.EventEmitter):
         super(FlooUI, self).__init__()
         self.agent = None
 
-    def _make_agent(self, context, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, context, owner, workspace, auth, join_action):
         """@returns new Agent()"""
         raise NotImplemented()
 
@@ -180,7 +180,7 @@ class FlooUI(event_emitter.EventEmitter):
         return result
 
     @utils.inlined_callbacks
-    def remote_connect(self, context, host, owner, workspace, d, get_bufs=False):
+    def remote_connect(self, context, host, owner, workspace, d, join_action=utils.JOIN_ACTION.PROMPT):
         G.PROJECT_PATH = os.path.realpath(d)
         try:
             utils.mkdir(os.path.dirname(G.PROJECT_PATH))
@@ -210,7 +210,7 @@ class FlooUI(event_emitter.EventEmitter):
                 pass
 
         G.WORKSPACE_WINDOW = yield self.get_a_window, d
-        self.agent = self._make_agent(context, owner, workspace, auth, get_bufs, d)
+        self.agent = self._make_agent(context, owner, workspace, auth, join_action)
         self.emit("agent", self.agent)
         reactor.reactor.connect(self.agent, host, G.DEFAULT_PORT, True)
         url = self.agent.workspace_url
@@ -238,7 +238,7 @@ class FlooUI(event_emitter.EventEmitter):
             if r.code < 400:
                 workspace_url = 'https://%s/%s/%s' % (host, owner, name)
                 msg.log('Created workspace ', workspace_url)
-                self.remote_connect(context, host, owner, name, dir_to_share, True)
+                self.remote_connect(context, host, owner, name, dir_to_share, utils.JOIN_ACTION.UPLOAD)
                 return
 
             msg.error('Unable to create workspace: ', r.body)
@@ -316,7 +316,7 @@ class FlooUI(event_emitter.EventEmitter):
             return
 
         d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
-        get_bufs = False
+        join_action = utils.JOIN_ACTION.PROMPT
         while True:
             d = yield self.user_dir, context, 'Save workspace files to: ', d
             if not d:
@@ -327,14 +327,12 @@ class FlooUI(event_emitter.EventEmitter):
                 if not y_or_n:
                     return
                 utils.mkdir(d)
-                if os.path.isdir(d):
-                    # Don't show stomp prompt. We just created the directory.
-                    get_bufs = True
-                else:
+                if not os.path.isdir(d):
                     msg.error("Couldn't create directory", d)
                     continue
+                join_action = utils.JOIN_ACTION.DOWNLOAD
             if os.path.isdir(d):
-                self.remote_connect(context, host, owner, name, d, get_bufs)
+                self.remote_connect(context, host, owner, name, d, join_action)
                 return
 
     @utils.inlined_callbacks

@@ -92,9 +92,9 @@ def open_workspace_window3(abs_path, cb):
 
 
 class SublimeUI(flooui.FlooUI):
-    def _make_agent(self, context, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, context, owner, workspace, auth, join_action):
         """@returns new Agent()"""
-        return SublimeConnection(owner, workspace, context, auth, created_workspace and d)
+        return SublimeConnection(owner, workspace, context, auth, join_action)
 
     def user_y_or_n(self, context, prompt, affirmation_txt, cb):
         """@returns True/False"""

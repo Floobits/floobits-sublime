@@ -27,8 +27,8 @@ except ImportError:
 
 
 class SublimeConnection(floo_handler.FlooHandler):
-    def __init__(self, owner, workspace, context, auth, upload=True):
-        super(SublimeConnection, self).__init__(owner, workspace, auth, upload)
+    def __init__(self, owner, workspace, context, auth, action):
+        super(SublimeConnection, self).__init__(owner, workspace, auth, action)
         self.context = context
 
     def tick(self):
