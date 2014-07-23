@@ -316,6 +316,7 @@ class FlooUI(event_emitter.EventEmitter):
             return
 
         d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
+        get_bufs = False
         while True:
             d = yield self.user_dir, context, 'Save workspace files to: ', d
             if not d:
@@ -326,11 +327,14 @@ class FlooUI(event_emitter.EventEmitter):
                 if not y_or_n:
                     return
                 utils.mkdir(d)
-                if not os.path.isdir(d):
+                if os.path.isdir(d):
+                    # Don't show stomp prompt. We just created the directory.
+                    get_bufs = True
+                else:
                     msg.error("Couldn't create directory", d)
                     continue
             if os.path.isdir(d):
-                self.remote_connect(context, host, owner, name, d)
+                self.remote_connect(context, host, owner, name, d, get_bufs)
                 return
 
     @utils.inlined_callbacks
