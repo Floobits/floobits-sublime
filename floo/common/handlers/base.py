@@ -14,6 +14,7 @@ class BaseHandler(event_emitter.EventEmitter):
         G.AGENT = self
         # TODO: removeme?
         utils.reload_settings()
+        self.req_ids = {}
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
@@ -21,14 +22,24 @@ class BaseHandler(event_emitter.EventEmitter):
         self.proto.on('connect', self.on_connect)
         return self.proto
 
-    def send(self, *args, **kwargs):
-        self.proto.put(*args, **kwargs)
+    def send(self, d):
+        """@return the request id"""
+        req_id = self.proto.put(d)
+        self.req_ids[req_id] = d.get('name', '?')
+        return req_id
 
     def on_data(self, name, data):
+        req_id = data.get('res_id')
+        if req_id is not None:
+            try:
+                del self.req_ids[req_id]
+            except KeyError:
+                msg.warn('No outstanding req_id ', req_id)
+
         handler = getattr(self, '_on_%s' % name, None)
         if handler:
             return handler(data)
-        msg.debug('unknown name!', name, 'data:', data)
+        msg.debug('unknown event name ', name, ' data: ', data)
 
     @property
     def client(self):
@@ -37,6 +48,9 @@ class BaseHandler(event_emitter.EventEmitter):
     @property
     def codename(self):
         return editor.codename()
+
+    def _on_ack(self, data):
+        msg.debug('Ack ', data)
 
     def _on_error(self, data):
         message = 'Error from Floobits server: %s' % str(data.get('msg'))
@@ -52,6 +66,9 @@ class BaseHandler(event_emitter.EventEmitter):
 
     def stop(self):
         from .. import reactor
+        if self.req_ids:
+            msg.warn("Unresponded msgs", self.req_ids)
+            self.req_ids = {}
         reactor.reactor.stop_handler(self)
         if G.AGENT is self:
             G.AGENT = None
