@@ -53,7 +53,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             patch = utils.FlooPatch(view.get_text(), buf)
             # Update the current copy of the buffer
             buf['buf'] = patch.current
-            buf['md5'] = hashlib.md5(patch.current.encode('utf-8')).hexdigest()
+            buf['md5'] = patch.md5_after
             self.send(patch.to_json())
 
         reported = set()

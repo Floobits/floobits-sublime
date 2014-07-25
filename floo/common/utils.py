@@ -41,12 +41,20 @@ class FlooPatch(object):
         self.previous = buf['buf']
         if buf['encoding'] == 'base64':
             self.md5_before = hashlib.md5(self.previous).hexdigest()
+            self.md5_after = hashlib.md5(self.current).hexdigest()
         else:
             try:
                 self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
-            except Exception:
+            except Exception as e:
                 # Horrible fallback if for some reason encoding doesn't agree with actual object
                 self.md5_before = hashlib.md5(self.previous).hexdigest()
+                msg.log('Error calculating md5_before for ', str(self), ': ', str_e(e))
+            try:
+                self.md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+            except Exception as e:
+                # Horrible fallback if for some reason encoding doesn't agree with actual object
+                self.md5_after = hashlib.md5(self.current).hexdigest()
+                msg.log('Error calculating md5_after for ', str(self), ': ', str_e(e))
 
     def __str__(self):
         return '%s - %s' % (self.buf['id'], self.buf['path'])
@@ -62,14 +70,9 @@ class FlooPatch(object):
         for patch in patches:
             patch_str += str(patch)
 
-        if self.buf['encoding'] == 'base64':
-            md5_after = hashlib.md5(self.current).hexdigest()
-        else:
-            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
-
         return {
             'id': self.buf['id'],
-            'md5_after': md5_after,
+            'md5_after': self.md5_after,
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,

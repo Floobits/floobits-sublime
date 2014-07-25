@@ -174,7 +174,8 @@ class FlooHandler(base.BaseHandler):
                 self.send(patch.to_json())
                 old_text = view_text
             else:
-                msg.debug('forced patch is true. not sending another patch for buf ', buf['path'])
+                msg.debug('forced patch is true. not sending another force patch for buf ', buf['path'])
+
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
             msg.warn('starting md5s don\'t match for ', buf['path'], '. this is dangerous!')
@@ -212,6 +213,7 @@ class FlooHandler(base.BaseHandler):
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != data['md5_after']:
+            msg.debug('Ending md5s don\'t match for ', buf['path'], ' Setting get_buf timeout.')
             buf['timeout_id'] = utils.set_timeout(self.get_buf, 2000, buf_id, view)
 
         buf['buf'] = t[0]
