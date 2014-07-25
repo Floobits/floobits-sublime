@@ -1,5 +1,4 @@
 import os
-import hashlib
 import sublime
 import collections
 
