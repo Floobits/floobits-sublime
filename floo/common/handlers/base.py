@@ -24,6 +24,8 @@ class BaseHandler(event_emitter.EventEmitter):
 
     def send(self, d):
         """@return the request id"""
+        if not d:
+            return
         req_id = self.proto.put(d)
         self.req_ids[req_id] = d.get('name', '?')
         return req_id
