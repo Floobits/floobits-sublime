@@ -41,7 +41,6 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         if not hasattr(self, 'view'):
             return selections
 
-        G.IGNORE_MODIFIED_EVENTS = True
         start = max(int(r[0]), 0)
         stop = min(int(r[1]), self.view.size())
         region = sublime.Region(start, stop)

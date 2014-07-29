@@ -51,7 +51,6 @@ TICK_TIME = 100
 AGENT = None
 IGNORE = None
 
-IGNORE_MODIFIED_EVENTS = False
 VIEW_TO_HASH = {}
 
 FLOORC_PATH = os.path.expanduser(os.path.join('~', '.floorc'))
