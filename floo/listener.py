@@ -189,16 +189,14 @@ class Listener(sublime_plugin.EventListener):
         text = text.encode('utf-8')
         view_md5 = hashlib.md5(text).hexdigest()
         bid = view.buffer_id()
+        buf['forced_patch'] = False
         if view_md5 == G.VIEW_TO_HASH.get(bid):
             self._highlights.add(bid)
             return
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
-
         msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
-
         self.disable_follow_mode(2000)
-        buf['forced_patch'] = False
         agent.views_changed.append((view, buf))
 
     @if_connected
