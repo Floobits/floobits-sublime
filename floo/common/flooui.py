@@ -337,7 +337,7 @@ class FlooUI(event_emitter.EventEmitter):
 
     @utils.inlined_callbacks
     def prompt_share_dir(self, context, ask_about_dir, api_args):
-        dir_to_share = yield self.user_dir, 'Directory to share: ', ask_about_dir
+        dir_to_share = yield self.user_dir, context, 'Directory to share: ', ask_about_dir
         if not dir_to_share:
             return
         self.share_dir(context, dir_to_share, api_args)
