@@ -188,6 +188,9 @@ def parse_url(workspace_url):
     secure = G.SECURE
     owner = None
     workspace_name = None
+    result = re.match('^([-\@\+\.\w]+)/([-\.\w]+)$', workspace_url)
+    if result:
+        workspace_url = 'https://' + G.DEFAULT_HOST + '/' + workspace_url
     parsed_url = urlparse(workspace_url)
     port = parsed_url.port
     if G.DEBUG and parsed_url.scheme == 'http':
