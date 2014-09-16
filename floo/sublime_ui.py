@@ -112,7 +112,7 @@ class SublimeUI(flooui.FlooUI):
                 return cb(choices_big[i], i)
             return cb(None, -1)
 
-        context.show_quick_panel(choices, _cb)
+        utils.set_timeout(context.show_quick_panel, 1, choices, _cb)
 
     def user_dir(self, context, prompt, initial, cb):
         """@returns a String directory (probably not expanded)"""
@@ -120,7 +120,7 @@ class SublimeUI(flooui.FlooUI):
 
     def user_charfield(self, context, prompt, initial, cb):
         """@returns String"""
-        context.show_input_panel(prompt, initial, cb, None, None)
+        utils.set_timeout(context.show_input_panel, 1, prompt, initial, cb, None, None)
 
     @utils.inlined_callbacks
     def get_a_window(self, abs_path, cb):
