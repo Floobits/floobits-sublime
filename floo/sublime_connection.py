@@ -242,13 +242,12 @@ class SublimeConnection(floo_handler.FlooHandler):
         self._on_highlight(data)
 
     def _on_highlight(self, data, clone=True):
-        self.last_highlight = data
         region_key = 'floobits-highlight-%s' % (data['user_id'])
         buf_id = int(data['id'])
         username = data['username']
         ranges = data['ranges']
         summon = data.get('ping', False)
-        msg.debug(str([buf_id, region_key, username, ranges, summon, clone]))
+        msg.debug(str([buf_id, region_key, username, ranges, summon, data.get('following'), clone]))
         buf = self.bufs.get(buf_id)
         if not buf:
             return
@@ -265,13 +264,15 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.debug('ignoring command until temp_ignore_highlight is complete')
             return
 
-        if G.FOLLOW_MODE:
+        if summon or not data.get('following'):
+            self.last_highlight = data
+
+        do_stuff = summon
+        if G.FOLLOW_MODE and not summon:
             if self.temp_disable_follow or data.get('following'):
                 do_stuff = False
             else:
                 do_stuff = True
-        else:
-            do_stuff = summon
 
         view = self.get_view(buf_id)
         if not view or view.is_loading():
