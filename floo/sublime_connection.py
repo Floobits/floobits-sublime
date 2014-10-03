@@ -29,6 +29,7 @@ class SublimeConnection(floo_handler.FlooHandler):
     def __init__(self, owner, workspace, context, auth, action):
         super(SublimeConnection, self).__init__(owner, workspace, auth, action)
         self.context = context
+        self.on('room_info', self.log_users)
 
     def tick(self):
         reported = set()
@@ -69,6 +70,17 @@ class SublimeConnection(floo_handler.FlooHandler):
             status += 'Connected to'
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
+
+    def log_users(self):
+        clients = []
+        try:
+            clients = ['%s on %s' % (x.get('username'), x.get('client')) for x in self.workspace_info['users'].values()]
+        except Exception as e:
+            print(e)
+        msg.log(len(clients), ' connected clients:')
+        clients.sort()
+        for client in clients:
+            msg.log(client)
 
     def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         if not G.EXPERT_MODE:

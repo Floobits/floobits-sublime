@@ -359,6 +359,18 @@ class FloobitsSetupCommand(FloobitsBaseCommand):
         SublimeUI.create_or_link_account(self.window, G.DEFAULT_HOST, force, f)
 
 
+class FloobitsListUsersCommand(FloobitsBaseCommand):
+    def run(self):
+        users = ''
+        try:
+            users = ['%s on %s' % (x.get('username'), x.get('client')) for x in G.AGENT.workspace_info['users'].values()]
+            users = '\n'.join(users)
+        except Exception as e:
+            print(e)
+
+        sublime.message_dialog(users)
+
+
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
         pass

@@ -100,5 +100,9 @@
   {
     "caption": "Floobits - Help",
     "command": "floobits_help"
+  },
+  {
+    "caption": "Floobits - List Users",
+    "command": "floobits_list_users"
   }
 ]
