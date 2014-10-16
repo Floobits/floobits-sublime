@@ -47,7 +47,7 @@ class FlooUI(event_emitter.EventEmitter):
     @utils.inlined_callbacks
     def link_account(self, context, host, cb):
         prompt = 'No credentials found in ~/.floorc.json for %s. Would you like to sign in? (opens a browser)' % host
-        yes = yield self.user_y_or_n, context,  prompt, 'Sign in'
+        yes = yield self.user_y_or_n, context, prompt, 'Sign in'
         if not yes:
             return
 

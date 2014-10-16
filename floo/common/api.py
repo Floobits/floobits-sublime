@@ -72,7 +72,7 @@ class APIResponse():
 
 
 def proxy_api_request(host, url, data, method):
-    args = ['python', '-m', 'floo.proxy',  '--host', host, '--url', url]
+    args = ['python', '-m', 'floo.proxy', '--host', host, '--url', url]
     if data:
         args += ["--data", json.dumps(data)]
     if method:
