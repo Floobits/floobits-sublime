@@ -79,7 +79,7 @@ class FloobitsDeleteWorkspaceCommand(FloobitsBaseCommand):
         return utils.can_auth()
 
     def run(self, force=False):
-        SublimeUI.delete_workspace(self.window, lambda x: None)
+        SublimeUI.delete_workspace(self.window, lambda *args, **kwargs: None)
 
 
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
