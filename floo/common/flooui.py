@@ -1,6 +1,7 @@
 import os.path
 import webbrowser
 import re
+import sublime
 import json
 
 try:
@@ -277,6 +278,22 @@ class FlooUI(event_emitter.EventEmitter):
             return editor.error_message(str_e(e))
 
         return self.join_workspace(context, d['host'], d['workspace'], d['owner'], possible_dirs)
+
+    @utils.inlined_callbacks
+    def follow_user(self, context):
+        msg.log("follow_user")
+        users = self.agent.workspace_info.get('users')
+        usersMap = []
+        for user_id, user in users.items():
+            usersMap.append({'user_id': user_id, 'user': user})
+        selected_user = yield self.show_connections_list, usersMap
+        msg.log("got user %s" % usersMap[selected_user]['user_id'])
+
+    def show_connections_list(self, users, cb):
+        self.agent
+        opts = [[user['user']['username'], user['user']['client']] for user in users]
+        w = sublime.active_window() or G.WORKSPACE_WINDOW
+        w.show_quick_panel(opts, cb)
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
