@@ -65,7 +65,14 @@ class SublimeConnection(floo_handler.FlooHandler):
     def update_status_msg(self, status=''):
         self._status_timeout = 0
         if G.FOLLOW_MODE:
-            status += 'Following changes in'
+            if G.FOLLOW_IDS:
+                status += 'Following '
+                for id in G.FOLLOW_IDS:
+                    user = self.workspace_info['users'][id]
+                    status += '%s using %s ' % (user['username'], user['client'])
+                status += 'in'
+            else:
+                status += 'Following changes in'
         else:
             status += 'Connected to'
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
@@ -259,7 +266,8 @@ class SublimeConnection(floo_handler.FlooHandler):
         username = data['username']
         ranges = data['ranges']
         summon = data.get('ping', False)
-        msg.debug(str([buf_id, region_key, username, ranges, summon, data.get('following'), clone]))
+        user_id = str(data['user_id'])
+        msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, data.get('following'), clone]))
         buf = self.bufs.get(buf_id)
         if not buf:
             return
@@ -283,6 +291,8 @@ class SublimeConnection(floo_handler.FlooHandler):
         if G.FOLLOW_MODE and not summon:
             if self.temp_disable_follow or data.get('following'):
                 do_stuff = False
+            elif G.FOLLOW_IDS:
+                do_stuff = user_id in G.FOLLOW_IDS
             else:
                 do_stuff = True
 

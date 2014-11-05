@@ -311,7 +311,6 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
 
 class FloobitsFollowUser(FloobitsBaseCommand):
     def run(self):
-        msg.log("FloobitsFollowUser")
         G.FOLLOW_MODE = True
         G.FOLLOW_IDS = []
         G.SPLIT_MODE = False
