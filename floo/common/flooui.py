@@ -286,14 +286,9 @@ class FlooUI(event_emitter.EventEmitter):
         for user_id, user in users.items():
             if user_id != str(self.agent.workspace_info['user_id']):
                 usersMap.append({'user_id': user_id, 'user': user})
-        selected_user = yield self.show_connections_list, usersMap
+        selected_user = yield self.agent.show_connections_list, usersMap
         selected_user_data = usersMap[selected_user]
         G.FOLLOW_IDS.append(selected_user_data['user_id'])
-
-    def show_connections_list(self, users, cb):
-        opts = [[user['user']['username'], user['user']['client']] for user in users]
-        w = sublime.active_window() or G.WORKSPACE_WINDOW
-        w.show_quick_panel(opts, cb)
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
