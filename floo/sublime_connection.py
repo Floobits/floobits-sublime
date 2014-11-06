@@ -65,11 +65,10 @@ class SublimeConnection(floo_handler.FlooHandler):
     def update_status_msg(self, status=''):
         self._status_timeout = 0
         if G.FOLLOW_MODE:
-            if G.FOLLOW_IDS:
+            if G.FOLLOW_USERS:
                 status += 'Following '
-                for id in G.FOLLOW_IDS:
-                    user = self.workspace_info['users'][id]
-                    status += '%s using %s ' % (user['username'], user['client'])
+                for username in G.FOLLOW_USERS:
+                    status += '%s' % (username)
                 status += 'in'
             else:
                 status += 'Following changes in'
@@ -90,7 +89,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.log(client)
 
     def show_connections_list(self, users, cb):
-        opts = [[user['user']['username'], user['user']['client']] for user in users]
+        opts = [[user, ''] for user in users]
         w = sublime.active_window() or G.WORKSPACE_WINDOW
         w.show_quick_panel(opts, cb)
 
@@ -210,6 +209,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.ignored_saves = collections.defaultdict(int)
         self._status_timeout = 0
         self.last_highlight = None
+        self.last_highlight_by_user = {}
 
     def prompt_join_hangout(self, hangout_url):
         hangout_client = None
@@ -258,11 +258,16 @@ class SublimeConnection(floo_handler.FlooHandler):
         }
         self.send(event)
 
-    def highlight(self, data=None):
-        data = data or self.last_highlight
+    def highlight(self, data=None, user=None):
+        if user:
+            data = self.last_highlight_by_user.get(user)
+        elif not data:
+            data = data or self.last_highlight
+
         if not data:
             msg.log('No recent highlight to replay.')
             return
+
         self._on_highlight(data)
 
     def _on_highlight(self, data, clone=True):
@@ -291,13 +296,14 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         if summon or not data.get('following'):
             self.last_highlight = data
+            self.last_highlight_by_user[username] = data
 
         do_stuff = summon
         if G.FOLLOW_MODE and not summon:
             if self.temp_disable_follow or data.get('following'):
                 do_stuff = False
-            elif G.FOLLOW_IDS:
-                do_stuff = user_id in G.FOLLOW_IDS
+            elif G.FOLLOW_USERS:
+                do_stuff = user_id in G.FOLLOW_USERS
             else:
                 do_stuff = True
 

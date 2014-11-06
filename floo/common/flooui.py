@@ -282,14 +282,34 @@ class FlooUI(event_emitter.EventEmitter):
     @utils.inlined_callbacks
     def follow_user(self, context):
         users = self.agent.workspace_info.get('users')
-        usersMap = []
-        for user_id, user in users.items():
-            if user_id != str(self.agent.workspace_info['user_id']):
-                if user['client'] != 'flooty':
-                    usersMap.append({'user_id': user_id, 'user': user})
-        selected_user = yield self.agent.show_connections_list, usersMap
-        selected_user_data = usersMap[selected_user]
-        G.FOLLOW_IDS.add(selected_user_data['user_id'])
+        userNames = set()
+        me = self.agent.get_username_by_id(self.agent.workspace_info['user_id'])
+        for user in users.values():
+            if user['client'] == 'flooty':
+                continue
+            if 'highlight' not in user['perms']:
+                continue
+            username = user['username']
+            if username == me:
+                continue
+            userNames.add(username)
+        if not userNames:
+            editor.error_message("There are no other users that can be followed at this time.  NOTE: you can only follow users who have highlight permission.")
+            return
+        userNames = list(userNames)
+        userNames.sort()
+        small = [(x in G.FOLLOW_USERS) and "unfollow" or "follow" for x in userNames]
+        selected_user, index = yield self.user_select, context, "select a user to follow", list(userNames), small
+
+        if not selected_user:
+            return
+
+        if selected_user in G.FOLLOW_USERS:
+            G.FOLLOW_USERS.remove(selected_user)
+            return
+
+        G.FOLLOW_USERS.add(selected_user)
+        G.AGENT.highlight(user=selected_user)
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
