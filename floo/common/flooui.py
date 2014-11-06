@@ -285,7 +285,8 @@ class FlooUI(event_emitter.EventEmitter):
         usersMap = []
         for user_id, user in users.items():
             if user_id != str(self.agent.workspace_info['user_id']):
-                usersMap.append({'user_id': user_id, 'user': user})
+                if user['client'] != 'flooty':
+                    usersMap.append({'user_id': user_id, 'user': user})
         selected_user = yield self.agent.show_connections_list, usersMap
         selected_user_data = usersMap[selected_user]
         G.FOLLOW_IDS.append(selected_user_data['user_id'])
