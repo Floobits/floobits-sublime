@@ -289,7 +289,7 @@ class FlooUI(event_emitter.EventEmitter):
                     usersMap.append({'user_id': user_id, 'user': user})
         selected_user = yield self.agent.show_connections_list, usersMap
         selected_user_data = usersMap[selected_user]
-        G.FOLLOW_IDS.append(selected_user_data['user_id'])
+        G.FOLLOW_IDS.add(selected_user_data['user_id'])
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
