@@ -285,13 +285,13 @@ class FlooUI(event_emitter.EventEmitter):
         userNames = set()
         me = self.agent.get_username_by_id(self.agent.workspace_info['user_id'])
         for user in users.values():
+            if username == me:
+                continue
             if user['client'] == 'flooty':
                 continue
             if 'highlight' not in user['perms']:
                 continue
             username = user['username']
-            if username == me:
-                continue
             userNames.add(username)
         if not userNames:
             editor.error_message("There are no other users that can be followed at this time.  NOTE: you can only follow users who have highlight permission.")
