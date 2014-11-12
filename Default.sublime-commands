@@ -104,5 +104,9 @@
   {
     "caption": "Floobits - List Users",
     "command": "floobits_list_users"
+  },
+  {
+    "caption": "Floobits - Follow User",
+    "command": "floobits_follow_user"
   }
 ]

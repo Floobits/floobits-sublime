@@ -1,6 +1,7 @@
 import os.path
 import webbrowser
 import re
+import sublime
 import json
 
 try:
@@ -277,6 +278,38 @@ class FlooUI(event_emitter.EventEmitter):
             return editor.error_message(str_e(e))
 
         return self.join_workspace(context, d['host'], d['workspace'], d['owner'], possible_dirs)
+
+    @utils.inlined_callbacks
+    def follow_user(self, context):
+        users = self.agent.workspace_info.get('users')
+        userNames = set()
+        me = self.agent.get_username_by_id(self.agent.workspace_info['user_id'])
+        for user in users.values():
+            username = user['username']
+            if username == me:
+                continue
+            if user['client'] == 'flooty':
+                continue
+            if 'highlight' not in user['perms']:
+                continue
+            userNames.add(username)
+        if not userNames:
+            editor.error_message("There are no other users that can be followed at this time.  NOTE: you can only follow users who have highlight permission.")
+            return
+        userNames = list(userNames)
+        userNames.sort()
+        small = [(x in G.FOLLOW_USERS) and "unfollow" or "follow" for x in userNames]
+        selected_user, index = yield self.user_select, context, "select a user to follow", list(userNames), small
+
+        if not selected_user:
+            return
+
+        if selected_user in G.FOLLOW_USERS:
+            G.FOLLOW_USERS.remove(selected_user)
+            return
+
+        G.FOLLOW_USERS.add(selected_user)
+        G.AGENT.highlight(user=selected_user)
 
     @utils.inlined_callbacks
     def join_workspace(self, context, host, name, owner, possible_dirs=None):
