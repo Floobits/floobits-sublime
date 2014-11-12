@@ -62,6 +62,7 @@ class FlooProtocol(base.BaseProtocol):
         self._empty_reads = 0
         self._reconnect_timeout = None
         self._cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+        self.req_id = 0
 
         self._host = host
         self._port = port
@@ -329,8 +330,10 @@ class FlooProtocol(base.BaseProtocol):
     def put(self, item):
         if not item:
             return
-        msg.debug('writing ', item.get('name', 'NO NAME'))
+        self.req_id += 1
+        item['req_id'] = self.req_id
+        msg.debug('writing ', item.get('name', 'NO NAME'),
+                  ' req_id ', self.req_id,
+                  ' qsize ', len(self))
         self._q.append(json.dumps(item) + '\n')
-        qsize = len(self._q)
-        msg.debug(qsize, ' items in q')
-        return qsize
+        return self.req_id

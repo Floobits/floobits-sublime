@@ -10,6 +10,8 @@ try:
 except ImportError:
     ssl = False
 
+PY2 = sys.version_info < (3, 0)
+
 
 try:
     import __builtin__
@@ -58,14 +60,19 @@ class APIResponse():
             self.code = int(lines[0])
             if self.code != 204:
                 self.body = json.loads('\n'.join(lines[1:]))
+        elif isinstance(r, URLError):
+            # horrible hack, but lots of other stuff checks the response code :/
+            self.code = 500
+            self.body = r
         else:
+            # Hopefully this is an HTTPError
             self.code = r.code
             if self.code != 204:
                 self.body = json.loads(r.read().decode("utf-8"))
 
 
 def proxy_api_request(host, url, data, method):
-    args = ['python', '-m', 'floo.proxy',  '--host', host, '--url', url]
+    args = ['python', '-m', 'floo.proxy', '--host', host, '--url', url]
     if data:
         args += ["--data", json.dumps(data)]
     if method:
@@ -118,6 +125,12 @@ def api_request(host, url, data=None, method=None):
         r = hit_url(host, url, data, method)
     except HTTPError as e:
         r = e
+    except URLError as e:
+        msg.warn('Error hitting url ', url, ': ', e)
+        r = e
+        if not PY2:
+            msg.warn('Retrying using system python...')
+            return proxy_api_request(host, url, data, method)
     return APIResponse(r)
 
 

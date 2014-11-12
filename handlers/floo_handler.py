@@ -42,7 +42,7 @@ TOO_BIG_TEXT = '''Maximum workspace size is %.2fMB.\n
 class FlooHandler(base.BaseHandler):
     PROTOCOL = floo_proto.FlooProtocol
 
-    def __init__(self, owner, workspace, auth, upload=None):
+    def __init__(self, owner, workspace, auth, action):
         self.username = auth.get('username')
         self.secret = auth.get('secret')
         self.api_key = auth.get('api_key')
@@ -50,7 +50,7 @@ class FlooHandler(base.BaseHandler):
         super(FlooHandler, self).__init__()
         self.owner = owner
         self.workspace = workspace
-        self.upload_path = upload and utils.unfuck_path(upload)
+        self.action = action
         self.reset()
 
     def _on_highlight(self, data):
@@ -174,7 +174,8 @@ class FlooHandler(base.BaseHandler):
                 self.send(patch.to_json())
                 old_text = view_text
             else:
-                msg.debug('forced patch is true. not sending another patch for buf ', buf['path'])
+                msg.debug('forced patch is true. not sending another force patch for buf ', buf['path'])
+
         md5_before = hashlib.md5(old_text.encode('utf-8')).hexdigest()
         if md5_before != data['md5_before']:
             msg.warn('starting md5s don\'t match for ', buf['path'], '. this is dangerous!')
@@ -212,6 +213,7 @@ class FlooHandler(base.BaseHandler):
 
         cur_hash = hashlib.md5(t[0].encode('utf-8')).hexdigest()
         if cur_hash != data['md5_after']:
+            msg.debug('Ending md5s don\'t match for ', buf['path'], ' Setting get_buf timeout.')
             buf['timeout_id'] = utils.set_timeout(self.get_buf, 2000, buf_id, view)
 
         buf['buf'] = t[0]
@@ -317,7 +319,7 @@ class FlooHandler(base.BaseHandler):
             self.send({'name': 'delete_buf', 'id': buf_id})
 
         def __upload_buf(buf):
-            return self._upload(utils.get_full_path(buf['path']), buf['buf'])
+            return self._upload(utils.get_full_path(buf['path']), buf.get('buf'))
 
         changed_bufs_len = reduce(lambda a, buf: a + len(buf.get('buf', '')), changed_bufs, 0)
         self._rate_limited_upload(iter(changed_bufs), changed_bufs_len, upload_func=__upload_buf)
@@ -445,7 +447,7 @@ class FlooHandler(base.BaseHandler):
                 ignored.append(p)
             new_files.discard(p)
 
-        if self.upload_path:
+        if self.action == utils.JOIN_ACTION.UPLOAD:
             yield self._initial_upload, ig, missing_bufs, changed_bufs
             # TODO: maybe use org name here
             who = 'Your friends'
@@ -455,13 +457,20 @@ class FlooHandler(base.BaseHandler):
             _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
             # Workaround for horrible Sublime Text bug
             utils.set_timeout(editor.message_dialog, 0, _msg)
-
         elif changed_bufs or missing_bufs or new_files:
             # TODO: handle readonly here
-            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
-            if stomp_local not in [0, 1]:
-                self.stop()
+            if self.action == utils.JOIN_ACTION.PROMPT:
+                stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
+                if stomp_local not in [0, 1]:
+                    self.stop()
+                    return
+            elif self.action == utils.JOIN_ACTION.DOWNLOAD:
+                stomp_local = True
+            else:
+                # This should never happen
+                assert False
                 return
+
             if stomp_local:
                 for buf in changed_bufs:
                     self.get_buf(buf['id'], buf.get('view'))
@@ -708,6 +717,7 @@ class FlooHandler(base.BaseHandler):
                     'md5': existing_buf['md5'],
                     'encoding': encoding,
                 })
+                self.send({'name': 'saved', 'id': existing_buf['id']})
                 return size
 
             try:

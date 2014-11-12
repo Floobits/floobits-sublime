@@ -88,12 +88,12 @@ class Ignore(object):
                 pass
 
         for p in paths:
-            p_path = os.path.join(self.path, p)
+            if p == '.' or p == '..':
+                continue
             if p in BLACKLIST:
                 msg.log('Ignoring blacklisted file ', p)
                 continue
-            if p == '.' or p == '..':
-                continue
+            p_path = os.path.join(self.path, p)
             try:
                 s = os.stat(p_path)
             except Exception as e:
@@ -136,7 +136,7 @@ class Ignore(object):
 
     def get_children(self):
         children = list(self.children.values())
-        for c in children:
+        for c in self.children.values():
             children += c.get_children()
         return children
 

@@ -20,7 +20,7 @@ class FlooUI(event_emitter.EventEmitter):
         super(FlooUI, self).__init__()
         self.agent = None
 
-    def _make_agent(self, context, owner, workspace, auth, created_workspace, d):
+    def _make_agent(self, context, owner, workspace, auth, join_action):
         """@returns new Agent()"""
         raise NotImplemented()
 
@@ -46,8 +46,8 @@ class FlooUI(event_emitter.EventEmitter):
 
     @utils.inlined_callbacks
     def link_account(self, context, host, cb):
-        prompt = 'No credentials found in ~/.floorc.json for %s.  Would you like to download them (opens a browser)?.' % host
-        yes = yield self.user_y_or_n, context,  prompt, "Download"
+        prompt = 'No credentials found in ~/.floorc.json for %s. Would you like to sign in? (opens a browser)' % host
+        yes = yield self.user_y_or_n, context, prompt, 'Sign in'
         if not yes:
             return
 
@@ -78,19 +78,20 @@ class FlooUI(event_emitter.EventEmitter):
             editor.message_dialog('Thank you for installing the Floobits plugin!\n\nLet\'s set up your editor to work with Floobits.')
 
         choices = [
-            'Use an existing Floobits account',
-            'Create a new Floobits account',
+            'Sign in to Floobits',
+            'Create a Floobits account',
             'Cancel (see https://floobits.com/help/floorc)'
         ]
 
-        (choice, index) = yield self.user_select, context, 'You need a Floobits account to use Floobits! Do you want to:', choices, None
+        (choice, index) = yield self.user_select, context, 'You need an account to use Floobits! Do you want to:', choices, None
 
         if index == -1 or index == 2:
             d = utils.get_persistent_data()
             if not d.get('disable_account_creation'):
                 d['disable_account_creation'] = True
                 utils.update_persistent_data(d)
-                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Setup''')
+                # TODO: this instruction is only useful for Sublime Text
+                editor.message_dialog('''You can set up a Floobits account at any time under\n\nTools -> Floobits -> Set up''')
             cb(None)
             return
 
@@ -179,7 +180,7 @@ class FlooUI(event_emitter.EventEmitter):
         return result
 
     @utils.inlined_callbacks
-    def remote_connect(self, context, host, owner, workspace, d, get_bufs=False):
+    def remote_connect(self, context, host, owner, workspace, d, join_action=utils.JOIN_ACTION.PROMPT):
         G.PROJECT_PATH = os.path.realpath(d)
         try:
             utils.mkdir(os.path.dirname(G.PROJECT_PATH))
@@ -199,7 +200,7 @@ class FlooUI(event_emitter.EventEmitter):
 
         res = api.get_workspace(host, owner, workspace)
         if res.code == 404:
-            msg.error("The workspace https://%s/%s/%s does not exist" % (host, owner, workspace))
+            editor.error_message("The workspace https://%s/%s/%s does not exist" % (host, owner, workspace))
             return
 
         if self.agent:
@@ -209,7 +210,7 @@ class FlooUI(event_emitter.EventEmitter):
                 pass
 
         G.WORKSPACE_WINDOW = yield self.get_a_window, d
-        self.agent = self._make_agent(context, owner, workspace, auth, get_bufs, d)
+        self.agent = self._make_agent(context, owner, workspace, auth, join_action)
         self.emit("agent", self.agent)
         reactor.reactor.connect(self.agent, host, G.DEFAULT_PORT, True)
         url = self.agent.workspace_url
@@ -237,7 +238,7 @@ class FlooUI(event_emitter.EventEmitter):
             if r.code < 400:
                 workspace_url = 'https://%s/%s/%s' % (host, owner, name)
                 msg.log('Created workspace ', workspace_url)
-                self.remote_connect(context, host, owner, name, dir_to_share, True)
+                self.remote_connect(context, host, owner, name, dir_to_share, utils.JOIN_ACTION.UPLOAD)
                 return
 
             msg.error('Unable to create workspace: ', r.body)
@@ -315,6 +316,7 @@ class FlooUI(event_emitter.EventEmitter):
             return
 
         d = d or os.path.join(G.SHARE_DIR or G.BASE_DIR, owner, name)
+        join_action = utils.JOIN_ACTION.PROMPT
         while True:
             d = yield self.user_dir, context, 'Save workspace files to: ', d
             if not d:
@@ -328,13 +330,14 @@ class FlooUI(event_emitter.EventEmitter):
                 if not os.path.isdir(d):
                     msg.error("Couldn't create directory", d)
                     continue
+                join_action = utils.JOIN_ACTION.DOWNLOAD
             if os.path.isdir(d):
-                self.remote_connect(context, host, owner, name, d)
+                self.remote_connect(context, host, owner, name, d, join_action)
                 return
 
     @utils.inlined_callbacks
     def prompt_share_dir(self, context, ask_about_dir, api_args):
-        dir_to_share = yield self.user_dir, 'Directory to share: ', ask_about_dir
+        dir_to_share = yield self.user_dir, context, 'Directory to share: ', ask_about_dir
         if not dir_to_share:
             return
         self.share_dir(context, dir_to_share, api_args)

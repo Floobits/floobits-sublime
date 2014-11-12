@@ -28,6 +28,12 @@ except ImportError:
     from lib import DMP
 
 
+class JOIN_ACTION(object):
+    PROMPT = 1
+    UPLOAD = 2
+    DOWNLOAD = 3
+
+
 class FlooPatch(object):
     def __init__(self, current, buf):
         self.buf = buf
@@ -35,12 +41,20 @@ class FlooPatch(object):
         self.previous = buf['buf']
         if buf['encoding'] == 'base64':
             self.md5_before = hashlib.md5(self.previous).hexdigest()
+            self.md5_after = hashlib.md5(self.current).hexdigest()
         else:
             try:
                 self.md5_before = hashlib.md5(self.previous.encode('utf-8')).hexdigest()
-            except Exception:
+            except Exception as e:
                 # Horrible fallback if for some reason encoding doesn't agree with actual object
                 self.md5_before = hashlib.md5(self.previous).hexdigest()
+                msg.log('Error calculating md5_before for ', str(self), ': ', str_e(e))
+            try:
+                self.md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
+            except Exception as e:
+                # Horrible fallback if for some reason encoding doesn't agree with actual object
+                self.md5_after = hashlib.md5(self.current).hexdigest()
+                msg.log('Error calculating md5_after for ', str(self), ': ', str_e(e))
 
     def __str__(self):
         return '%s - %s' % (self.buf['id'], self.buf['path'])
@@ -56,14 +70,9 @@ class FlooPatch(object):
         for patch in patches:
             patch_str += str(patch)
 
-        if self.buf['encoding'] == 'base64':
-            md5_after = hashlib.md5(self.current).hexdigest()
-        else:
-            md5_after = hashlib.md5(self.current.encode('utf-8')).hexdigest()
-
         return {
             'id': self.buf['id'],
-            'md5_after': md5_after,
+            'md5_after': self.md5_after,
             'md5_before': self.md5_before,
             'path': self.buf['path'],
             'patch': patch_str,
@@ -179,6 +188,10 @@ def parse_url(workspace_url):
     secure = G.SECURE
     owner = None
     workspace_name = None
+    # owner/workspacename
+    result = re.match('^([-\@\+\.\w]+)/([-\.\w]+)$', workspace_url)
+    if result:
+        workspace_url = 'https://' + G.DEFAULT_HOST + '/' + workspace_url
     parsed_url = urlparse(workspace_url)
     port = parsed_url.port
     if G.DEBUG and parsed_url.scheme == 'http':
@@ -190,9 +203,10 @@ def parse_url(workspace_url):
     if not port:
         port = G.DEFAULT_PORT
 
-    result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
+    # Allow /file/...
+    result = re.match('^/([-\@\+\.\w]+)/([-\.\w]+)/?.*$', parsed_url.path)
     if not result:
-        # Old style URL
+        # Old style URL. Do not remove. People still have these in their persistent.json
         result = re.match('^/r/([-\@\+\.\w]+)/([-\.\w]+)/?$', parsed_url.path)
 
     if result:

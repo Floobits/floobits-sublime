@@ -31,7 +31,6 @@ class _Reactor(object):
     def listen(self, factory, host='127.0.0.1', port=0):
         listener_factory = tcp_server.TCPServerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
-        factory.listener_factory = listener_factory
         self._protos.append(proto)
         self._handlers.append(listener_factory)
         return proto.sockname()
@@ -88,7 +87,7 @@ class _Reactor(object):
         editor.call_timeouts()
 
     def block(self):
-        while self._protos or self._handlers:
+        while True:
             self.tick(.05)
 
     def select(self, timeout=0):
@@ -114,10 +113,13 @@ class _Reactor(object):
             _in, _out, _except = select.select(readable, writeable, errorable, timeout)
         except (select.error, socket.error, Exception) as e:
             # TODO: with multiple FDs, must call select with just one until we find the error :(
-            if len(readable) == 1:
-                readable[0].reconnect()
-                return msg.error('Error in select(): ', str_e(e))
-            raise Exception("can't handle more than one fd exception in reactor")
+            for fileno in readable:
+                try:
+                    select.select([fileno], [], [], 0)
+                except (select.error, socket.error, Exception) as e:
+                    fd_map[fileno].reconnect()
+                    msg.error('Error in select(): ', fileno, str_e(e))
+            return
 
         for fileno in _except:
             fd = fd_map[fileno]
