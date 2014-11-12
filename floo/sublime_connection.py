@@ -69,7 +69,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                 status += 'Following '
                 for username in G.FOLLOW_USERS:
                     status += '%s' % (username)
-                status += 'in'
+                status += ' in'
             else:
                 status += 'Following changes in'
         else:
@@ -303,7 +303,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             if self.temp_disable_follow or data.get('following'):
                 do_stuff = False
             elif G.FOLLOW_USERS:
-                do_stuff = user_id in G.FOLLOW_USERS
+                do_stuff = username in G.FOLLOW_USERS
             else:
                 do_stuff = True
 
