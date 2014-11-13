@@ -1,7 +1,6 @@
 import os.path
 import webbrowser
 import re
-import sublime
 import json
 
 try:
