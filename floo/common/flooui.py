@@ -1,6 +1,7 @@
 import os.path
 import webbrowser
 import re
+import sublime
 import json
 
 try:
@@ -200,7 +201,7 @@ class FlooUI(event_emitter.EventEmitter):
 
         res = api.get_workspace(host, owner, workspace)
         if res.code == 404:
-            editor.error_message("The workspace https://%s/%s/%s does not exist" % (host, owner, workspace))
+            msg.error("The workspace https://%s/%s/%s does not exist" % (host, owner, workspace))
             return
 
         if self.agent:

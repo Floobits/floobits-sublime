@@ -31,6 +31,7 @@ class _Reactor(object):
     def listen(self, factory, host='127.0.0.1', port=0):
         listener_factory = tcp_server.TCPServerHandler(factory, self)
         proto = listener_factory.build_protocol(host, port)
+        factory.listener_factory = listener_factory
         self._protos.append(proto)
         self._handlers.append(listener_factory)
         return proto.sockname()
@@ -87,7 +88,7 @@ class _Reactor(object):
         editor.call_timeouts()
 
     def block(self):
-        while True:
+        while self._protos or self._handlers:
             self.tick(.05)
 
     def select(self, timeout=0):
