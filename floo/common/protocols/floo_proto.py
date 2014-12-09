@@ -50,6 +50,7 @@ class FlooProtocol(base.BaseProtocol):
 
     def __init__(self, host, port, secure=True):
         super(FlooProtocol, self).__init__(host, port, secure)
+        self._handling = False
         self.connected = False
         self._needs_handshake = bool(secure)
         self._sock = None
@@ -90,10 +91,13 @@ class FlooProtocol(base.BaseProtocol):
 
     def _handle(self, data):
         self._buf_in += data
+        if self._handling:
+            return
+        self._handling = True
         while True:
             before, sep, after = self._buf_in.partition(b'\n')
             if not sep:
-                return
+                break
             try:
                 # Node.js sends invalid utf8 even though we're calling write(string, "utf8")
                 # Python 2 can figure it out, but python 3 hates it and will die here with some byte sequences
@@ -108,6 +112,7 @@ class FlooProtocol(base.BaseProtocol):
                 continue
 
             name = data.get('name')
+            self._buf_in = after
             try:
                 msg.debug('got data ' + (name or 'no name'))
                 self.emit('data', name, data)
@@ -116,7 +121,7 @@ class FlooProtocol(base.BaseProtocol):
                 if name == 'room_info':
                     editor.error_message('Error joining workspace: %s' % str_e(e))
                     self.stop()
-            self._buf_in = after
+        self._handling = False
 
     def _connect(self, host, port, attempts=0):
         if attempts > (self.proxy and 500 or 500):
@@ -336,3 +341,4 @@ class FlooProtocol(base.BaseProtocol):
                   ' qsize ', len(self))
         self._q.append(json.dumps(item) + '\n')
         return self.req_id
+

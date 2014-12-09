@@ -293,7 +293,8 @@ class FlooUI(event_emitter.EventEmitter):
                 continue
             userNames.add(username)
         if not userNames:
-            editor.error_message("There are no other users that can be followed at this time.  NOTE: you can only follow users who have highlight permission.")
+            editor.error_message("There are no other users that can be followed at this time." +
+                                 "NOTE: you can only follow users who have highlight permission.")
             return
         userNames = list(userNames)
         userNames.sort()
