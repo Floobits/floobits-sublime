@@ -193,9 +193,18 @@ def send_error(description=None, exception=None):
         data['username'] = getattr(G.AGENT, "username", None)
         data['workspace'] = getattr(G.AGENT, "workspace", None)
     if exception:
+        try:
+            stack = traceback.format_exc(exception)
+        except Exception:
+            stack = "Python is rtardd"
+        try:
+            description = str(exception)
+        except Exception:
+            description = "Python is rtadd"
+
         data['message'] = {
-            'description': str(exception),
-            'stack': traceback.format_exc(exception)
+            'description': description,
+            'stack': stack
         }
     msg.log('Floobits plugin error! Sending exception report: ', data['message'])
     if description:
