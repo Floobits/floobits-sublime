@@ -19,6 +19,7 @@ class View(object):
     def __init__(self, view, buf):
         self.view = view
         self.buf = buf
+        self.erase_regions_timeout = None
 
     def __repr__(self):
         return '%s %s %s' % (self.native_id, self.buf['id'], self.buf['path'].encode('utf-8'))
@@ -50,7 +51,8 @@ class View(object):
         self.view.run_command('floo_view_replace_regions', {'commands': commands})
         region_key = 'floobits-patch-' + username
         self.view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
-        utils.set_timeout(self.view.erase_regions, 2000, region_key)
+        utils.cancel_timeout(self.erase_regions_timeout)
+        self.erase_regions_timeout = utils.set_timeout(self.view.erase_regions, 2000, region_key)
         self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
     def update(self, buf, message=True):
