@@ -346,8 +346,7 @@ class FlooHandler(base.BaseHandler):
                 return len(text)
             return self._upload(utils.get_full_path(rel_path), self.get_view_text_by_path(rel_path))
 
-        self._rate_limited_upload(iter(files), size, upload_func=__upload)
-        cb()
+        self._rate_limited_upload(iter(files), size, upload_func=__upload, cb=cb)
 
     @utils.inlined_callbacks
     def _on_room_info(self, data):
@@ -652,7 +651,7 @@ class FlooHandler(base.BaseHandler):
 
         self._rate_limited_upload(ig.list_paths(), ig.total_size, upload_func=self._upload_file_by_path)
 
-    def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None):
+    def _rate_limited_upload(self, paths_iter, total_bytes, bytes_uploaded=0.0, upload_func=None, cb=None):
         reactor.tick()
         upload_func = upload_func or (lambda x: self._upload(utils.get_full_path(x)))
         if len(self.proto) > 0:
@@ -673,7 +672,7 @@ class FlooHandler(base.BaseHandler):
         except StopIteration:
             editor.status_message('Uploading... 100% ' + ('|' * bar_len) + '| complete')
             msg.log('All done uploading')
-            return
+            return cb and cb()
         self.upload_timeout = utils.set_timeout(self._rate_limited_upload, 50, paths_iter, total_bytes, bytes_uploaded, upload_func)
 
     def _upload(self, path, text=None):
