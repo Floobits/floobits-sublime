@@ -276,7 +276,10 @@ def main():
             print(r.code)
         except Exception:
             err = True
-        print(r.read().decode('utf-8'))
+        if err:
+            print(r.reason)
+        else:
+            print(r.read().decode('utf-8'))
         sys.exit(err)
 
     if not options.host:
