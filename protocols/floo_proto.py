@@ -323,9 +323,8 @@ class FlooProtocol(base.BaseProtocol):
         elif self._retries == 0:
             editor.error_message('Floobits Error! Too many reconnect failures. Giving up.')
 
-        if self.host == 'floobits.com':
-            # Only use proxy.floobits.com if we're trying to connect to floobits.com
-            G.OUTBOUND_FILTERING = self._retries % 4 == 0
+        # Only use proxy.floobits.com if we're trying to connect to floobits.com
+        G.OUTBOUND_FILTERING = self.host == 'floobits.com' and self._retries % 4 == 0
         self._retries -= 1
 
     def reset_retries(self):
@@ -342,4 +341,3 @@ class FlooProtocol(base.BaseProtocol):
                   ' qsize ', len(self))
         self._q.append(json.dumps(item) + '\n')
         return self.req_id
-
