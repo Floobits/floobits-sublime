@@ -186,9 +186,6 @@ def get_orgs_can_admin(host):
 
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
-    if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
-        msg.warn('Already sent ', G.ERRORS_SENT, ' errors this session. Not sending any more.\n', description, exception)
-        return
     data = {
         'jsondump': {
             'error_count': G.ERROR_COUNT
@@ -196,6 +193,7 @@ def send_error(description=None, exception=None):
         'message': {},
         'dir': G.COLAB_DIR,
     }
+    stack = ''
     if G.AGENT:
         data['owner'] = getattr(G.AGENT, "owner", None)
         data['username'] = getattr(G.AGENT, "username", None)
@@ -217,6 +215,9 @@ def send_error(description=None, exception=None):
     msg.log('Floobits plugin error! Sending exception report: ', data['message'])
     if description:
         data['message']['description'] = description
+    if G.ERRORS_SENT >= G.MAX_ERROR_REPORTS:
+        msg.warn('Already sent ', G.ERRORS_SENT, ' errors this session. Not sending any more.\n', description, exception, stack)
+        return
     try:
         # TODO: use G.AGENT.proto.host?
         api_url = 'https://%s/api/log' % (G.DEFAULT_HOST)
