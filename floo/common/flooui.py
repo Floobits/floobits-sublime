@@ -231,9 +231,15 @@ class FlooUI(event_emitter.EventEmitter):
                 api_args['name'] = name
                 r = api.create_workspace(host, api_args)
             except Exception as e:
-                msg.error('Unable to create workspace ', str_e(e))
-                editor.error_message('Unable to create workspace: %s' % str_e(e))
-                return
+                if r.code == 400:
+                    # TODO: strip leading dots/dashes/etc
+                    name = re.sub('[^A-Za-z0-9_\-\.]', '_', name)
+                    prompt = 'Workspace names may only contain [A-Za-z0-9_\-\.]. Choose another name: '
+                    continue
+                else:
+                    msg.error('Unable to create workspace ', str_e(e))
+                    editor.error_message('Unable to create workspace: %s' % str_e(e))
+                    return
 
             if r.code < 400:
                 workspace_url = 'https://%s/%s/%s' % (host, owner, name)
@@ -261,12 +267,6 @@ class FlooUI(event_emitter.EventEmitter):
                 if yes:
                     webbrowser.open('https://%s/%s/settings#billing' % (host, owner))
                 return
-
-            if r.code == 400:
-                # TODO: strip leading dots/dashes/etc
-                name = re.sub('[^A-Za-z0-9_\-\.]', '_', name)
-                prompt = 'Workspace names may only contain [A-Za-z0-9_\-\.]. Choose another name: '
-                continue
 
             prompt = 'Workspace %s/%s already exists. Choose another name: ' % (owner, name)
 
