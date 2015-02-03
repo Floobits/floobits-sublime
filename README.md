@@ -7,7 +7,7 @@ Real-time collaborative editing. Think Etherpad, but with native editors. This i
 # Installation instructions
 
 * [Create a Floobits account](https://floobits.com/signup/) or [sign in with GitHub](https://floobits.com/login/github/?next=/dash/).
-* If you have [Sublime Package Control](http://wbond.net/sublime_packages/package_control), go to Package Control → Install Package and search for Floobits. Select the Floobits package and install it.
+* If you have [Package Control](https://packagecontrol.io), go to Package Control → Install Package and search for Floobits. Select the Floobits package and install it.
 
 * If you don't have Package Control (or you prefer to install the plugin manually), clone this repository or download and extract [this tarball](https://github.com/Floobits/floobits-sublime/archive/master.zip).
 * Rename the directory to "Floobits".
@@ -32,11 +32,11 @@ See https://floobits.com/help/plugins/#sublime-usage for instructions on how to 
 # Errata
 
 ## Windows
-The Python included with the Windows version of Sublime Text 2 does not have the [select](http://docs.python.org/2/library/select.html) module. This means the plugin won't work with Sublime Text 2 on Windows. Windows users must install Sublime Text 3 if they want to use this plugin. Sorry, there's nothing we can do about this. `:(`
+Sublime Text 2 on Windows requires Package Control 3.0 to be installed to function properly. This is due to a bug in the `select` module that ST2 ships by default.
 
 
 ## Linux
-On Linux, Sublime Text 2 and 3 ship with a broken SSL module. This is a known bug. We try to work around it by running an SSL proxy using the system Python.
+On Linux, Sublime Text 2 and 3 ship without the `_ssl` module. Installing Package Control 3.0 will install the missing elements. Otherwise we try to work around it by running an SSL proxy using the system Python.
 
 
 ## OS X
