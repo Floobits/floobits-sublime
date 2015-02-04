@@ -8,11 +8,14 @@ import threading
 import sublime
 
 PY2 = sys.version_info < (3, 0)
+SOCK_SINGLE_READ = False
 
 if PY2 and sublime.platform() == 'windows':
     try:
         import select
         assert select
+        # Change behavior of some low-level socket stuff so that we don't break
+        SOCK_SINGLE_READ = True
     except Exception as e:
         err_msg = '''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
 Please upgrade to Sublime Text 3 or install Package Control 3. :('''
@@ -85,6 +88,8 @@ def plugin_loaded():
     if not os.path.exists(G.FLOORC_JSON_PATH):
         migrations.migrate_floorc()
     utils.reload_settings()
+
+    G.SOCK_SINGLE_READ = SOCK_SINGLE_READ
 
     # TODO: one day this can be removed (once all our users have updated)
     old_colab_dir = os.path.realpath(os.path.expanduser(os.path.join('~', '.floobits')))
