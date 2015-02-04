@@ -81,7 +81,6 @@ def plugin_loaded():
     global called_plugin_loaded
     if called_plugin_loaded:
         return
-    print('loaded')
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
