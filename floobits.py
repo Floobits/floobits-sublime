@@ -10,9 +10,13 @@ import sublime
 PY2 = sys.version_info < (3, 0)
 
 if PY2 and sublime.platform() == 'windows':
-    err_msg = '''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
-Please upgrade to Sublime Text 3. :('''
-    raise(Exception(err_msg))
+    try:
+        import select
+        assert select
+    except Exception as e:
+        err_msg = '''Sorry, but the Windows version of Sublime Text 2 lacks Python's select module, so the Floobits plugin won't work.
+Please upgrade to Sublime Text 3 or install Package Control 3. :('''
+        raise(Exception(err_msg))
 elif sublime.platform() == 'osx':
     try:
         p = subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
