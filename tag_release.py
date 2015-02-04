@@ -3,10 +3,10 @@
 import os
 import re
 import sys
-from distutils.version import StrictVersion
 
 
 def main():
+    from distutils.version import StrictVersion
     if len(sys.argv) != 2:
         print('Usage: %s version' % sys.argv[0])
         versions = os.popen('git tag').read().split('\n')
