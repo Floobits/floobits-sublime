@@ -49,6 +49,15 @@ class Listener(sublime_plugin.EventListener):
         self.between_save_events = collections.defaultdict(lambda: [0, ''])
         self.disable_follow_mode_timeout = None
 
+    @if_connected
+    def on_window_command(self, window, command, *args, **kwargs):
+        if window == G.WORKSPACE_WINDOW and command == "close_window":
+            print("window closed, leaving workspace")
+            try:
+                window.run_command('floobits_leave_workspace')
+            except Exception as e:
+                print(e)
+
     def name(self, view):
         return view.file_name()
 
