@@ -94,7 +94,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         w.show_quick_panel(opts, cb)
 
     def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
-        if not G.EXPERT_MODE:
+        if not (G.EXPERT_MODE or hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST')):
             editor.message_dialog('Your copy of %s/%s is out of sync. '
                                   'You will be prompted after you close this dialog.' % (self.owner, self.workspace))
 
@@ -156,7 +156,10 @@ class SublimeConnection(floo_handler.FlooHandler):
         ]
 
         w = sublime.active_window() or G.WORKSPACE_WINDOW
-        w.show_quick_panel(opts, cb)
+        flags = 0
+        if hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST'):
+            flags |= sublime.KEEP_OPEN_ON_FOCUS_LOST
+        w.show_quick_panel(opts, cb, flags)
 
     def ok_cancel_dialog(self, msg, cb=None):
         res = sublime.ok_cancel_dialog(msg)

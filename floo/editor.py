@@ -93,4 +93,8 @@ def select_auth(*args):
         host = opts[index][0]
         return cb(auths[host])
 
-    return window.show_quick_panel(opts, on_account)
+    flags = 0
+    if hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST'):
+        flags |= sublime.KEEP_OPEN_ON_FOCUS_LOST
+
+    return window.show_quick_panel(opts, on_account, flags)

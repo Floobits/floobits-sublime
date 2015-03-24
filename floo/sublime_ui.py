@@ -112,7 +112,11 @@ class SublimeUI(flooui.FlooUI):
                 return cb(choices_big[i], i)
             return cb(None, -1)
 
-        utils.set_timeout(context.show_quick_panel, 1, choices, _cb)
+        flags = 0
+        if hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST'):
+            flags |= sublime.KEEP_OPEN_ON_FOCUS_LOST
+
+        utils.set_timeout(context.show_quick_panel, 1, choices, _cb, flags)
 
     def user_dir(self, context, prompt, initial, cb):
         """@returns a String directory (probably not expanded)"""

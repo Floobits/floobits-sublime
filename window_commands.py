@@ -206,10 +206,16 @@ class FloobitsRemoveFromWorkspaceCommand(FloobitsBaseCommand):
         if not self.is_enabled():
             return
 
-        unlink = bool(sublime.ok_cancel_dialog('Delete? Hit cancel to remove from the workspace without deleting.', 'Delete'))
-
         if paths is None and current_file:
             paths = [self.window.active_view().file_name()]
+
+        if not hasattr(sublime, 'yes_no_cancel_dialog'):
+            unlink = bool(sublime.ok_cancel_dialog('Delete? Select cancel to remove from the workspace without deleting.', 'Delete'))
+        else:
+            ret = sublime.yes_no_cancel_dialog("What should I do with\n%s" % "\n".join(paths[:5]), "Delete!", "Just Remove from Workspace.")
+            if ret == 0:
+                return
+            unlink = ret == 1
 
         for path in paths:
             G.AGENT.delete_buf(path, unlink)
