@@ -287,7 +287,7 @@ class FlooUI(event_emitter.EventEmitter):
             username = user['username']
             if username == me:
                 continue
-            if user['client'] == 'flooty':
+            if user['client'] == 'flootty':
                 continue
             if 'highlight' not in user['perms']:
                 continue
