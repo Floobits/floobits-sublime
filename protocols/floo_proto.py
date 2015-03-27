@@ -284,9 +284,15 @@ class FlooProtocol(base.BaseProtocol):
                 if not d:
                     break
                 buf += d
-            except (AttributeError):
+                # ST2 on Windows with Package Control 3 support!
+                # (socket.recv blocks for some damn reason)
+                if G.SOCK_SINGLE_READ:
+                    break
+            except AttributeError:
+                sock_debug('_sock is None')
                 return self.reconnect()
-            except (socket.error, TypeError):
+            except (socket.error, TypeError) as e:
+                sock_debug('Socket error:', e)
                 break
 
         if buf:
