@@ -317,10 +317,19 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
 
 class FloobitsFollowUser(FloobitsBaseCommand):
     def run(self):
-        G.FOLLOW_MODE = True
-        G.SPLIT_MODE = False
-        G.AGENT.update_status_msg('Stopped following changes. ')
-        SublimeUI.follow_user(self.window)
+        following_users = bool(G.FOLLOW_USERS)
+
+        def f():
+            if G.FOLLOW_USERS:
+                G.FOLLOW_MODE = True
+                G.SPLIT_MODE = False
+                G.AGENT.update_status_msg('Following changes.')
+            elif following_users:
+                # If we were following users and now we're not, disable follow mode
+                G.FOLLOW_MODE = False
+                G.AGENT.update_status_msg('Stopped following changes.')
+
+        SublimeUI.follow_user(self.window, f)
 
 
 class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
