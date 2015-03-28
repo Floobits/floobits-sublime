@@ -72,8 +72,10 @@ class SublimeConnection(floo_handler.FlooHandler):
                 status += ' in'
             else:
                 status += 'Following changes in'
-        else:
+        elif self.joined_workspace:
             status += 'Connected to'
+        else:
+            status += 'Connecting to'
         status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
         editor.status_message(status)
 
