@@ -1,7 +1,9 @@
+import os
 import time
 import hashlib
-import sublime_plugin
 import collections
+
+import sublime_plugin
 
 try:
     from .common import msg, shared as G, utils
@@ -50,13 +52,51 @@ class Listener(sublime_plugin.EventListener):
         self.disable_follow_mode_timeout = None
 
     @if_connected
+    def on_post_window_command(self, window, command, *args, **kwargs):
+        agent = args[-1]
+        if command == 'delete_file':
+            # User probably deleted a file. Stat and delete.
+            files = args[0]['files']
+            for f in files:
+                buf = agent.get_buf_by_path(f)
+                if not buf:
+                    continue
+                if os.path.exists(f):
+                    continue
+                agent.send({
+                    'name': 'delete_buf',
+                    'id': buf['id'],
+                })
+            return
+
+        if command == 'delete_folder':
+            dirs = args[0]['dirs']
+            for d in dirs:
+                # Delete folder prompt just closed. Check if folder exists
+                if os.path.isdir(d):
+                    continue
+                rel_path = utils.to_rel_path(d)
+                if not rel_path:
+                    msg.error('Can not delete %s from workspace', d)
+                    continue
+                for buf_id, buf in G.AGENT.bufs.items():
+                    if buf['path'].startswith(rel_path):
+                        agent.send({
+                            'name': 'delete_buf',
+                            'id': buf_id,
+                        })
+
+    @if_connected
     def on_window_command(self, window, command, *args, **kwargs):
-        if window == G.WORKSPACE_WINDOW and command == "close_window":
-            print("window closed, leaving workspace")
+        if command == 'rename_path':
+            # User is about to rename something
+            msg.debug('rename')
+        if window == G.WORKSPACE_WINDOW and command == 'close_window':
+            msg.log('Workspace window closed, disconnecting.')
             try:
                 window.run_command('floobits_leave_workspace')
             except Exception as e:
-                print(e)
+                msg.error(e)
 
     def name(self, view):
         return view.file_name()
