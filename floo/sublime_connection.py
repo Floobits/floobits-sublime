@@ -147,8 +147,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         if remote_len >= 5 and overwrite_remote:
             overwrite_remote += ' files'
 
-        overwrite_remote = overwrite_remote.capitalize()
-
         action = 'Overwrite'
         # TODO: change action based on numbers of stuff
         opts = [
