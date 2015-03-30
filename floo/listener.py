@@ -50,10 +50,22 @@ class Listener(sublime_plugin.EventListener):
         self._view_selections = {}
         self.between_save_events = collections.defaultdict(lambda: [0, ''])
         self.disable_follow_mode_timeout = None
+        self.rename_id = None
+        self.rename_path = None
+        self.rename_buf = None
+        self.new_name = ""
+        self.startingIds = []
 
-    @if_connected
+    # @if_connected
     def on_post_window_command(self, window, command, *args, **kwargs):
         agent = args[-1]
+        if command == 'rename_path':
+            self.rename_path = args[0]['paths'][0]
+            print("rename_path", self.rename_path)
+            import sublime
+            self.startingIds = [v.id() for v in sublime.active_window().views()]
+            print(self.startingIds)
+            return
         if command == 'delete_file':
             # User probably deleted a file. Stat and delete.
             files = args[0]['files']
@@ -226,29 +238,6 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     @if_connected
-    def on_modified(self, view, agent):
-        buf = is_view_loaded(view)
-        if not buf:
-            return
-
-        text = get_text(view)
-        if buf['encoding'] != 'utf8':
-            return msg.warn('Floobits does not support patching binary files at this time')
-
-        text = text.encode('utf-8')
-        view_md5 = hashlib.md5(text).hexdigest()
-        bid = view.buffer_id()
-        buf['forced_patch'] = False
-        if view_md5 == G.VIEW_TO_HASH.get(bid):
-            self._highlights.add(bid)
-            return
-
-        G.VIEW_TO_HASH[view.buffer_id()] = view_md5
-        msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
-        self.disable_follow_mode(2000)
-        agent.views_changed.append((view, buf))
-
-    @if_connected
     def on_selection_modified(self, view, agent, buf=None):
         buf = is_view_loaded(view)
         if not buf or 'highlight' not in G.PERMS:
@@ -279,8 +268,88 @@ class Listener(sublime_plugin.EventListener):
                 'following': discard,
             })
 
-    @if_connected
-    def on_activated(self, view, agent):
+    # @if_connected
+    def on_modified(self, view, agent=None):
+        if not view.name():
+            if not self.rename_path:
+                return
+            text = get_text(view)
+            view_id = view.id()
+            print('a,b', os.path.basename(self.rename_path), text)
+            if not self.rename_id and view_id not in self.startingIds:
+                self.rename_id = view_id
+                print('rename_id: %s' % (self.rename_id), get_text(view))
+            print("modified", view_id, self.rename_id, get_text(view))
+            if view_id == self.rename_id:
+                print("on_modified", view_id)
+                self.new_name = get_text(view)
+                return
+
+        buf = is_view_loaded(view)
+        if not buf:
+            return
+
+        text = get_text(view)
+        if buf['encoding'] != 'utf8':
+            return msg.warn('Floobits does not support patching binary files at this time')
+
+        text = text.encode('utf-8')
+        view_md5 = hashlib.md5(text).hexdigest()
+        bid = view.buffer_id()
+        buf['forced_patch'] = False
+        if view_md5 == G.VIEW_TO_HASH.get(bid):
+            self._highlights.add(bid)
+            return
+
+        G.VIEW_TO_HASH[view.buffer_id()] = view_md5
+        msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
+        self.disable_follow_mode(2000)
+        agent.views_changed.append((view, buf))
+
+    # @if_connected
+    def on_deactivated(self, view, agent=None):
+        if self.rename_id == view.id():
+            new_path = os.path.normpath(os.path.expandvars(os.path.join(os.path.dirname(self.rename_path), self.new_name)))
+
+            def f():
+                import sublime
+                try:
+                    views = sublime.active_window().views()
+                except Exception as e:
+                    print(e)
+                    return
+                closed = True
+                for v in views:
+                    if self.rename_id and v.id() == self.rename_id:
+                        closed = False
+
+                print('closed', closed)
+                if not closed:
+                    print("not closed")
+                    return
+
+                if os.path.exists(new_path):
+                    sublime.message_dialog("%s moved to %s" % (self.rename_path, new_path))
+                    self.rename_id = None
+                    self.rename_path = ""
+                    self.rename_buf = None
+                    self.startingIds = []
+                else:
+                    sublime.message_dialog("%s did not move to %s" % (self.rename_path, new_path))
+
+            utils.set_timeout(f, 0)
+
+    # @if_connected
+    def on_activated(self, view, agent=None):
+        if not view.name():
+            if not self.rename_path:
+                return
+            if not self.rename_id and get_text(view) == os.path.basename(self.rename_path):
+                self.rename_id = view.id()
+                print("set rename_id in on_activated", view.id())
+            print("activated", view.id(), get_text(view))
+            return
+
         buf = get_buf(view)
         if buf:
             msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
