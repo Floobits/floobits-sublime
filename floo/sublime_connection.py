@@ -128,9 +128,9 @@ class SublimeConnection(floo_handler.FlooHandler):
             overwrite_local = 'Fetch %s file%s' % (to_fetch_len, pluralize(to_fetch_len))
 
         if to_upload_len < 5:
-            to_upload_str = 'upload %s' % ', '.join(to_upload)
+            to_upload_str = 'Upload %s' % ', '.join(to_upload)
         else:
-            to_upload_str = 'upload %s' % to_upload_len
+            to_upload_str = 'Upload %s' % to_upload_len
 
         if to_remove_len < 5:
             to_remove_str = 'remove %s' % ', '.join(to_remove)
@@ -146,6 +146,10 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         if remote_len >= 5 and overwrite_remote:
             overwrite_remote += ' files'
+
+        # Be fancy and capitalize "remove" if it's the first thing in the string
+        if len(overwrite_remote) > 0:
+            overwrite_remote = overwrite_remote[0].upper() + overwrite_remote[1:]
 
         action = 'Overwrite'
         # TODO: change action based on numbers of stuff
