@@ -42,7 +42,7 @@ except ImportError:
 
     def unquote_py2(x):
         return parse.unquote(x.encode('utf-8')).decode('utf-8')
-    unquote = unquote_py3
+    unquote = unquote_py2
     import __builtin__
     str_instances = (str, __builtin__.basestring)
 
