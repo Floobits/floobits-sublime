@@ -67,6 +67,10 @@ def setup():
                 print('Floobits plugin updated. Shutting down old instance.', old_time)
                 utils.cancel_timeout(interval)
 
+            try:
+                settings.clear_on_change('floobits-id')
+            except Exception:
+                pass
             settings.add_on_change('floobits-id', shutdown)
             w.run_command('floobits_setup')
         except Exception as e:
