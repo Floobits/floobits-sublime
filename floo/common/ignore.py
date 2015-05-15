@@ -88,7 +88,7 @@ class Ignore(object):
                 pass
 
         for p in paths:
-            if p == '.' or p == '..' and p not in HIDDEN_WHITELIST:
+            if p == '.' or p == '..':
                 continue
             if p in BLACKLIST:
                 msg.log('Ignoring blacklisted file ', p)
