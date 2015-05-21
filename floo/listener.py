@@ -221,7 +221,7 @@ class Listener(sublime_plugin.EventListener):
         if event:
             agent.send(event)
         if is_shared and buf:
-            agent.send({'name': 'saved', 'id': buf['id']})
+            agent.views_changed.append(('saved', view, buf))
 
         cleanup()
 
@@ -246,7 +246,7 @@ class Listener(sublime_plugin.EventListener):
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
         msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
         self.disable_follow_mode(2000)
-        agent.views_changed.append((view, buf))
+        agent.views_changed.append(('patch', view, buf))
 
     @if_connected
     def on_selection_modified(self, view, agent, buf=None):

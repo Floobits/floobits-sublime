@@ -32,31 +32,36 @@ class SublimeConnection(floo_handler.FlooHandler):
         self.on('room_info', self.log_users)
 
     def tick(self):
-        reported = set()
-        while self.views_changed:
-            v, buf = self.views_changed.pop()
-            if not self.joined_workspace:
-                msg.debug('Not connected. Discarding view change.')
-                continue
-            if 'patch' not in G.PERMS:
-                continue
-            if 'buf' not in buf:
-                msg.debug('No data for buf ', buf['id'], ' ', buf['path'], ' yet. Skipping sending patch')
-                continue
-            view = View(v, buf)
-            if view.is_loading():
-                msg.debug('View for buf ', buf['id'], ' is not ready. Ignoring change event')
-                continue
-            if view.native_id in reported:
-                continue
-            reported.add(view.native_id)
-            patch = utils.FlooPatch(view.get_text(), buf)
-            # Update the current copy of the buffer
-            buf['buf'] = patch.current
-            buf['md5'] = patch.md5_after
-            self.send(patch.to_json())
-
-        reported = set()
+        if 'patch' not in G.PERMS:
+            self.views_changed = []
+        elif not self.joined_workspace:
+            msg.debug('Not connected. Discarding view change.')
+            self.views_changed = []
+        else:
+            reported = set()
+            while self.views_changed:
+                name, v, buf = self.views_changed.pop()
+                if 'buf' not in buf:
+                    msg.debug('No data for buf ', buf['id'], ' ', buf['path'], ' yet. Skipping sending patch')
+                    continue
+                view = View(v, buf)
+                if view.is_loading():
+                    msg.debug('View for buf ', buf['id'], ' is not ready. Ignoring change event.')
+                    continue
+                if view.native_id in reported:
+                    continue
+                reported.add((name, view.native_id))
+                if name == 'patch':
+                    patch = utils.FlooPatch(view.get_text(), buf)
+                    # Update the current copy of the buffer
+                    buf['buf'] = patch.current
+                    buf['md5'] = patch.md5_after
+                    self.send(patch.to_json())
+                    continue
+                if name == 'saved':
+                    self.send({'name': 'saved', 'id': buf['id']})
+                    continue
+                msg.warn('Discarding unknown event in views_changed:', name)
 
         self._status_timeout += 1
         if self._status_timeout > (2000 / G.TICK_TIME):
