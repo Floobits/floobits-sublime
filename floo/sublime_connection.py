@@ -60,7 +60,7 @@ class SublimeConnection(floo_handler.FlooHandler):
                     self.send(patch.to_json())
                     continue
                 if name == 'saved':
-                    to_send.push({'name': 'saved', 'id': buf['id']})
+                    to_send.append({'name': 'saved', 'id': buf['id']})
                     continue
                 msg.warn('Discarding unknown event in views_changed:', name)
 
