@@ -39,6 +39,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             self.views_changed = []
         else:
             reported = set()
+            to_send = []
             while self.views_changed:
                 name, v, buf = self.views_changed.pop()
                 if 'buf' not in buf:
@@ -59,9 +60,12 @@ class SublimeConnection(floo_handler.FlooHandler):
                     self.send(patch.to_json())
                     continue
                 if name == 'saved':
-                    self.send({'name': 'saved', 'id': buf['id']})
+                    to_send.push({'name': 'saved', 'id': buf['id']})
                     continue
                 msg.warn('Discarding unknown event in views_changed:', name)
+
+            for s in to_send:
+                self.send(s)
 
         self._status_timeout += 1
         if self._status_timeout > (2000 / G.TICK_TIME):
