@@ -508,7 +508,7 @@ class FlooHandler(base.BaseHandler):
             G.PERMS = user_info['perms']
 
     def _on_join(self, data):
-        msg.log(data['username'], ' joined the workspace')
+        msg.log(data['username'], ' joined the workspace on ', data.get('client', 'unknown client'))
         user_id = str(data['user_id'])
         self.workspace_info['users'][user_id] = data
 
