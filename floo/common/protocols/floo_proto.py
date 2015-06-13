@@ -236,6 +236,7 @@ class FlooProtocol(base.BaseProtocol):
             sock_debug('Floobits: ssl.SSLError. This is expected sometimes.')
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
+            msg.error('Floobits ssl.SSLError:', str_e(e))
         except Exception as e:
             msg.error('Error in SSL handshake: ', str_e(e))
         else:
