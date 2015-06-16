@@ -12,7 +12,12 @@
         "command": "floobits_setup",
         "args": {
           "force": true
-        }
+        },
+      },
+      {
+        "id": "floobits_pinocchio",
+        "caption": "Complete Sign Up",
+        "command": "floobits_pinocchio",
       },
       {
         "caption": "Help",
