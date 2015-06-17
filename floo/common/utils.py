@@ -98,7 +98,11 @@ def reload_settings():
 
 
 def load_floorc_json():
-    s = {}
+    # Expose a few settings for curious users to tweak
+    s = {
+        'expert_mode': False,
+        'debug': False,
+    }
     try:
         with open(G.FLOORC_JSON_PATH, 'r') as fd:
             floorc_json = fd.read()
