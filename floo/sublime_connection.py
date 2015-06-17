@@ -160,12 +160,17 @@ class SublimeConnection(floo_handler.FlooHandler):
         if len(overwrite_remote) > 0:
             overwrite_remote = overwrite_remote[0].upper() + overwrite_remote[1:]
 
-        action = 'Overwrite'
+        connected_users_msg = ''
+        users = set([v['username'] for k, v in self.workspace_info['users'].items() if 'patch' in v.get('perms') and not v.get('is_anon')])
+        if users:
+            connected_users_msg = ' Connected: ' + ','.join(users)
+
         # TODO: change action based on numbers of stuff
+        action = 'Overwrite'
         opts = [
             ['%s %s remote file%s.' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
             ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
-            ['Cancel', 'Disconnect and resolve conflict manually.'],
+            ['Cancel', 'Disconnect and resolve conflict manually.' + connected_users_msg],
         ]
 
         w = sublime.active_window() or G.WORKSPACE_WINDOW
