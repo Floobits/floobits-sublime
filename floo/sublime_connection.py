@@ -161,7 +161,17 @@ class SublimeConnection(floo_handler.FlooHandler):
             overwrite_remote = overwrite_remote[0].upper() + overwrite_remote[1:]
 
         connected_users_msg = ''
-        users = set([v['username'] for k, v in self.workspace_info['users'].items() if 'patch' in v.get('perms') and not v.get('is_anon')])
+
+        def filter_user(u):
+            if u.get('is_anon'):
+                return False
+            if 'patch' not in u.get('perms'):
+                return False
+            if u.get('username') == self.username:
+                return False
+            return True
+
+        users = set([v['username'] for k, v in self.workspace_info['users'].items() if filter_user(v)])
         if users:
             connected_users_msg = ' Connected: ' + ','.join(users)
 
