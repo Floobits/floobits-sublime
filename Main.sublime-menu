@@ -12,7 +12,7 @@
         "command": "floobits_setup",
         "args": {
           "force": true
-        },
+        }
       },
       {
         "id": "floobits_pinocchio",
