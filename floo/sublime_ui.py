@@ -98,6 +98,7 @@ class SublimeUI(flooui.FlooUI):
 
     def user_y_or_n(self, context, prompt, affirmation_txt, cb):
         """@returns True/False"""
+        # TODO: optionally use Sublime 3's new yes_no_cancel_dialog
         return cb(bool(sublime.ok_cancel_dialog(prompt, affirmation_txt)))
 
     def user_select(self, context, prompt, choices_big, choices_small, cb):
