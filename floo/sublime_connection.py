@@ -173,14 +173,17 @@ class SublimeConnection(floo_handler.FlooHandler):
 
         users = set([v['username'] for k, v in self.workspace_info['users'].items() if filter_user(v)])
         if users:
-            connected_users_msg = ' Connected: ' + ','.join(users)
+            if len(users) < 4:
+                connected_users_msg = ' Connected: ' + ','.join(users)
+            else:
+                connected_users_msg = ' %s users connected' % len(users)
 
         # TODO: change action based on numbers of stuff
         action = 'Overwrite'
         opts = [
             ['%s %s remote file%s.' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
             ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
-            ['Cancel', 'Disconnect and resolve conflict manually.' + connected_users_msg],
+            ['Cancel', 'Disconnect.' + connected_users_msg],
         ]
 
         w = sublime.active_window() or G.WORKSPACE_WINDOW
