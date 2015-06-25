@@ -313,7 +313,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         user_id = str(data['user_id'])
         msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, data.get('following'), clone]))
         if not ranges:
-            msg.warn('Ignoring empty highlight from', username)
+            msg.warn('Ignoring empty highlight from ', username)
             return
         buf = self.bufs.get(buf_id)
         if not buf:
