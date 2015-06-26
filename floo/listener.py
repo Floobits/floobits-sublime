@@ -144,8 +144,7 @@ class Listener(sublime_plugin.EventListener):
         if not d:
             return
         del agent.on_load[buf_id]
-        for _, f in d.items():
-            f()
+        utils.set_timeout(lambda: [f() for (_, f) in d.items()], 0)
 
     @if_connected
     def on_pre_save(self, view, agent):
