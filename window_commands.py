@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import webbrowser
+from collections import defaultdict
 
 import sublime_plugin
 import sublime
@@ -385,20 +386,23 @@ class FloobitsSetupCommand(FloobitsBaseCommand):
 
 class FloobitsListUsersCommand(FloobitsBaseCommand):
     actions = [
-        'Kick'
-        'Follow'
+        'Kick',
+        'Follow',
     ]
 
     def run(self):
-        self.users = []
+        self.users = defaultdict(list)
+        users = []
         try:
-            self.users = G.AGENT.workspace_info.get('users', [])
-            # self.users = ['%s on %s' % (x.get('username'), x.get('client')) for x in G.AGENT.workspace_info['users'].values()]
+            users = G.AGENT.workspace_info.get('users', [])
         except Exception as e:
             print(e)
 
-        users = [u for u in self.users]
+        for k, u in users.items():
+            self.users[u['username']].append(u)
+
         print(self.users)
+        # TODO: on highlight, follow user
         self.window.show_quick_panel(users, self.on_user_select)
 
     def on_user_select(self, item):
