@@ -137,6 +137,7 @@ class FlooProtocol(base.BaseProtocol):
             if e.errno == iscon_errno:
                 pass
             elif e.errno in connect_errno:
+                msg.debug('connect_errno: ', str_e(e))
                 return utils.set_timeout(self._connect, 20, host, port, attempts + 1)
             else:
                 msg.error('Error connecting: ', str_e(e))
@@ -236,6 +237,9 @@ class FlooProtocol(base.BaseProtocol):
             sock_debug('Floobits: ssl.SSLError. This is expected sometimes.')
             if e.args[0] in [ssl.SSL_ERROR_WANT_READ, ssl.SSL_ERROR_WANT_WRITE]:
                 return False
+            self.stop()
+            editor.error_message('SSL handshake error: %s' % str(e))
+            sock_debug('SSLError args: %s' % ''.join([str(a) for a in e.args]))
         except Exception as e:
             msg.error('Error in SSL handshake: ', str_e(e))
         else:
