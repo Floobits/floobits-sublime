@@ -384,15 +384,36 @@ class FloobitsSetupCommand(FloobitsBaseCommand):
 
 
 class FloobitsListUsersCommand(FloobitsBaseCommand):
+    actions = [
+        'Kick'
+        'Follow'
+    ]
+
     def run(self):
-        users = ''
+        self.users = []
         try:
-            users = ['%s on %s' % (x.get('username'), x.get('client')) for x in G.AGENT.workspace_info['users'].values()]
-            users = '\n'.join(users)
+            self.users = G.AGENT.workspace_info.get('users', [])
+            # self.users = ['%s on %s' % (x.get('username'), x.get('client')) for x in G.AGENT.workspace_info['users'].values()]
         except Exception as e:
             print(e)
 
-        sublime.message_dialog(users)
+        users = [u for u in self.users]
+        print(self.users)
+        self.window.show_quick_panel(users, self.on_user_select)
+
+    def on_user_select(self, item):
+        if item == -1:
+            return
+
+        self.user = self.users[item]
+        print(self.user)
+        self.window.show_quick_panel(self.actions, self.on_user_action)
+
+    def on_user_action(self, item):
+        if item == -1:
+            return
+        action = self.actions[item]
+        action()
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
