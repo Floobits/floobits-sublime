@@ -125,7 +125,6 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
-
     def run(self):
         if G.AGENT:
             message = 'You have left the workspace.'
@@ -393,17 +392,18 @@ class FloobitsListUsersCommand(FloobitsBaseCommand):
         except Exception as e:
             print(e)
 
-        for k, u in users.items():
-            self.users[u['username']].append(u)
+        for k, c in users.items():
+            self.users[c['username']].append(c)
 
         def format_user(clients):
             clients = ', '.join([c['client'] for c in clients])
             return clients
 
-        self.users = [[username, format_user(u)] for username, u in self.users.items()]
+        self.users = list(self.users.items())
+        users = [[username, format_user(u)] for username, u in self.users]
 
         # TODO: on highlight, follow user
-        self.window.show_quick_panel(self.users, self.on_user_select)
+        self.window.show_quick_panel(users, self.on_user_select)
 
     def on_user_select(self, item):
         if item == -1:
@@ -422,12 +422,15 @@ class FloobitsListUsersCommand(FloobitsBaseCommand):
     def on_user_action(self, item):
         if item == -1:
             return
+        if not (G.AGENT and G.AGENT.is_ready()):
+            return
 
         action = self.actions[item]
         if action == 'Kick':
-            return
+            for c in self.user[1]:
+                G.AGENT.kick(c['user_id'])
         elif action == 'Follow':
-            return
+            G.AGENT.follow(self.user[0])
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
