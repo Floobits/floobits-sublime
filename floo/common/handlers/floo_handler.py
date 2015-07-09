@@ -750,6 +750,14 @@ class FlooHandler(base.BaseHandler):
             msg.error('Failed to create buffer ', path, ': ', str_e(e))
         return size
 
+    def kick(self, user_id):
+        if 'kick' not in G.PERMS:
+            return
+        self.send({
+            'name': 'kick',
+            'user_id': user_id,
+        })
+
     def stop(self):
         utils.cancel_timeout(self.upload_timeout)
         self.upload_timeout = None

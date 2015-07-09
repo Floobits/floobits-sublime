@@ -99,11 +99,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         for client in clients:
             msg.log(client)
 
-    def show_connections_list(self, users, cb):
-        opts = [[user, ''] for user in users]
-        w = sublime.active_window() or G.WORKSPACE_WINDOW
-        w.show_quick_panel(opts, cb)
-
     def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         if not (G.EXPERT_MODE or hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST')):
             editor.message_dialog('Your copy of %s/%s is out of sync. '
