@@ -410,13 +410,16 @@ class FloobitsListUsersCommand(FloobitsBaseCommand):
             return
 
         self.user = self.users[item]
-        # TODO: show unfollow option if user is already being followed
+        username = self.user[0]
         self.actions = [
             'Kick',
-            'Follow',
         ]
+        if username in G.FOLLOW_USERS:
+            self.actions.append('Unfollow')
+        else:
+            self.actions.append('Follow')
 
-        actions = ['%s %s' % (a, self.user[0]) for a in self.actions]
+        actions = ['%s %s' % (a, username) for a in self.actions]
         self.window.show_quick_panel(actions, self.on_user_action)
 
     def on_user_action(self, item):
@@ -425,12 +428,21 @@ class FloobitsListUsersCommand(FloobitsBaseCommand):
         if not (G.AGENT and G.AGENT.is_ready()):
             return
 
+        username = self.user[0]
         action = self.actions[item]
         if action == 'Kick':
             for c in self.user[1]:
                 G.AGENT.kick(c['user_id'])
         elif action == 'Follow':
-            G.AGENT.follow(self.user[0])
+            msg.debug('Following %s' % username)
+            G.FOLLOW_MODE = True
+            G.FOLLOW_USERS.add(username)
+            G.AGENT.highlight(user=username)
+        elif action == 'Unfollow':
+            msg.debug('Unfollowing %s' % username)
+            G.FOLLOW_USERS.remove(username)
+            if not G.FOLLOW_USERS:
+                G.FOLLOW_MODE = False
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
