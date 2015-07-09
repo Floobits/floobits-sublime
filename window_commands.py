@@ -385,11 +385,6 @@ class FloobitsSetupCommand(FloobitsBaseCommand):
 
 
 class FloobitsListUsersCommand(FloobitsBaseCommand):
-    actions = [
-        'Kick',
-        'Follow',
-    ]
-
     def run(self):
         self.users = defaultdict(list)
         users = []
@@ -401,23 +396,38 @@ class FloobitsListUsersCommand(FloobitsBaseCommand):
         for k, u in users.items():
             self.users[u['username']].append(u)
 
-        print(self.users)
+        def format_user(clients):
+            clients = ', '.join([c['client'] for c in clients])
+            return clients
+
+        self.users = [[username, format_user(u)] for username, u in self.users.items()]
+
         # TODO: on highlight, follow user
-        self.window.show_quick_panel(users, self.on_user_select)
+        self.window.show_quick_panel(self.users, self.on_user_select)
 
     def on_user_select(self, item):
         if item == -1:
             return
 
         self.user = self.users[item]
-        print(self.user)
-        self.window.show_quick_panel(self.actions, self.on_user_action)
+        # TODO: show unfollow option if user is already being followed
+        self.actions = [
+            'Kick',
+            'Follow',
+        ]
+
+        actions = ['%s %s' % (a, self.user[0]) for a in self.actions]
+        self.window.show_quick_panel(actions, self.on_user_action)
 
     def on_user_action(self, item):
         if item == -1:
             return
+
         action = self.actions[item]
-        action()
+        if action == 'Kick':
+            return
+        elif action == 'Follow':
+            return
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):
