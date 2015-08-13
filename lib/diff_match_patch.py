@@ -1,5 +1,8 @@
-#!/usr/bin/python2.4
+import re
+import sys
+import time
 
+__author__ = 'fraser@google.com (Neil Fraser)'
 
 """Diff Match and Patch
 
@@ -25,20 +28,21 @@ Computes the difference between two texts to create a patch.
 Applies the patch onto another text, allowing for errors.
 """
 
-__author__ = 'fraser@google.com (Neil Fraser)'
-
-import re
-import sys
-import time
 try:
     from urllib import parse
     assert parse
-    unquote = lambda x: parse.unquote(x)
+
+    def unquote_py3(x):
+        return parse.unquote(x)
+    unquote = unquote_py3
     str_instances = str
     unichr = chr
 except ImportError:
     import urllib as parse
-    unquote = lambda x: parse.unquote(x.encode('utf-8')).decode('utf-8')
+
+    def unquote_py2(x):
+        return parse.unquote(x.encode('utf-8')).decode('utf-8')
+    unquote = unquote_py2
     import __builtin__
     str_instances = (str, __builtin__.basestring)
 

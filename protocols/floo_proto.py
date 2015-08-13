@@ -179,6 +179,9 @@ class FlooProtocol(base.BaseProtocol):
 
         self._empty_selects = 0
 
+        # Only use proxy.floobits.com if we're trying to connect to floobits.com
+        G.OUTBOUND_FILTERING = G.OUTBOUND_FILTERING and self.host == 'floobits.com'
+
         # TODO: Horrible code here
         if self.proxy:
             if G.OUTBOUND_FILTERING:

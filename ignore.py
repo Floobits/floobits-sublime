@@ -11,7 +11,7 @@ except ImportError:
     import msg
     from exc_fmt import str_e
 
-IGNORE_FILES = ['.gitignore', '.hgignore', '.flignore', '.flooignore']
+IGNORE_FILES = ['.gitignore', '.hgignore', '.flooignore']
 HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 BLACKLIST = [
     '.DS_Store',
@@ -100,6 +100,11 @@ class Ignore(object):
                 msg.error('Error stat()ing path ', p_path, ': ', str_e(e))
                 continue
 
+            if stat.S_ISREG(s.st_mode) and p in HIDDEN_WHITELIST:
+                # Don't count these whitelisted files in size
+                self.files.append(p_path)
+                continue
+
             is_dir = stat.S_ISDIR(s.st_mode)
             if root.is_ignored(p_path, is_dir, True):
                 continue
@@ -169,6 +174,9 @@ class Ignore(object):
 
     def _is_ignored(self, rel_path, is_dir, log):
         base_path, file_name = os.path.split(rel_path)
+
+        if not is_dir and file_name in HIDDEN_WHITELIST:
+            return False
 
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
