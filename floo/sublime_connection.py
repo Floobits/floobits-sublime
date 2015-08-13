@@ -169,7 +169,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         users = set([v['username'] for k, v in self.workspace_info['users'].items() if filter_user(v)])
         if users:
             if len(users) < 4:
-                connected_users_msg = ' Connected: ' + ','.join(users)
+                connected_users_msg = ' Connected: ' + ', '.join(users)
             else:
                 connected_users_msg = ' %s users connected' % len(users)
 
