@@ -491,7 +491,7 @@ class FlooHandler(base.BaseHandler):
             else:
                 yield self._initial_upload, ig, missing_bufs, changed_bufs
 
-        success_msg = 'Successfully joined workspace %s/%s' % (self.owner, self.workspace)
+        success_msg = '%s@%s/%s: Joined!' % (self.username, self.owner, self.workspace)
         msg.log(success_msg)
         editor.status_message(success_msg)
 

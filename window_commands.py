@@ -306,7 +306,7 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         G.FOLLOW_USERS.clear()
         G.SPLIT_MODE = False
         msg.log('Follow mode disabled')
-        G.AGENT.update_status_msg('Stopped following changes. ')
+        G.AGENT.update_status_msg('Stopped following changes.')
 
     def is_visible(self):
         return self.is_enabled()

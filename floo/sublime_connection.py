@@ -71,21 +71,17 @@ class SublimeConnection(floo_handler.FlooHandler):
         if self._status_timeout > (2000 / G.TICK_TIME):
             self.update_status_msg()
 
-    def update_status_msg(self, status=''):
+    def update_status_msg(self, extra=''):
         self._status_timeout = 0
+        status = '%s@%s/%s: ' % (self.username, self.owner, self.workspace)
         if G.FOLLOW_MODE:
-            if G.FOLLOW_USERS:
-                status += 'Following '
-                for username in G.FOLLOW_USERS:
-                    status += '%s' % (username)
-                status += ' in'
-            else:
-                status += 'Following changes in'
+            status += 'Following ' + (' '.join(G.FOLLOW_USERS) or 'changes') + '. '
         elif self.joined_workspace:
-            status += 'Connected to'
+            if not extra:
+                status += 'Connected.'
         else:
-            status += 'Connecting to'
-        status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
+            status += 'Connecting... '
+        status += extra
         editor.status_message(status)
 
     def log_users(self):

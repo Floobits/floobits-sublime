@@ -198,7 +198,7 @@ class FlooProtocol(base.BaseProtocol):
         if self._secure:
             with open(self._cert_path, 'wb') as cert_fd:
                 cert_fd.write(cert.CA_CERT.encode('utf-8'))
-        conn_msg = 'Connecting to %s:%s' % (self.host, self.port)
+        conn_msg = '%s:%s: Connecting...' % (self.host, self.port)
         if self.port != self._port or self.host != self._host:
             conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
         if host != self._host:
@@ -245,7 +245,7 @@ class FlooProtocol(base.BaseProtocol):
         else:
             sock_debug('Successful handshake')
             self._needs_handshake = False
-            editor.status_message('SSL handshake completed to %s:%s' % (self.host, self.port))
+            editor.status_message('%s:%s: SSL handshake completed' % (self.host, self.port))
             return True
 
         self.reconnect()
