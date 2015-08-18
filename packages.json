@@ -4,7 +4,7 @@
         {
             "name": "Floobits",
             "author": "Floobits",
-            "description": "Real-time collaboration plugin for Sublime Text 2/3",
+            "description": "Real-time collaboration plugin for Sublime Text 2/3. Remote pair programming done right.",
             "details": "https://github.com/Floobits/floobits-sublime",
             "homepage": "https://floobits.com/",
             "labels": [
