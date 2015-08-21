@@ -54,7 +54,7 @@ class View(object):
         utils.cancel_timeout(self.erase_regions_timeout)
         self.erase_regions_timeout = utils.set_timeout(self.view.erase_regions, 2000, region_key)
         # TODO: remove this status on disconnect
-        self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
+        # self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
     def update(self, buf, message=True):
         self.buf = buf
@@ -66,7 +66,7 @@ class View(object):
             self.view.run_command('floo_view_replace_region', {'r': [0, self.view.size()], 'data': buf['buf']})
             if message:
                 self.set_status('Floobits synced data for consistency.')
-            utils.set_timeout(self.set_status, 5000, '')
+            utils.set_timeout(self.erase_status, 5000)
         except Exception as e:
             msg.error('Exception updating view: ', str_e(e))
         if 'patch' not in G.PERMS:
@@ -75,6 +75,9 @@ class View(object):
 
     def set_status(self, status):
         self.view.set_status('Floobits', status)
+
+    def erase_status(self):
+        self.view.erase_status('Floobits')
 
     def set_read_only(self, ro):
         self.view.set_read_only(ro)
