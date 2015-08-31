@@ -51,6 +51,7 @@ def create_flooignore(path):
 
 
 def create_ignore_tree(path):
+    create_flooignore(path)
     ig = Ignore(path)
     ig.ignores['/DEFAULT/'] = BLACKLIST
     ig.recurse(ig)
