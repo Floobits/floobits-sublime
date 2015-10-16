@@ -34,9 +34,9 @@ except ImportError:
     io = None
 
 
-MAX_WORKSPACE_SIZE = 100000000  # 100MB
+MAX_WORKSPACE_SIZE = 200000000  # 200MB
 TOO_BIG_TEXT = '''Maximum workspace size is %.2fMB.\n
-%s is too big (%.2fMB) to upload.\n\nWould you like to ignore the following and continue?\n\n%s'''
+%s is too big (%.2fMB) to upload.\n\nWould you like to ignore these paths and continue?\n\n%s'''
 
 
 class FlooHandler(base.BaseHandler):
