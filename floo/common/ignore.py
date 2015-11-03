@@ -136,6 +136,8 @@ class Ignore(object):
                 continue
             if ignore[0] == '#':
                 continue
+            if ignore == '!':
+                continue
             msg.debug('Adding ', ignore, ' to ignore patterns')
             rules.insert(0, ignore)
         self.ignores[ignore_file] = rules
@@ -187,6 +189,9 @@ class Ignore(object):
                 if pattern[0] == "!":
                     exclude = True
                     pattern = pattern[1:]
+
+                if not pattern:
+                    continue
 
                 if pattern[0] == '/':
                     match = fnmatch.fnmatch(rel_path, pattern[1:])
