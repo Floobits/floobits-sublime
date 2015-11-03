@@ -519,7 +519,8 @@ def has_browser():
         "Chromium",
         "Firefox",
         "Safari",
-        "Opera"
+        "Opera",
+        "windows-default",
     ]
     for browser in valid_browsers:
         try:
