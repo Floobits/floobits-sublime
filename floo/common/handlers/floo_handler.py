@@ -285,7 +285,11 @@ class FlooHandler(base.BaseHandler):
         if view:
             view.rename(new)
         else:
-            os.rename(old, new)
+            try:
+                os.rename(old, new)
+            except Exception as e:
+                msg.debug('Error moving ', old, 'to', new, str_e(e))
+                utils.save_buf(self.bufs[data.id])
         self.bufs[data['id']]['path'] = data['path']
 
     def _on_delete_buf(self, data):
