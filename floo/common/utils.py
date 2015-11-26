@@ -241,6 +241,12 @@ def to_workspace_url(r):
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
     workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
+    p = r.get('path')
+    if p:
+        workspace_url += '/file/%s' % p
+        line = r.get('line')
+        if line:
+            workspace_url += ':%s' % line
     return workspace_url
 
 
