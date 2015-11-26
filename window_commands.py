@@ -265,7 +265,10 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
                 path = view.file_name()
                 if utils.is_shared(path):
                     d['path'] = utils.to_rel_path(path)
-                    # d['line'] = view.sel()[0].a
+                    try:
+                        d['line'] = view.rowcol(view.sel()[0].a)[0]
+                    except Exception:
+                        pass
 
             url = utils.to_workspace_url(d)
             webbrowser.open(url)
