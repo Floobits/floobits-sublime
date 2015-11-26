@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import sublime
 
 try:
@@ -53,8 +51,6 @@ class View(object):
         self.view.add_regions(region_key, regions, 'floobits.patch', 'circle', sublime.DRAW_OUTLINED)
         utils.cancel_timeout(self.erase_regions_timeout)
         self.erase_regions_timeout = utils.set_timeout(self.view.erase_regions, 2000, region_key)
-        # TODO: remove this status on disconnect
-        # self.set_status('Changed by %s at %s' % (username, datetime.now().strftime('%H:%M')))
 
     def update(self, buf, message=True):
         self.buf = buf
