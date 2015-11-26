@@ -253,13 +253,21 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
     def run(self):
         try:
             agent = G.AGENT
-            url = utils.to_workspace_url({
+            d = {
                 'port': agent.proto.port,
                 'secure': agent.proto.secure,
                 'owner': agent.owner,
                 'workspace': agent.workspace,
                 'host': agent.proto.host,
-            })
+            }
+            view = self.window.active_view()
+            if view:
+                path = view.file_name()
+                if utils.is_shared(path):
+                    d['path'] = utils.to_rel_path(path)
+                    # d['line'] = view.sel()[0].a
+
+            url = utils.to_workspace_url(d)
             webbrowser.open(url)
         except Exception as e:
             sublime.error_message('Unable to open workspace in web editor: %s' % str_e(e))
