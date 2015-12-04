@@ -482,8 +482,9 @@ class FloobitsRequestCodeReview(FloobitsBaseCommand):
             owner = agent.owner
             workspace = agent.workspace
             try:
-                api.request_review(host, owner, workspace, description)
+                res = api.request_review(host, owner, workspace, description)
             except Exception as e:
                 return sublime.error_message('%s' % e)
+            sublime.message_dialog("A human has been requested to look at your code.")
 
         SublimeUI.user_charfield(self.window, prompt, initial, cb)
