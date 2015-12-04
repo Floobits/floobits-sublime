@@ -468,3 +468,22 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
 
     def description(self):
         return
+
+
+class FloobitsRequestCodeReview(FloobitsBaseCommand):
+    def run(self):
+        prompt = "Describe your problem:"
+        initial = ""
+        def cb(description):
+            if not description:
+                return sublime.error_message('You must give a description')
+            agent = G.AGENT
+            host = agent.proto.host
+            owner = agent.owner
+            workspace = agent.workspace
+            try:
+                api.request_review(host, owner, workspace, description)
+            except Exception as e:
+                return sublime.error_message('%s' % e)
+
+        SublimeUI.user_charfield(self.window, prompt, initial, cb)
