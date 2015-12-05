@@ -263,7 +263,7 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
             view = self.window.active_view()
             if view:
                 path = view.file_name()
-                if utils.is_shared(path):
+                if path and utils.is_shared(path):
                     d['path'] = utils.to_rel_path(path)
                     try:
                         d['line'] = view.rowcol(view.sel()[0].a)[0]
