@@ -15,6 +15,11 @@
         }
       },
       {
+        "id": "floobits_pinocchio",
+        "caption": "Complete Sign Up",
+        "command": "floobits_pinocchio"
+      },
+      {
         "caption": "Help",
         "command": "floobits_help"
       },

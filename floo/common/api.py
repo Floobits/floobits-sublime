@@ -199,10 +199,14 @@ def send_error(description=None, exception=None):
         data['username'] = getattr(G.AGENT, "username", None)
         data['workspace'] = getattr(G.AGENT, "workspace", None)
     if exception:
+        exc_info = sys.exc_info()
         try:
-            stack = traceback.format_exc(exception)
+            stack = traceback.format_exception(*exc_info)
         except Exception:
-            stack = "Python is rtardd"
+            if exc_info[0] is None:
+                stack = 'No sys.exc_info()'
+            else:
+                stack = "Python is rtardd"
         try:
             description = str(exception)
         except Exception:

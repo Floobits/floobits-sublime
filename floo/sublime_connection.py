@@ -71,21 +71,17 @@ class SublimeConnection(floo_handler.FlooHandler):
         if self._status_timeout > (2000 / G.TICK_TIME):
             self.update_status_msg()
 
-    def update_status_msg(self, status=''):
+    def update_status_msg(self, extra=''):
         self._status_timeout = 0
+        status = '%s@%s/%s: ' % (self.username, self.owner, self.workspace)
         if G.FOLLOW_MODE:
-            if G.FOLLOW_USERS:
-                status += 'Following '
-                for username in G.FOLLOW_USERS:
-                    status += '%s' % (username)
-                status += ' in'
-            else:
-                status += 'Following changes in'
+            status += 'Following ' + (' '.join(G.FOLLOW_USERS) or 'changes') + '. '
         elif self.joined_workspace:
-            status += 'Connected to'
+            if not extra:
+                status += 'Connected.'
         else:
-            status += 'Connecting to'
-        status += ' %s/%s as %s' % (self.owner, self.workspace, self.username)
+            status += 'Connecting... '
+        status += extra
         editor.status_message(status)
 
     def log_users(self):
@@ -98,11 +94,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         clients.sort()
         for client in clients:
             msg.log(client)
-
-    def show_connections_list(self, users, cb):
-        opts = [[user, ''] for user in users]
-        w = sublime.active_window() or G.WORKSPACE_WINDOW
-        w.show_quick_panel(opts, cb)
 
     def stomp_prompt(self, changed_bufs, missing_bufs, new_files, ignored, cb):
         if not (G.EXPERT_MODE or hasattr(sublime, 'KEEP_OPEN_ON_FOCUS_LOST')):
@@ -160,12 +151,30 @@ class SublimeConnection(floo_handler.FlooHandler):
         if len(overwrite_remote) > 0:
             overwrite_remote = overwrite_remote[0].upper() + overwrite_remote[1:]
 
-        action = 'Overwrite'
+        connected_users_msg = ''
+
+        def filter_user(u):
+            if u.get('is_anon'):
+                return False
+            if 'patch' not in u.get('perms'):
+                return False
+            if u.get('username') == self.username:
+                return False
+            return True
+
+        users = set([v['username'] for k, v in self.workspace_info['users'].items() if filter_user(v)])
+        if users:
+            if len(users) < 4:
+                connected_users_msg = ' Connected: ' + ', '.join(users)
+            else:
+                connected_users_msg = ' %s users connected' % len(users)
+
         # TODO: change action based on numbers of stuff
+        action = 'Overwrite'
         opts = [
             ['%s %s remote file%s.' % (action, remote_len, pluralize(remote_len)), overwrite_remote],
             ['%s %s local file%s.' % (action, to_fetch_len, pluralize(to_fetch_len)), overwrite_local],
-            ['Cancel', 'Disconnect and resolve conflict manually.'],
+            ['Cancel', 'Disconnect.' + connected_users_msg],
         ]
 
         w = sublime.active_window() or G.WORKSPACE_WINDOW
@@ -294,6 +303,9 @@ class SublimeConnection(floo_handler.FlooHandler):
         summon = data.get('ping', False)
         user_id = str(data['user_id'])
         msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, data.get('following'), clone]))
+        if not ranges:
+            msg.warn('Ignoring empty highlight from ', username)
+            return
         buf = self.bufs.get(buf_id)
         if not buf:
             return

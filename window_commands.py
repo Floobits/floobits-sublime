@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import webbrowser
+from collections import defaultdict
 
 import sublime_plugin
 import sublime
@@ -124,7 +125,6 @@ class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
-
     def run(self):
         if G.AGENT:
             message = 'You have left the workspace.'
@@ -253,13 +253,24 @@ class FloobitsOpenWebEditorCommand(FloobitsBaseCommand):
     def run(self):
         try:
             agent = G.AGENT
-            url = utils.to_workspace_url({
+            d = {
                 'port': agent.proto.port,
                 'secure': agent.proto.secure,
                 'owner': agent.owner,
                 'workspace': agent.workspace,
                 'host': agent.proto.host,
-            })
+            }
+            view = self.window.active_view()
+            if view:
+                path = view.file_name()
+                if path and utils.is_shared(path):
+                    d['path'] = utils.to_rel_path(path)
+                    try:
+                        d['line'] = view.rowcol(view.sel()[0].a)[0]
+                    except Exception:
+                        pass
+
+            url = utils.to_workspace_url(d)
             webbrowser.open(url)
         except Exception as e:
             sublime.error_message('Unable to open workspace in web editor: %s' % str_e(e))
@@ -306,7 +317,7 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         G.FOLLOW_USERS.clear()
         G.SPLIT_MODE = False
         msg.log('Follow mode disabled')
-        G.AGENT.update_status_msg('Stopped following changes. ')
+        G.AGENT.update_status_msg('Stopped following changes.')
 
     def is_visible(self):
         return self.is_enabled()
@@ -385,14 +396,64 @@ class FloobitsSetupCommand(FloobitsBaseCommand):
 
 class FloobitsListUsersCommand(FloobitsBaseCommand):
     def run(self):
-        users = ''
+        self.users = defaultdict(list)
+        users = []
         try:
-            users = ['%s on %s' % (x.get('username'), x.get('client')) for x in G.AGENT.workspace_info['users'].values()]
-            users = '\n'.join(users)
+            users = G.AGENT.workspace_info.get('users', [])
         except Exception as e:
             print(e)
 
-        sublime.message_dialog(users)
+        for k, c in users.items():
+            self.users[c['username']].append(c)
+
+        def format_user(clients):
+            clients = ', '.join([c['client'] for c in clients])
+            return clients
+
+        self.users = list(self.users.items())
+        users = [[username, format_user(u)] for username, u in self.users]
+
+        # TODO: on highlight, follow user
+        self.window.show_quick_panel(users, self.on_user_select)
+
+    def on_user_select(self, item):
+        if item == -1:
+            return
+
+        self.user = self.users[item]
+        username = self.user[0]
+        self.actions = [
+            'Kick',
+        ]
+        if username in G.FOLLOW_USERS:
+            self.actions.append('Unfollow')
+        else:
+            self.actions.append('Follow')
+
+        actions = ['%s %s' % (a, username) for a in self.actions]
+        self.window.show_quick_panel(actions, self.on_user_action)
+
+    def on_user_action(self, item):
+        if item == -1:
+            return
+        if not (G.AGENT and G.AGENT.is_ready()):
+            return
+
+        username = self.user[0]
+        action = self.actions[item]
+        if action == 'Kick':
+            for c in self.user[1]:
+                G.AGENT.kick(c['user_id'])
+        elif action == 'Follow':
+            msg.debug('Following %s' % username)
+            G.FOLLOW_MODE = True
+            G.FOLLOW_USERS.add(username)
+            G.AGENT.highlight(user=username)
+        elif action == 'Unfollow':
+            msg.debug('Unfollowing %s' % username)
+            G.FOLLOW_USERS.remove(username)
+            if not G.FOLLOW_USERS:
+                G.FOLLOW_MODE = False
 
 
 class FloobitsNotACommand(sublime_plugin.WindowCommand):

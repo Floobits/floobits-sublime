@@ -98,7 +98,11 @@ def reload_settings():
 
 
 def load_floorc_json():
-    s = {}
+    # Expose a few settings for curious users to tweak
+    s = {
+        'expert_mode': False,
+        'debug': False,
+    }
     try:
         with open(G.FLOORC_JSON_PATH, 'r') as fd:
             floorc_json = fd.read()
@@ -237,6 +241,12 @@ def to_workspace_url(r):
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
     workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
+    p = r.get('path')
+    if p:
+        workspace_url += '/file/%s' % p
+        line = r.get('line')
+        if line:
+            workspace_url += ':%s' % line
     return workspace_url
 
 
@@ -515,7 +525,8 @@ def has_browser():
         "Chromium",
         "Firefox",
         "Safari",
-        "Opera"
+        "Opera",
+        "windows-default",
     ]
     for browser in valid_browsers:
         try:

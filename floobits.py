@@ -35,13 +35,13 @@ Please upgrade your operating system if you want to use this plugin. :(''')
 try:
     from .floo import version
     from .floo.listener import Listener
-    from .floo.common import migrations, reactor, shared as G, utils
+    from .floo.common import reactor, shared as G, utils
     from .floo.common.exc_fmt import str_e
     assert utils
 except (ImportError, ValueError):
     from floo import version
     from floo.listener import Listener
-    from floo.common import migrations, reactor, shared as G, utils
+    from floo.common import reactor, shared as G, utils
     from floo.common.exc_fmt import str_e
 assert Listener and version
 
@@ -91,8 +91,6 @@ def plugin_loaded():
     called_plugin_loaded = True
     print('Floobits: Called plugin_loaded.')
 
-    if not os.path.exists(G.FLOORC_JSON_PATH):
-        migrations.migrate_floorc()
     utils.reload_settings()
 
     G.SOCK_SINGLE_READ = SOCK_SINGLE_READ
