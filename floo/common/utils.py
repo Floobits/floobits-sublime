@@ -127,7 +127,7 @@ def save_floorc_json(s):
         floorc_json[k.lower()] = v
     msg.log('Writing ', floorc_json)
     with open(G.FLOORC_JSON_PATH, 'w') as fd:
-        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True, separators=(',', ': ')))
 
 
 def can_auth(host=None):
@@ -297,7 +297,7 @@ def update_floo_file(path, data):
         floo_json = data
 
     with open(path, 'w') as floo_fd:
-        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True, separators=(',', ': ')))
 
 
 def read_floo_file(path):
