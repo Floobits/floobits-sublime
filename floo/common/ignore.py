@@ -15,9 +15,9 @@ IGNORE_FILES = ['.gitignore', '.hgignore', '.flooignore']
 HIDDEN_WHITELIST = ['.floo'] + IGNORE_FILES
 BLACKLIST = [
     '.DS_Store',
-    '.git',
-    '.svn',
-    '.hg',
+    '.git/',
+    '.svn/',
+    '.hg/',
 ]
 
 # TODO: grab global git ignores:
@@ -199,7 +199,11 @@ class Ignore(object):
                     if len(pattern) > 0 and pattern[-1] == '/':
                         if is_dir:
                             pattern = pattern[:-1]
-                    if fnmatch.fnmatch(file_name, pattern):
+                    if file_name == pattern:
+                        match = True
+                    elif base_path == pattern or (pattern[-1] == '/' and base_path == pattern[:-1]):
+                        match = True
+                    elif fnmatch.fnmatch(file_name, pattern):
                         match = True
                     elif fnmatch.fnmatch(rel_path, pattern):
                         match = True
