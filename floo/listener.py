@@ -196,7 +196,7 @@ class Listener(sublime_plugin.EventListener):
             if G.IGNORE and G.IGNORE.is_ignored(view.file_name(), log=True):
                 msg.log(view.file_name(), ' is ignored. Not creating buffer.')
                 return cleanup()
-            msg.log('Creating new buffer ', name, view.file_name())
+            msg.log('Creating new buffer ', name, ' ', view.file_name())
             event = {
                 'name': 'create_buf',
                 'buf': get_text(view),
