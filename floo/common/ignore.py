@@ -20,12 +20,11 @@ BLACKLIST = [
     '.hg/',
 ]
 
-# TODO: grab global git ignores:
-# gitconfig_file = popen("git config -z --get core.excludesfile", "r");
 DEFAULT_IGNORES = [
     '#*',
     '*.o',
     '*.pyc',
+    '*.pyo',
     '*~',
     'extern/',
     'node_modules/',
