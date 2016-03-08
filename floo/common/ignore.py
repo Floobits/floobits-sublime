@@ -176,14 +176,14 @@ class Ignore(object):
             for p in c.list_paths():
                 yield p
 
-    def is_ignored_message(self, rel_path, pattern, ignore_file, exclude):
+    def is_ignored_message(self, rel_path, pattern, ignore_file, negate):
         path = os.path.join(self.path, rel_path)
-        exclude_msg = ''
-        if exclude:
-            exclude_msg = '__NOT__ '
+        negate_msg = ''
+        if negate:
+            negate_msg = '__NOT__ '
         if ignore_file == '/TOO_BIG/':
-            return '%s %signored because it is too big (more than %s bytes)' % (path, exclude_msg, MAX_FILE_SIZE)
-        return '%s %signored by pattern %s in %s' % (path, exclude_msg, pattern, os.path.join(self.path, ignore_file))
+            return '%s %signored because it is too big (more than %s bytes)' % (path, negate_msg, MAX_FILE_SIZE)
+        return '%s %signored by pattern %s in %s' % (path, negate_msg, pattern, os.path.join(self.path, ignore_file))
 
     def is_ignored(self, path, is_dir=None, log=False):
         if is_dir is None:
@@ -205,10 +205,10 @@ class Ignore(object):
         for ignore_file, patterns in self.ignores.items():
             for pattern in patterns:
                 orig_pattern = pattern
-                exclude = False
+                negate = False
                 match = False
                 if pattern[0] in NEGATE_PREFIXES:
-                    exclude = True
+                    negate = True
                     pattern = pattern[1:]
 
                 if not pattern:
@@ -230,8 +230,8 @@ class Ignore(object):
                         match = True
                 if match:
                     if log:
-                        msg.log(self.is_ignored_message(rel_path, orig_pattern, ignore_file, exclude))
-                    if exclude:
+                        msg.log(self.is_ignored_message(rel_path, orig_pattern, ignore_file, negate))
+                    if negate:
                         return False
                     return True
 
