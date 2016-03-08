@@ -21,6 +21,8 @@ BLACKLIST = [
     '.hg/',
 ]
 
+NEGATE_PREFIXES = ['!', '^']
+
 DEFAULT_IGNORES = [
     '#*',
     '*.o',
@@ -151,7 +153,8 @@ class Ignore(object):
                 continue
             if ignore[0] == '#':
                 continue
-            if ignore == '!':
+            if ignore in NEGATE_PREFIXES:
+                # Just an exclamation mark or caret? This is some messed up pattern. Skip it.
                 continue
             msg.debug('Adding ', ignore, ' to ignore patterns')
             rules.insert(0, ignore)
@@ -201,7 +204,7 @@ class Ignore(object):
                 orig_pattern = pattern
                 exclude = False
                 match = False
-                if pattern[0] == "!":
+                if pattern[0] in NEGATE_PREFIXES:
                     exclude = True
                     pattern = pattern[1:]
 
