@@ -3,6 +3,7 @@ import errno
 import json
 import re
 import hashlib
+import time
 import webbrowser
 
 from functools import wraps
@@ -127,7 +128,7 @@ def save_floorc_json(s):
         floorc_json[k.lower()] = v
     msg.log('Writing ', floorc_json)
     with open(G.FLOORC_JSON_PATH, 'w') as fd:
-        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True))
+        fd.write(json.dumps(floorc_json, indent=4, sort_keys=True, separators=(',', ': ')))
 
 
 def can_auth(host=None):
@@ -188,6 +189,21 @@ def cancel_timeout(timeout_id):
         cancelled_timeouts.add(timeout_id)
 
 
+rate_limits = {}
+
+
+def rate_limit(name, timeout, func, *args, **kwargs):
+    if rate_limits.get(name):
+        return
+    rate_limits[name] = time.time()
+    func(*args, **kwargs)
+
+    def delete_limit():
+        del rate_limits[name]
+
+    set_timeout(delete_limit, timeout, *args, **kwargs)
+
+
 def parse_url(workspace_url):
     secure = G.SECURE
     owner = None
@@ -241,6 +257,12 @@ def to_workspace_url(r):
         port = ':%s' % port
     host = r.get('host', G.DEFAULT_HOST)
     workspace_url = '%s://%s%s/%s/%s' % (proto, host, port, r['owner'], r['workspace'])
+    p = r.get('path')
+    if p:
+        workspace_url += '/file/%s' % p
+        line = r.get('line')
+        if line:
+            workspace_url += ':%s' % line
     return workspace_url
 
 
@@ -291,7 +313,7 @@ def update_floo_file(path, data):
         floo_json = data
 
     with open(path, 'w') as floo_fd:
-        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True))
+        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True, separators=(',', ': ')))
 
 
 def read_floo_file(path):
@@ -519,7 +541,8 @@ def has_browser():
         "Chromium",
         "Firefox",
         "Safari",
-        "Opera"
+        "Opera",
+        "windows-default",
     ]
     for browser in valid_browsers:
         try:
