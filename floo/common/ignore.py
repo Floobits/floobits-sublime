@@ -40,12 +40,19 @@ IS_IG_IGNORED = 1
 IS_IG_CHECK_CHILD = 2
 
 
-def get_global_gitignore():
-    # Try to grab global git ignores
-    p = subprocess.Popen(['git', 'config -z --get core.excludesfile'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result = p.communicate()
-    msg.log('Global gitignore is %s' % result[0])
-    return result[0]
+def get_git_excludesfile():
+    global_ignore = None
+    try:
+        p = subprocess.Popen(['git', 'config -z --get core.excludesfile'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = p.communicate()
+        global_ignore = result[0]
+        if not global_ignore:
+            return
+        global_ignore = os.path.realpath(os.path.expanduser(str(global_ignore)))
+        msg.log('git core.excludesfile is ', global_ignore)
+    except Exception as e:
+        msg.error('Error getting git core.excludesfile:', str_e(e))
+    return global_ignore
 
 
 def create_flooignore(path):
@@ -63,13 +70,9 @@ def create_flooignore(path):
 def create_ignore_tree(path):
     create_flooignore(path)
     ig = Ignore(path)
-    try:
-        global_ignore = get_global_gitignore()
-        if global_ignore:
-            global_ignore = os.path.realpath(os.path.expanduser(global_ignore))
-            ig.load(global_ignore)
-    except Exception as e:
-        msg.error('Error getting git global ignore:', str_e(e))
+    global_ignore = get_git_excludesfile()
+    if global_ignore:
+        ig.load(global_ignore)
     ig.ignores['/DEFAULT/'] = BLACKLIST
     ig.recurse(ig)
     return ig
