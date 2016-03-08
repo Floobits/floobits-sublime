@@ -64,6 +64,7 @@ def create_ignore_tree(path):
     try:
         global_ignore = get_global_gitignore()
         if global_ignore:
+            global_ignore = os.path.realpath(os.path.expanduser(global_ignore))
             ig.load(global_ignore)
     except Exception as e:
         msg.error('Error getting git global ignore:', str_e(e))
