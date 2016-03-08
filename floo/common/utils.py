@@ -3,6 +3,7 @@ import errno
 import json
 import re
 import hashlib
+import time
 import webbrowser
 
 from functools import wraps
@@ -186,6 +187,21 @@ set_timeout._top_timeout_id = 0
 def cancel_timeout(timeout_id):
     if timeout_id in timeout_ids:
         cancelled_timeouts.add(timeout_id)
+
+
+rate_limits = {}
+
+
+def rate_limit(name, timeout, func, *args, **kwargs):
+    if rate_limits.get(name):
+        return
+    rate_limits[name] = time.time()
+    func(*args, **kwargs)
+
+    def delete_limit():
+        del rate_limits[name]
+
+    set_timeout(delete_limit, timeout, *args, **kwargs)
 
 
 def parse_url(workspace_url):
