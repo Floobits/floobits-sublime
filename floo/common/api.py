@@ -183,6 +183,9 @@ def get_orgs_can_admin(host):
     api_url = 'https://%s/api/orgs/can/admin' % (host)
     return api_request(host, api_url)
 
+def request_review(host, owner, workspace, description):
+    api_url = 'https://%s/api/workspace/%s/%s/review' % (host, owner, workspace)
+    return api_request(host, api_url, data={'description': description})
 
 def send_error(description=None, exception=None):
     G.ERROR_COUNT += 1
