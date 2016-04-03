@@ -10,7 +10,7 @@ try:
     from . import base
     from ..reactor import reactor
     from ..lib import DMP
-    from .. import msg, ignore, shared as G, utils
+    from .. import msg, ignore, repo, shared as G, utils
     from ..exc_fmt import str_e
     from ... import editor
     from ..protocols import floo_proto
@@ -20,7 +20,7 @@ except (ImportError, ValueError) as e:
     from floo.common.lib import DMP
     from floo.common.reactor import reactor
     from floo.common.exc_fmt import str_e
-    from floo.common import msg, ignore, shared as G, utils
+    from floo.common import msg, ignore, repo, shared as G, utils
     from floo.common.protocols import floo_proto
 
 try:
@@ -509,6 +509,9 @@ class FlooHandler(base.BaseHandler):
         hangout_url = hangout.get('url')
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
+
+        if not data.get('repo_info'):
+            repo.update(self.workspace_url, G.PROJECT_PATH)
 
         self.emit("room_info")
 
