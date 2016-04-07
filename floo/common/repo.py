@@ -18,20 +18,20 @@ except ImportError:
 REPO_MAPPING = {
     'git': {
         'dir': '.git',
-        'cmd': ['git', 'remote get-url --push origin'],
+        'cmd': ['git', 'config', '--get', 'remote.origin.url'],
     },
     'svn': {
         'dir': '.svn',
-        'cmd': ['svn', 'info --xml'],
+        'cmd': ['svn', 'info', '--xml'],
     },
     'hg': {
         'dir': '.hg',
-        'cmd': ['hg', 'paths default'],
+        'cmd': ['hg', 'paths', 'default'],
     },
 }
 
 
-def detect_repo_type(d):
+def detect_type(d):
     for repo_type, v in REPO_MAPPING.items():
         repo_path = os.path.join(d, v['dir'])
         try:
@@ -48,8 +48,8 @@ def parse_svn_xml(d):
     return repo_url and repo_url.text
 
 
-def update(workspace_url, project_dir):
-    repo_type = detect_repo_type(project_dir)
+def get_info(workspace_url, project_dir):
+    repo_type = detect_type(project_dir)
     if not repo_type:
         return
     msg.debug('Detected ', repo_type, ' repo in ', project_dir)
@@ -63,16 +63,16 @@ def update(workspace_url, project_dir):
                              stderr=subprocess.PIPE,
                              cwd=project_dir)
         result = p.communicate()
-        repo_url = result[0]
+        repo_url = result[0].decode('utf-8').strip()
         if repo_type == 'svn':
             repo_url = parse_svn_xml(repo_url)
         msg.log(repo_type, ' url is ', repo_url)
         if not repo_url:
+            msg.error('Error getting ', repo_type, ' url:', result[1])
             return
     except Exception as e:
         msg.error('Error getting ', repo_type, ' url:', str_e(e))
         return
 
     data['url'] = repo_url
-    # TODO: catch?
-    api.update_workspace(workspace_url, data)
+    return data
