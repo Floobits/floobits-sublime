@@ -48,7 +48,7 @@ def get_git_excludesfile():
         global_ignore = result[0]
         if not global_ignore:
             return
-        global_ignore = os.path.realpath(os.path.expanduser(str(global_ignore)))
+        global_ignore = os.path.realpath(os.path.expanduser(global_ignore.decode('utf-8')))
         msg.log('git core.excludesfile is ', global_ignore)
     except Exception as e:
         msg.error('Error getting git core.excludesfile:', str_e(e))
