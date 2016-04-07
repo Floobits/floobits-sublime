@@ -1,6 +1,7 @@
 import os
 import stat
 import subprocess
+from xml.etree import ElementTree
 
 try:
     from . import api, msg
@@ -21,11 +22,11 @@ REPO_MAPPING = {
     },
     'svn': {
         'dir': '.svn',
-        'cmd': ['svn', ''],
+        'cmd': ['svn', 'info --xml'],
     },
     'hg': {
         'dir': '.hg',
-        'cmd': ['hg', ''],
+        'cmd': ['hg', 'paths default'],
     },
 }
 
@@ -39,6 +40,12 @@ def detect_repo_type(d):
             continue
         if stat.S_ISDIR(s.st_mode):
             return repo_type
+
+
+def parse_svn_xml(d):
+    root = ElementTree.XML(d)
+    repo_url = root.find('info/entry/url')
+    return repo_url and repo_url.text
 
 
 def update(workspace_url, project_dir):
@@ -57,6 +64,8 @@ def update(workspace_url, project_dir):
                              cwd=project_dir)
         result = p.communicate()
         repo_url = result[0]
+        if repo_type == 'svn':
+            repo_url = parse_svn_xml(repo_url)
         msg.log(repo_type, ' url is ', repo_url)
         if not repo_url:
             return
