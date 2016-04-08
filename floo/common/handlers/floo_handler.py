@@ -516,7 +516,12 @@ class FlooHandler(base.BaseHandler):
             repo_info = repo.get_info(self.workspace_url, G.PROJECT_PATH)
             if repo_info:
                 try:
-                    api.update_workspace(self.workspace_url, repo_info)
+                    r = api.update_workspace(self.workspace_url, {
+                        'owner': self.owner,
+                        'name': self.workspace,
+                        'repo_info': repo_info,
+                    })
+                    msg.debug(str(r.body))
                 except Exception as e:
                     msg.error(e)
 
