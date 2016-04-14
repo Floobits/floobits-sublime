@@ -82,6 +82,13 @@ def open_workspace_window3(abs_path, cb):
                     # no project data. co-opt this window
                     return w
             except Exception as e:
+                print('project_data.get():', str_e(e))
+            try:
+                folders = w.folders()
+                if len(folders) == 0:
+                    # no project data. co-opt this window
+                    return w
+            except Exception as e:
                 print(str_e(e))
 
     def wait_empty_window(i):
