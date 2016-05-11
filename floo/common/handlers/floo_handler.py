@@ -10,7 +10,7 @@ try:
     from . import base
     from ..reactor import reactor
     from ..lib import DMP
-    from .. import api, msg, ignore, repo, shared as G, utils
+    from .. import msg, ignore, repo, shared as G, utils
     from ..exc_fmt import str_e
     from ... import editor
     from ..protocols import floo_proto
@@ -20,7 +20,7 @@ except (ImportError, ValueError) as e:
     from floo.common.lib import DMP
     from floo.common.reactor import reactor
     from floo.common.exc_fmt import str_e
-    from floo.common import api, msg, ignore, repo, shared as G, utils
+    from floo.common import msg, ignore, repo, shared as G, utils
     from floo.common.protocols import floo_proto
 
 try:
@@ -512,18 +512,15 @@ class FlooHandler(base.BaseHandler):
 
         if data.get('repo_info'):
             msg.log('Repo info:', data.get('repo_info'))
+            # TODO: check local repo info and update remote (or prompt?)
         else:
             repo_info = repo.get_info(self.workspace_url, G.PROJECT_PATH)
-            if repo_info:
-                try:
-                    r = api.update_workspace(self.workspace_url, {
-                        'owner': self.owner,
-                        'name': self.workspace,
-                        'repo_info': repo_info,
-                    })
-                    msg.debug(str(r.body))
-                except Exception as e:
-                    msg.error(e)
+            if repo_info and 'repo' in G.PERMS:
+                self.send({
+                    'name': 'repo',
+                    'action': 'set',
+                    'data': repo_info,
+                })
 
         self.emit("room_info")
 
