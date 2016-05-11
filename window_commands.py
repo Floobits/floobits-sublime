@@ -474,6 +474,7 @@ class FloobitsRequestCodeReview(FloobitsBaseCommand):
     def run(self):
         prompt = "Describe your problem:"
         initial = ""
+
         def cb(description):
             if not description:
                 return sublime.error_message('You must give a description')
