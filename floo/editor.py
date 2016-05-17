@@ -7,12 +7,13 @@ except Exception:
     pass
 
 
-NEW_ACCOUNT_TXT = 'Welcome {username}!\n\nYou\'re all set to collaborate. You should check out our docs at https://{host}/help/plugins/sublime#usage. \
-You must run \'Floobits - Complete Sign Up\' so you can log in to the website.'
+NEW_ACCOUNT_TXT = '''Welcome {username}!\n\nYou're all set to collaborate. You should check out our docs at https://{host}/help/plugins/sublime#usage.
 
-LINKED_ACCOUNT_TXT = """Welcome {username}!\n\nYou are all set to collaborate.
+You must run 'Floobits - Complete Sign Up' so you can log in to the website.'''
 
-You may want to check out our docs at https://{host}/help/plugins/sublime#usage"""
+LINKED_ACCOUNT_TXT = '''Welcome {username}!\n\nYou are all set to collaborate.
+
+You may want to check out our docs at https://{host}/help/plugins/sublime#usage'''
 
 
 def name():
