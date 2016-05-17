@@ -82,7 +82,11 @@ class SublimeConnection(floo_handler.FlooHandler):
         else:
             status += 'Connecting... '
         status += extra
-        editor.status_message(status)
+        # New builds of ST3 have window.status_message()
+        if hasattr(G.WORKSPACE_WINDOW, 'status_message'):
+            G.WORKSPACE_WINDOW.status_message(status)
+        else:
+            editor.status_message(status)
 
     def log_users(self):
         clients = []
