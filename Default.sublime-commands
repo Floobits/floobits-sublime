@@ -112,5 +112,5 @@
   {
     "caption": "Floobits - Request Code Review",
     "command": "floobits_request_code_review"
-  },
+  }
 ]
