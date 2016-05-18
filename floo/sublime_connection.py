@@ -349,7 +349,9 @@ class SublimeConnection(floo_handler.FlooHandler):
         view = view.view
         regions = []
         for r in ranges:
-            # TODO: add one to the ranges that have a length of zero
+            # Ranges with a length of zero are invisible in Sublime
+            if r[0] == r[1]:
+                r[1] += 1
             regions.append(sublime.Region(*r))
 
         def swap_regions(v):
