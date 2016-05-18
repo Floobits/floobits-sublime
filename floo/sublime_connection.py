@@ -306,7 +306,8 @@ class SublimeConnection(floo_handler.FlooHandler):
         ranges = data['ranges']
         summon = data.get('summon', False)
         user_id = str(data['user_id'])
-        msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, data.get('following'), clone]))
+        following = data.get('following', False)
+        msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, following, clone]))
         if not ranges:
             msg.warn('Ignoring empty highlight from ', username)
             return
@@ -326,13 +327,13 @@ class SublimeConnection(floo_handler.FlooHandler):
             msg.debug('ignoring command until temp_ignore_highlight is complete')
             return
 
-        if summon or not data.get('following'):
+        if summon or not following:
             self.last_highlight = data
             self.last_highlight_by_user[username] = data
 
         do_stuff = summon
         if G.FOLLOW_MODE and not summon:
-            if self.temp_disable_follow or data.get('following'):
+            if self.temp_disable_follow or following:
                 do_stuff = False
             elif G.FOLLOW_USERS:
                 do_stuff = username in G.FOLLOW_USERS
