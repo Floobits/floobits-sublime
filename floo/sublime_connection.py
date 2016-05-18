@@ -355,12 +355,16 @@ class SublimeConnection(floo_handler.FlooHandler):
                 r[1] += 1
             regions.append(sublime.Region(*r))
 
-        def swap_regions(v):
+        def swap_regions(v, following=False):
             v.erase_regions(region_key)
-            v.add_regions(region_key, regions, region_key, 'dot', sublime.DRAW_OUTLINED)
+            if following:
+                draw = sublime.HIDDEN
+            else:
+                draw = sublime.DRAW_OUTLINED
+            v.add_regions(region_key, regions, region_key, 'dot', draw)
 
         if not do_stuff:
-            return swap_regions(view)
+            return swap_regions(view, following)
 
         win = G.WORKSPACE_WINDOW
 
