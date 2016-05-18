@@ -30,7 +30,6 @@ def send_summon(buf_id, sel):
         'id': buf_id,
         'name': 'highlight',
         'ranges': sel,
-        'ping': True,
         'summon': True,
     }
     if G.AGENT and G.AGENT.is_ready():

@@ -304,7 +304,7 @@ class SublimeConnection(floo_handler.FlooHandler):
         buf_id = int(data['id'])
         username = data['username']
         ranges = data['ranges']
-        summon = data.get('ping', False)
+        summon = data.get('summon', False)
         user_id = str(data['user_id'])
         msg.debug(str([buf_id, region_key, user_id, username, ranges, summon, data.get('following'), clone]))
         if not ranges:
@@ -444,7 +444,6 @@ class SublimeConnection(floo_handler.FlooHandler):
                     'id': buf['id'],
                     'name': 'highlight',
                     'ranges': c,
-                    'ping': True,
                     'summon': True,
                     'following': False,
                 })

@@ -273,7 +273,6 @@ class Listener(sublime_plugin.EventListener):
                 'id': buf['id'],
                 'name': 'highlight',
                 'ranges': c,
-                'ping': False,
                 'summon': False,
                 'following': discard,
             })
