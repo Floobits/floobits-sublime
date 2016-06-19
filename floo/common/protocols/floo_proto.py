@@ -335,6 +335,8 @@ class FlooProtocol(base.BaseProtocol):
             self._reconnect_timeout = utils.set_timeout(self.connect, self._reconnect_delay)
         elif self._retries == 0:
             editor.error_message('Floobits Error! Too many reconnect failures. Giving up.')
+            self.stop()
+            return
 
         # Only use proxy.floobits.com if we're trying to connect to floobits.com
         G.OUTBOUND_FILTERING = self.host == 'floobits.com' and self._retries % 4 == 0
