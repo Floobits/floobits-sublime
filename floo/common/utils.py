@@ -85,6 +85,7 @@ def reload_settings():
     floorc_settings = load_floorc_json()
     for name, val in floorc_settings.items():
         setattr(G, name, val)
+    validate_auth(G.AUTH)
     if G.SHARE_DIR:
         G.BASE_DIR = G.SHARE_DIR
     G.BASE_DIR = os.path.realpath(os.path.expanduser(G.BASE_DIR))
@@ -129,6 +130,21 @@ def save_floorc_json(s):
     msg.log('Writing ', floorc_json)
     with open(G.FLOORC_JSON_PATH, 'w') as fd:
         fd.write(json.dumps(floorc_json, indent=4, sort_keys=True, separators=(',', ': ')))
+
+
+def validate_auth(auth):
+    if type(auth) != dict:
+        msg.error('floorc.json validation error: Auth section is not an object!')
+        return False
+    for k, v in auth.items():
+        if type(v) != dict:
+            msg.error('floorc.json validation error: host "', k, '" has invalid auth credentials. Did you put a setting in the auth section?')
+            return False
+        for key in ['username', 'api_key', 'secret']:
+            if not v.get(key):
+                msg.error('floorc.json validation error: host "', k, '" missing "', key, '"')
+                return False
+    return True
 
 
 def can_auth(host=None):
