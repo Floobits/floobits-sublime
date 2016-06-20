@@ -135,9 +135,9 @@ def can_auth(host=None):
     if host is None:
         host = len(G.AUTH) and list(G.AUTH.keys())[0] or G.DEFAULT_HOST
     auth = G.AUTH.get(host)
-    if not auth:
-        return False
-    return bool((auth.get('username') or auth.get('api_key')) and auth.get('secret'))
+    if type(auth) == dict:
+        return bool((auth.get('username') or auth.get('api_key')) and auth.get('secret'))
+    return False
 
 
 cancelled_timeouts = set()
