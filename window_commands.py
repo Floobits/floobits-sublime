@@ -38,10 +38,10 @@ def disconnect_dialog():
 
 
 class FloobitsBaseCommand(sublime_plugin.WindowCommand):
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(G.AGENT and G.AGENT.is_ready())
 
 
@@ -53,7 +53,7 @@ class FloobitsOpenSettingsCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsShareDirCommand(FloobitsBaseCommand):
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return not super(FloobitsShareDirCommand, self).is_enabled()
 
     def run(self, dir_to_share=None, paths=None, current_file=False, api_args=None):
@@ -73,10 +73,10 @@ class FloobitsShareDirCommand(FloobitsBaseCommand):
 
 
 class FloobitsDeleteWorkspaceCommand(FloobitsBaseCommand):
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return utils.can_auth()
 
     def run(self, force=False):
@@ -107,10 +107,10 @@ class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
 
 class FloobitsPinocchioCommand(sublime_plugin.WindowCommand):
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return self.is_enabled()
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return G.AUTO_GENERATED_ACCOUNT
 
     def run(self):
@@ -137,7 +137,7 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
         else:
             sublime.error_message('You are not joined to any workspace.')
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(G.AGENT)
 
 
@@ -173,7 +173,7 @@ class FloobitsJoinRecentWorkspaceCommand(sublime_plugin.WindowCommand):
         workspace = self.recent_workspaces[item]
         SublimeUI.join_workspace_by_url(self.window, workspace['url'])
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(len(self._get_recent_workspaces()) > 0)
 
 
@@ -231,7 +231,7 @@ class FloobitsCreateHangoutCommand(FloobitsBaseCommand):
         host = G.AGENT.proto.host
         webbrowser.open('https://plus.google.com/hangouts/_?gid=770015849706&gd=%s/%s/%s' % (host, owner, workspace))
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(super(FloobitsCreateHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
@@ -242,10 +242,10 @@ class FloobitsPromptHangoutCommand(FloobitsBaseCommand):
             return
         webbrowser.open(hangout_url)
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return False
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(super(FloobitsPromptHangoutCommand, self).is_enabled() and G.AGENT.owner and G.AGENT.workspace)
 
 
@@ -280,10 +280,10 @@ class FloobitsHelpCommand(FloobitsBaseCommand):
     def run(self):
         webbrowser.open('https://floobits.com/help/plugins/sublime', new=2, autoraise=True)
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return True
 
 
@@ -302,12 +302,12 @@ class FloobitsEnableFollowModeCommand(FloobitsBaseCommand):
         G.AGENT.update_status_msg()
         G.AGENT.highlight()
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         if G.AGENT:
             return self.is_enabled()
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(super(FloobitsEnableFollowModeCommand, self).is_enabled() and not G.FOLLOW_MODE)
 
 
@@ -319,10 +319,10 @@ class FloobitsDisableFollowModeCommand(FloobitsBaseCommand):
         msg.log('Follow mode disabled')
         G.AGENT.update_status_msg('Stopped following changes.')
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return self.is_enabled()
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(super(FloobitsDisableFollowModeCommand, self).is_enabled() and G.FOLLOW_MODE)
 
 
@@ -348,7 +348,7 @@ class FloobitsOpenWorkspaceSettingsCommand(FloobitsBaseCommand):
         url = G.AGENT.workspace_url + '/settings'
         webbrowser.open(url, new=2, autoraise=True)
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return bool(super(FloobitsOpenWorkspaceSettingsCommand, self).is_enabled() and G.PERMS and 'kick' in G.PERMS)
 
 
@@ -359,7 +359,7 @@ class RequestPermissionCommand(FloobitsBaseCommand):
             'perms': perms
         })
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         if not super(RequestPermissionCommand, self).is_enabled():
             return False
         if 'patch' in G.PERMS:
@@ -380,10 +380,10 @@ class FloobitsFollowSplit(FloobitsBaseCommand):
 
 
 class FloobitsSetupCommand(FloobitsBaseCommand):
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return not utils.can_auth()
 
     def run(self, force=False):
@@ -460,10 +460,10 @@ class FloobitsNotACommand(sublime_plugin.WindowCommand):
     def run(self, *args, **kwargs):
         pass
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return True
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return False
 
     def description(self):

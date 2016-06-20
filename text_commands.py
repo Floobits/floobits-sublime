@@ -71,19 +71,19 @@ class FlooViewReplaceRegion(sublime_plugin.TextCommand):
         new_offset = len(replace_str) - ((stop - j) - (start + i))
         return transform_selections(selections, start + i, new_offset)
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return False
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return True
 
-    def description(self):
+    def description(self, *args, **kwargs):
         return
 
 
 # The new ST3 plugin API sucks
 class FlooViewReplaceRegions(FlooViewReplaceRegion):
-    def run(self, edit, commands):
+    def run(self, edit, commands, *args, **kwargs):
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         selections = [x for x in self.view.sel()]  # deep copy
@@ -95,11 +95,11 @@ class FlooViewReplaceRegions(FlooViewReplaceRegion):
         for sel in selections:
             self.view.sel().add(sel)
 
-    def is_visible(self):
+    def is_visible(self, *args, **kwargs):
         return False
 
-    def is_enabled(self):
+    def is_enabled(self, *args, **kwargs):
         return True
 
-    def description(self):
+    def description(self, *args, **kwargs):
         return
