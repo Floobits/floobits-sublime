@@ -71,7 +71,8 @@ class FlooHandler(base.BaseHandler):
 
         def f():
             self.joined_workspace = False
-        self.proto.on("cleanup", f)
+        self.proto.on('cleanup', f)
+        self.proto.once('stop', self.stop)
         return self.proto
 
     def get_username_by_id(self, user_id):
