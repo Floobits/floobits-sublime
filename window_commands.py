@@ -128,6 +128,10 @@ class FloobitsLeaveWorkspaceCommand(FloobitsBaseCommand):
     def run(self):
         if G.AGENT:
             message = 'You have left the workspace.'
+            owner = G.AGENT.owner
+            workspace = G.AGENT.workspace
+            if owner and workspace:
+                message = 'You have left %s/%s'
             G.AGENT.update_status_msg(message)
             reactor.stop()
             G.AGENT = None
