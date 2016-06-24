@@ -81,6 +81,8 @@ class SublimeConnection(floo_handler.FlooHandler):
                 status += 'Connected.'
         else:
             status += 'Connecting... '
+            if self.proto and self.proto.retry_count != 0:
+                status += '(attempt %s)' % self.proto.retry_count + 1
         status += extra
         # New builds of ST3 have window.status_message()
         if hasattr(G.WORKSPACE_WINDOW, 'status_message'):

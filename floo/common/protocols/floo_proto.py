@@ -77,6 +77,10 @@ class FlooProtocol(base.BaseProtocol):
             self._port = None
             self._secure = False
 
+    @property
+    def retry_count(self):
+        return self.MAX_RETRIES - self._retries
+
     def start_proxy(self, host, port):
         if G.PROXY_PORT:
             self._port = int(G.PROXY_PORT)
