@@ -161,4 +161,5 @@ class SublimeUI(flooui.FlooUI):
             if workspace_window is not None:
                 break
             yield lambda cb: utils.set_timeout(cb, 50)
+        # TODO: calling focus_view() on a view in the window doesn't focus the window :(
         cb(workspace_window)
