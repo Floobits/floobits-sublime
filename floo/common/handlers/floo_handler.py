@@ -472,6 +472,8 @@ class FlooHandler(base.BaseHandler):
             _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
             # Workaround for horrible Sublime Text bug
             utils.set_timeout(editor.message_dialog, 0, _msg)
+            # Don't auto-upload again on reconnect
+            self.action = utils.JOIN_ACTION.PROMPT
         elif changed_bufs or missing_bufs or new_files:
             # TODO: handle readonly here
             if self.action == utils.JOIN_ACTION.PROMPT:
