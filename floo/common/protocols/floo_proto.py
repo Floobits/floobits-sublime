@@ -45,7 +45,7 @@ def sock_debug(*args, **kwargs):
 
 class FlooProtocol(base.BaseProtocol):
     ''' Base FD Interface'''
-    MAX_RETRIES = 12
+    MAX_RETRIES = 13
     INITIAL_RECONNECT_DELAY = 500
 
     def __init__(self, host, port, secure=True):
@@ -343,7 +343,7 @@ class FlooProtocol(base.BaseProtocol):
             return
 
         # Only use proxy.floobits.com if we're trying to connect to floobits.com
-        G.OUTBOUND_FILTERING = self.host == 'floobits.com' and self._retries % 4 == 0
+        G.OUTBOUND_FILTERING = self.host == 'floobits.com' and self._retries % 3 == 0
         self._retries -= 1
 
     def reset_retries(self):
