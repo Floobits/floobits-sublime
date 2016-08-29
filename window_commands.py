@@ -187,7 +187,11 @@ class FloobitsAddToWorkspaceCommand(FloobitsBaseCommand):
             return
 
         if paths is None and current_file:
-            paths = [self.window.active_view().file_name()]
+            active_view = self.window.active_view()
+            if active_view is None:
+                msg.log('AddToWorkspace: No active view found. Perhaps active tab is an image?')
+                return
+            paths = [active_view.file_name()]
 
         notshared = []
         for path in paths:
@@ -211,7 +215,11 @@ class FloobitsRemoveFromWorkspaceCommand(FloobitsBaseCommand):
             return
 
         if paths is None and current_file:
-            paths = [self.window.active_view().file_name()]
+            active_view = self.window.active_view()
+            if active_view is None:
+                msg.log('RemoveFromWorkspace: No active view found. Perhaps active tab is an image?')
+                return
+            paths = [active_view.file_name()]
 
         if not hasattr(sublime, 'yes_no_cancel_dialog'):
             unlink = bool(sublime.ok_cancel_dialog('Delete? Select cancel to remove from the workspace without deleting.', 'Delete'))
