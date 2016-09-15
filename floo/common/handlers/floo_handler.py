@@ -618,6 +618,9 @@ class FlooHandler(base.BaseHandler):
         if user_id == self.workspace_info['user_id']:
             G.PERMS = perms
 
+    def _on_webrtc(self, data):
+        msg.debug('WebRTC got a data message. Action ', data.get('action'), ' user_id ', data.get('user_id'))
+
     def _on_msg(self, data):
         self.on_msg(data)
 
