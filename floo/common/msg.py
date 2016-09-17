@@ -72,7 +72,8 @@ def floobits_log(msg):
 
 
 class MSG(object):
-    def __init__(self, msg, timestamp=None, username=None, level=LOG_LEVELS['MSG']):
+    # Default to LOG_LEVEL MSG
+    def __init__(self, msg, timestamp=None, username=None, level=2):
         self.msg = msg
         self.timestamp = timestamp or time.time()
         self.username = username
