@@ -203,6 +203,8 @@ class FlooProtocol(base.BaseProtocol):
             with open(self._cert_path, 'wb') as cert_fd:
                 cert_fd.write(cert.CA_CERT.encode('utf-8'))
         conn_msg = '%s:%s: Connecting...' % (self.host, self.port)
+        if self.retry_count != 0:
+            conn_msg += ' (attempt %s) ' % (self.retry_count + 1)
         if self.port != self._port or self.host != self._host:
             conn_msg += ' (proxying through %s:%s)' % (self._host, self._port)
         if host != self._host:
