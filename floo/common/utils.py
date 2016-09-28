@@ -333,8 +333,11 @@ def update_floo_file(path, data):
     except Exception:
         floo_json = data
 
-    with open(path, 'w') as floo_fd:
-        floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True, separators=(',', ': ')))
+    try:
+        with open(path, 'w') as floo_fd:
+            floo_fd.write(json.dumps(floo_json, indent=4, sort_keys=True, separators=(',', ': ')))
+    except Exception as e:
+        msg.warn('Couldn\'t update .floo file: ', floo_json, ': ', str_e(e))
 
 
 def read_floo_file(path):
