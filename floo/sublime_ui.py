@@ -21,9 +21,10 @@ PY2 = sys.version_info < (3, 0)
 def get_workspace_window(abs_path):
     found = False
     workspace_window = None
+    unfucked_path = utils.unfuck_path(abs_path)
     for w in sublime.windows():
         for f in w.folders():
-            if utils.unfuck_path(f) == utils.unfuck_path(abs_path):
+            if utils.unfuck_path(f) == unfucked_path:
                 workspace_window = w
                 found = True
                 break
