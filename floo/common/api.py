@@ -110,6 +110,7 @@ def user_agent():
 def hit_url(host, url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
+    msg.debug('url: ', url, ' method: ', method, ' data: ', data)
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
