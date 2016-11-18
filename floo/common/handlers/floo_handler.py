@@ -362,54 +362,15 @@ class FlooHandler(base.BaseHandler):
         self._rate_limited_upload(make_iterator(), total_size, upload_func=__upload)
         cb()
 
-    @utils.inlined_callbacks
-    def _on_room_info(self, data):
-        self.joined_workspace = True
-        self.workspace_info = data
-        G.PERMS = data['perms']
-
-        self.proto.reset_retries()
-
-        if G.OUTBOUND_FILTERING:
-            msg.error('Detected outbound port blocking! See https://floobits.com/help/network for more info.')
-
-        read_only = False
-        if 'patch' not in data['perms']:
-            read_only = True
-            no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
-            msg.log('No patch permission. Setting buffers to read-only')
-            if 'request_perm' in data['perms']:
-                should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
-                # TODO: wait for perms to be OK'd/denied before uploading or bailing
-                if should_send:
-                    self.send({'name': 'request_perms', 'perms': ['edit_room']})
-            else:
-                if G.EXPERT_MODE:
-                    editor.status_message(no_perms_msg)
-                else:
-                    editor.error_message(no_perms_msg)
-
-        floo_json = {
-            'url': utils.to_workspace_url({
-                'owner': self.owner,
-                'workspace': self.workspace,
-                'host': self.proto.host,
-                'port': self.proto.port,
-                'secure': self.proto.secure,
-            })
-        }
-        utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
-        utils.update_recent_workspaces(self.workspace_url)
-
+    def _scan_dir(self, bufs, ig, read_only):
         changed_bufs = []
         missing_bufs = []
         new_files = set()
-        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
-        G.IGNORE = ig
+
         if not read_only:
             new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
 
-        for buf_id, buf in data['bufs'].items():
+        for buf_id, buf in bufs.items():
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
             new_dir = os.path.dirname(buf_path)
@@ -455,6 +416,50 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for ', buf['path'], ', ', str_e(e))
                 missing_bufs.append(buf)
+        return changed_bufs, missing_bufs, new_files
+
+    @utils.inlined_callbacks
+    def _on_room_info(self, data):
+        self.joined_workspace = True
+        self.workspace_info = data
+        G.PERMS = data['perms']
+
+        self.proto.reset_retries()
+
+        if G.OUTBOUND_FILTERING:
+            msg.error('Detected outbound port blocking! See https://floobits.com/help/network for more info.')
+
+        read_only = False
+        if 'patch' not in data['perms']:
+            read_only = True
+            no_perms_msg = '''You don't have permission to edit this workspace. All files will be read-only.'''
+            msg.log('No patch permission. Setting buffers to read-only')
+            if 'request_perm' in data['perms']:
+                should_send = yield self.ok_cancel_dialog, no_perms_msg + '\nDo you want to request edit permission?'
+                # TODO: wait for perms to be OK'd/denied before uploading or bailing
+                if should_send:
+                    self.send({'name': 'request_perms', 'perms': ['edit_room']})
+            else:
+                if G.EXPERT_MODE:
+                    editor.status_message(no_perms_msg)
+                else:
+                    editor.error_message(no_perms_msg)
+
+        floo_json = {
+            'url': utils.to_workspace_url({
+                'owner': self.owner,
+                'workspace': self.workspace,
+                'host': self.proto.host,
+                'port': self.proto.port,
+                'secure': self.proto.secure,
+            })
+        }
+        utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
+        utils.update_recent_workspaces(self.workspace_url)
+
+        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
+        G.IGNORE = ig
+        changed_bufs, missing_bufs, new_files = self._scan_dir(data['bufs'], ig, read_only)
 
         ignored = []
         for p, buf_id in self.paths_to_ids.items():
@@ -526,6 +531,33 @@ class FlooHandler(base.BaseHandler):
                 })
 
         self.emit("room_info")
+
+    @utils.inlined_callbacks
+    def refresh_workspace(self):
+        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
+        G.IGNORE = ig
+        read_only = 'patch' not in self.workspace_info['perms']
+        changed_bufs, missing_bufs, new_files = self._scan_dir(self.workspace_info['bufs'], G.IGNORE, read_only)
+        ignored = []
+        for p, buf_id in self.paths_to_ids.items():
+            if p not in new_files:
+                ignored.append(p)
+            new_files.discard(p)
+        if changed_bufs or missing_bufs or new_files:
+            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
+            if stomp_local not in [0, 1]:
+                return
+            if stomp_local:
+                for buf in changed_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+                for buf in missing_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+            else:
+                yield self._initial_upload, G.IGNORE, missing_bufs, changed_bufs
+        else:
+            editor.error_message('No files differ')
 
     def _on_user_info(self, data):
         user_id = str(data['user_id'])

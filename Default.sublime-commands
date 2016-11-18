@@ -27,6 +27,10 @@
     "command": "floobits_prompt_join_workspace"
   },
   {
+    "caption": "Floobits - Refresh Workspace",
+    "command": "floobits_refresh_workspace"
+  },
+  {
     "caption": "Floobits - Delete Workspace",
     "command": "floobits_delete_workspace"
   },

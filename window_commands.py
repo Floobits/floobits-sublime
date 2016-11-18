@@ -83,6 +83,11 @@ class FloobitsDeleteWorkspaceCommand(FloobitsBaseCommand):
         SublimeUI.delete_workspace(self.window, lambda *args, **kwargs: None)
 
 
+class FloobitsRefreshWorkspaceCommand(FloobitsBaseCommand):
+    def run(self):
+        G.AGENT.refresh_workspace()
+
+
 class FloobitsPromptJoinWorkspaceCommand(sublime_plugin.WindowCommand):
 
     def run(self, workspace=None):
