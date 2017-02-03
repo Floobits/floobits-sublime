@@ -373,11 +373,6 @@ class FlooHandler(base.BaseHandler):
         for buf_id, buf in bufs.items():
             buf_id = int(buf_id)  # json keys must be strings
             buf_path = utils.get_full_path(buf['path'])
-            new_dir = os.path.dirname(buf_path)
-            utils.mkdir(new_dir)
-            self.bufs[buf_id] = buf
-            self.paths_to_ids[buf['path']] = buf_id
-
             view = self.get_view(buf_id)
             if view and not view.is_loading() and buf['encoding'] == 'utf8':
                 view_text = view.get_text()
@@ -459,6 +454,10 @@ class FlooHandler(base.BaseHandler):
 
         ig = ignore.create_ignore_tree(G.PROJECT_PATH)
         G.IGNORE = ig
+        for buf_id, buf in data['bufs'].items():
+            buf_id = int(buf_id)  # json keys must be strings
+            self.bufs[buf_id] = buf
+            self.paths_to_ids[buf['path']] = buf_id
         changed_bufs, missing_bufs, new_files = self._scan_dir(data['bufs'], ig, read_only)
 
         ignored = []
