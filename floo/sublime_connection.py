@@ -287,7 +287,7 @@ class SublimeConnection(floo_handler.FlooHandler):
             'id': buf_to_delete['id'],
             'unlink': unlink,
         }
-        self.send(event)
+        self.send(event, lambda: self._on_delete_buf(event))
 
     def highlight(self, data=None, user=None):
         if user:
