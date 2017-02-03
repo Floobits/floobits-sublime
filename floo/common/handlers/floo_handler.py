@@ -295,16 +295,18 @@ class FlooHandler(base.BaseHandler):
 
     def _on_delete_buf(self, data):
         buf_id = data['id']
+        path = data.get('path')
         try:
             buf = self.bufs.get(buf_id)
             if buf:
                 del self.paths_to_ids[buf['path']]
                 del self.bufs[buf_id]
+                path = buf['path']
         except KeyError:
             msg.debug('KeyError deleting buf id ', buf_id)
         # TODO: if data['unlink'] == True, add to ignore?
         action = 'removed'
-        path = utils.get_full_path(data['path'])
+        path = utils.get_full_path(path)
         if data.get('unlink', False):
             action = 'deleted'
             try:
