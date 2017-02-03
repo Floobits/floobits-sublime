@@ -63,10 +63,7 @@ class Listener(sublime_plugin.EventListener):
                     continue
                 if os.path.exists(f):
                     continue
-                agent.send({
-                    'name': 'delete_buf',
-                    'id': buf['id'],
-                })
+                agent.delete_buf(buf['path'])
             return
 
         if command == 'delete_folder':
@@ -77,14 +74,11 @@ class Listener(sublime_plugin.EventListener):
                     continue
                 rel_path = utils.to_rel_path(d)
                 if not rel_path:
-                    msg.error('Can not delete %s from workspace', d)
+                    msg.error('Can not delete ', d, ' from workspace')
                     continue
                 for buf_id, buf in G.AGENT.bufs.items():
                     if buf['path'].startswith(rel_path):
-                        agent.send({
-                            'name': 'delete_buf',
-                            'id': buf_id,
-                        })
+                        agent.delete_buf(buf['path'])
 
     @if_connected
     def on_window_command(self, window, command, *args, **kwargs):
