@@ -536,7 +536,7 @@ class FlooHandler(base.BaseHandler):
         ig = ignore.create_ignore_tree(G.PROJECT_PATH)
         G.IGNORE = ig
         read_only = 'patch' not in self.workspace_info['perms']
-        changed_bufs, missing_bufs, new_files = self._scan_dir(self.workspace_info['bufs'], G.IGNORE, read_only)
+        changed_bufs, missing_bufs, new_files = self._scan_dir(self.bufs, G.IGNORE, read_only)
         ignored = []
         for p, buf_id in self.paths_to_ids.items():
             if p not in new_files:
@@ -796,7 +796,12 @@ class FlooHandler(base.BaseHandler):
                 'path': rel_path,
                 'encoding': encoding,
             }
-            self.send(event)
+
+            def done(d):
+                self.bufs[d['id']] = buf
+                self.paths_to_ids[rel_path] = d['id']
+
+            self.send(event, done)
         except (IOError, OSError):
             msg.error('Failed to open ', path)
         except Exception as e:

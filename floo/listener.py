@@ -74,7 +74,7 @@ class Listener(sublime_plugin.EventListener):
                     continue
                 rel_path = utils.to_rel_path(d)
                 if not rel_path:
-                    msg.error('Can not delete %s from workspace', d)
+                    msg.error('Can not delete ', d, ' from workspace')
                     continue
                 for buf_id, buf in G.AGENT.bufs.items():
                     if buf['path'].startswith(rel_path):

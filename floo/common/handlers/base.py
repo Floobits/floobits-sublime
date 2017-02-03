@@ -47,6 +47,7 @@ class BaseHandler(event_emitter.EventEmitter):
             cb = self.cbs.get(req_id)
             if cb:
                 del self.cbs[req_id]
+                # TODO: squelch exceptions here?
                 cb(data)
         handler = getattr(self, '_on_%s' % name, None)
         if handler:
