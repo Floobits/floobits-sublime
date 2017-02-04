@@ -800,8 +800,9 @@ class FlooHandler(base.BaseHandler):
             }
 
             def done(d):
-                self.bufs[d['id']] = buf
-                self.paths_to_ids[rel_path] = d['id']
+                if d.get('id'):
+                    self.bufs[d['id']] = buf
+                    self.paths_to_ids[rel_path] = d['id']
 
             self.send(event, done)
         except (IOError, OSError):
