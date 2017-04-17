@@ -10,7 +10,7 @@ try:
     from . import base
     from ..reactor import reactor
     from ..lib import DMP
-    from .. import msg, ignore, shared as G, utils
+    from .. import msg, ignore, repo, shared as G, utils
     from ..exc_fmt import str_e
     from ... import editor
     from ..protocols import floo_proto
@@ -20,7 +20,7 @@ except (ImportError, ValueError) as e:
     from floo.common.lib import DMP
     from floo.common.reactor import reactor
     from floo.common.exc_fmt import str_e
-    from floo.common import msg, ignore, shared as G, utils
+    from floo.common import msg, ignore, repo, shared as G, utils
     from floo.common.protocols import floo_proto
 
 try:
@@ -71,7 +71,8 @@ class FlooHandler(base.BaseHandler):
 
         def f():
             self.joined_workspace = False
-        self.proto.on("cleanup", f)
+        self.proto.on('cleanup', f)
+        self.proto.once('stop', self.stop)
         return self.proto
 
     def get_username_by_id(self, user_id):
@@ -294,16 +295,18 @@ class FlooHandler(base.BaseHandler):
 
     def _on_delete_buf(self, data):
         buf_id = data['id']
+        path = data.get('path')
         try:
             buf = self.bufs.get(buf_id)
             if buf:
                 del self.paths_to_ids[buf['path']]
                 del self.bufs[buf_id]
+                path = buf['path']
         except KeyError:
             msg.debug('KeyError deleting buf id ', buf_id)
         # TODO: if data['unlink'] == True, add to ignore?
         action = 'removed'
-        path = utils.get_full_path(data['path'])
+        path = utils.get_full_path(path)
         if data.get('unlink', False):
             action = 'deleted'
             try:
@@ -361,6 +364,57 @@ class FlooHandler(base.BaseHandler):
         self._rate_limited_upload(make_iterator(), total_size, upload_func=__upload)
         cb()
 
+    def _scan_dir(self, bufs, ig, read_only):
+        changed_bufs = []
+        missing_bufs = []
+        new_files = set()
+
+        if not read_only:
+            new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
+
+        for buf_id, buf in bufs.items():
+            buf_id = int(buf_id)  # json keys must be strings
+            buf_path = utils.get_full_path(buf['path'])
+            view = self.get_view(buf_id)
+            if view and not view.is_loading() and buf['encoding'] == 'utf8':
+                view_text = view.get_text()
+                view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
+                buf['buf'] = view_text
+                buf['view'] = view
+                G.VIEW_TO_HASH[view.native_id] = view_md5
+                if view_md5 == buf['md5']:
+                    msg.debug('md5 sum matches view. not getting buffer ', buf['path'])
+                else:
+                    changed_bufs.append(buf)
+                    buf['md5'] = view_md5
+                continue
+
+            try:
+                if buf['encoding'] == 'utf8':
+                    if io:
+                        buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
+                        buf_buf = buf_fd.read()
+                    else:
+                        buf_fd = open(buf_path, 'rb')
+                        buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
+                    md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
+                else:
+                    buf_fd = open(buf_path, 'rb')
+                    buf_buf = buf_fd.read()
+                    md5 = hashlib.md5(buf_buf).hexdigest()
+                buf_fd.close()
+                buf['buf'] = buf_buf
+                if md5 == buf['md5']:
+                    msg.debug('md5 sum matches. not getting buffer ', buf['path'])
+                else:
+                    msg.debug('md5 differs. possibly getting buffer later ', buf['path'])
+                    changed_bufs.append(buf)
+                    buf['md5'] = md5
+            except Exception as e:
+                msg.debug('Error calculating md5 for ', buf['path'], ', ', str_e(e))
+                missing_bufs.append(buf)
+        return changed_bufs, missing_bufs, new_files
+
     @utils.inlined_callbacks
     def _on_room_info(self, data):
         self.joined_workspace = True
@@ -400,60 +454,13 @@ class FlooHandler(base.BaseHandler):
         utils.update_floo_file(os.path.join(G.PROJECT_PATH, '.floo'), floo_json)
         utils.update_recent_workspaces(self.workspace_url)
 
-        changed_bufs = []
-        missing_bufs = []
-        new_files = set()
         ig = ignore.create_ignore_tree(G.PROJECT_PATH)
         G.IGNORE = ig
-        if not read_only:
-            new_files = set([utils.to_rel_path(x) for x in ig.list_paths()])
-
         for buf_id, buf in data['bufs'].items():
             buf_id = int(buf_id)  # json keys must be strings
-            buf_path = utils.get_full_path(buf['path'])
-            new_dir = os.path.dirname(buf_path)
-            utils.mkdir(new_dir)
             self.bufs[buf_id] = buf
             self.paths_to_ids[buf['path']] = buf_id
-
-            view = self.get_view(buf_id)
-            if view and not view.is_loading() and buf['encoding'] == 'utf8':
-                view_text = view.get_text()
-                view_md5 = hashlib.md5(view_text.encode('utf-8')).hexdigest()
-                buf['buf'] = view_text
-                buf['view'] = view
-                G.VIEW_TO_HASH[view.native_id] = view_md5
-                if view_md5 == buf['md5']:
-                    msg.debug('md5 sum matches view. not getting buffer ', buf['path'])
-                else:
-                    changed_bufs.append(buf)
-                    buf['md5'] = view_md5
-                continue
-
-            try:
-                if buf['encoding'] == 'utf8':
-                    if io:
-                        buf_fd = io.open(buf_path, 'Urt', encoding='utf8')
-                        buf_buf = buf_fd.read()
-                    else:
-                        buf_fd = open(buf_path, 'rb')
-                        buf_buf = buf_fd.read().decode('utf-8').replace('\r\n', '\n')
-                    md5 = hashlib.md5(buf_buf.encode('utf-8')).hexdigest()
-                else:
-                    buf_fd = open(buf_path, 'rb')
-                    buf_buf = buf_fd.read()
-                    md5 = hashlib.md5(buf_buf).hexdigest()
-                buf_fd.close()
-                buf['buf'] = buf_buf
-                if md5 == buf['md5']:
-                    msg.debug('md5 sum matches. not getting buffer ', buf['path'])
-                else:
-                    msg.debug('md5 differs. possibly getting buffer later ', buf['path'])
-                    changed_bufs.append(buf)
-                    buf['md5'] = md5
-            except Exception as e:
-                msg.debug('Error calculating md5 for ', buf['path'], ', ', str_e(e))
-                missing_bufs.append(buf)
+        changed_bufs, missing_bufs, new_files = self._scan_dir(data['bufs'], ig, read_only)
 
         ignored = []
         for p, buf_id in self.paths_to_ids.items():
@@ -471,6 +478,8 @@ class FlooHandler(base.BaseHandler):
             _msg = 'You are sharing:\n\n%s\n\n%s can join your workspace at:\n\n%s' % (G.PROJECT_PATH, who, G.AGENT.workspace_url)
             # Workaround for horrible Sublime Text bug
             utils.set_timeout(editor.message_dialog, 0, _msg)
+            # Don't auto-upload again on reconnect
+            self.action = utils.JOIN_ACTION.PROMPT
         elif changed_bufs or missing_bufs or new_files:
             # TODO: handle readonly here
             if self.action == utils.JOIN_ACTION.PROMPT:
@@ -510,7 +519,46 @@ class FlooHandler(base.BaseHandler):
         if hangout_url:
             self.prompt_join_hangout(hangout_url)
 
+        if data.get('repo_info'):
+            msg.log('Repo info:', data.get('repo_info'))
+            # TODO: check local repo info and update remote (or prompt?)
+        else:
+            repo_info = repo.get_info(self.workspace_url, G.PROJECT_PATH)
+            if repo_info and 'repo' in G.PERMS:
+                self.send({
+                    'name': 'repo',
+                    'action': 'set',
+                    'data': repo_info,
+                })
+
         self.emit("room_info")
+
+    @utils.inlined_callbacks
+    def refresh_workspace(self):
+        ig = ignore.create_ignore_tree(G.PROJECT_PATH)
+        G.IGNORE = ig
+        read_only = 'patch' not in self.workspace_info['perms']
+        changed_bufs, missing_bufs, new_files = self._scan_dir(self.bufs, G.IGNORE, read_only)
+        ignored = []
+        for p, buf_id in self.paths_to_ids.items():
+            if p not in new_files:
+                ignored.append(p)
+            new_files.discard(p)
+        if changed_bufs or missing_bufs or new_files:
+            stomp_local = yield self.stomp_prompt, changed_bufs, missing_bufs, list(new_files), ignored
+            if stomp_local not in [0, 1]:
+                return
+            if stomp_local:
+                for buf in changed_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+                for buf in missing_bufs:
+                    self.get_buf(buf['id'], buf.get('view'))
+                    self.save_on_get_bufs.add(buf['id'])
+            else:
+                yield self._initial_upload, G.IGNORE, missing_bufs, changed_bufs
+        else:
+            editor.error_message('No files differ')
 
     def _on_user_info(self, data):
         user_id = str(data['user_id'])
@@ -602,6 +650,9 @@ class FlooHandler(base.BaseHandler):
         user['perms'] = list(perms)
         if user_id == self.workspace_info['user_id']:
             G.PERMS = perms
+
+    def _on_webrtc(self, data):
+        msg.debug('WebRTC got a data message. Action ', data.get('action'), ' user_id ', data.get('user_id'))
 
     def _on_msg(self, data):
         self.on_msg(data)
@@ -747,7 +798,13 @@ class FlooHandler(base.BaseHandler):
                 'path': rel_path,
                 'encoding': encoding,
             }
-            self.send(event)
+
+            def done(d):
+                if d.get('id'):
+                    self.bufs[d['id']] = buf
+                    self.paths_to_ids[rel_path] = d['id']
+
+            self.send(event, done)
         except (IOError, OSError):
             msg.error('Failed to open ', path)
         except Exception as e:

@@ -110,6 +110,7 @@ def user_agent():
 def hit_url(host, url, data, method):
     if data:
         data = json.dumps(data).encode('utf-8')
+    msg.debug('url: ', url, ' method: ', method, ' data: ', data)
     r = Request(url, data=data)
     r.method = method
     r.get_method = lambda: method
@@ -182,6 +183,11 @@ def get_orgs(host):
 def get_orgs_can_admin(host):
     api_url = 'https://%s/api/orgs/can/admin' % (host)
     return api_request(host, api_url)
+
+
+def request_review(host, owner, workspace, description):
+    api_url = 'https://%s/api/workspace/%s/%s/review' % (host, owner, workspace)
+    return api_request(host, api_url, data={'description': description})
 
 
 def send_error(description=None, exception=None):
