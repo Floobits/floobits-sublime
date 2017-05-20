@@ -280,6 +280,13 @@ class SublimeConnection(floo_handler.FlooHandler):
         buf_to_delete = self.get_buf_by_path(path)
         if buf_to_delete is None:
             msg.error(path, ' is not in this workspace')
+            if unlink:
+                try:
+                    path = utils.get_full_path(path)
+                    msg.log('deleting ', utils.to_rel_path(path))
+                    utils.rm(path)
+                except Exception as e:
+                    msg.debug('Error deleting ', path, ': ', str_e(e))
             return
         msg.log('deleting buffer ', utils.to_rel_path(path))
         event = {
