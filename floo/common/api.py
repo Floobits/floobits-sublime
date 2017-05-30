@@ -120,7 +120,7 @@ def hit_url(host, url, data, method):
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
-    return urlopen(r, timeout=5)
+    return urlopen(r, timeout=10)
 
 
 def api_request(host, url, data=None, method=None):
