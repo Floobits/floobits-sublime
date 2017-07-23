@@ -3,6 +3,7 @@ import base64
 import json
 import subprocess
 import traceback
+import os.path
 from functools import wraps
 
 try:
@@ -120,7 +121,8 @@ def hit_url(host, url, data, method):
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
-    return urlopen(r, timeout=10)
+    cafile = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+    return urlopen(r, timeout=10, cafile=cafile)
 
 
 def api_request(host, url, data=None, method=None):
