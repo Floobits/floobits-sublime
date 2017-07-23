@@ -30,6 +30,7 @@ DEFAULT_IGNORES = [
     '*.pyo',
     '*~',
     'extern/',
+    'heroku.yml',
     'node_modules/',
     'tmp',
     'vendor/',
