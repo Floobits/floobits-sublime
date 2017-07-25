@@ -33,8 +33,9 @@ except (AttributeError, ImportError, ValueError):
 
 try:
     from .. import editor
-    from . import msg, shared as G, utils
+    from . import cert, msg, shared as G, utils
 except ImportError:
+    import cert
     import editor
     import msg
     import shared as G
@@ -122,6 +123,8 @@ def hit_url(host, url, data, method):
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
     cafile = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+    with open(cafile, 'wb') as cert_fd:
+        cert_fd.write(cert.CA_CERT.encode('utf-8'))
     return urlopen(r, timeout=10, cafile=cafile)
 
 
