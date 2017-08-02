@@ -62,7 +62,7 @@ class FlooProtocol(base.BaseProtocol):
         self._retries = self.MAX_RETRIES
         self._empty_reads = 0
         self._reconnect_timeout = None
-        self._cert_path = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+        self._cert_path = os.path.join(G.BASE_DIR, 'floobits.pem')
         self.req_id = 0
 
         self._host = host

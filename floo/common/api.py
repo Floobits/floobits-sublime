@@ -122,7 +122,7 @@ def hit_url(host, url, data, method):
     r.add_header('Accept', 'application/json')
     r.add_header('Content-type', 'application/json')
     r.add_header('User-Agent', user_agent())
-    cafile = os.path.join(G.BASE_DIR, 'startssl-ca.pem')
+    cafile = os.path.join(G.BASE_DIR, 'floobits.pem')
     with open(cafile, 'wb') as cert_fd:
         cert_fd.write(cert.CA_CERT.encode('utf-8'))
     return urlopen(r, timeout=10, cafile=cafile)
