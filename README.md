@@ -30,7 +30,7 @@ All configuration settings are stored in `~/.floorc.json`. If you don’t have a
 
 After creating your account, you’ll want to create a workspace or two. A workspace is a collection of files and buffers that users can collaborate on.
 
-See https://floobits.com/help/plugins/#sublime-usage for instructions on how to create workspaces and collaborate with others.
+See https://floobits.com/help/plugins/sublime/#usage for instructions on how to create workspaces and collaborate with others.
 
 
 # Errata
