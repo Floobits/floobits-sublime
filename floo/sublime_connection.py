@@ -356,7 +356,6 @@ class SublimeConnection(floo_handler.FlooHandler):
         view = self.get_view(buf_id)
         if not view or view.is_loading():
             if do_stuff:
-                msg.debug('creating view')
                 create_view(buf)
                 self.on_load[buf_id]['highlight'] = lambda: self._on_highlight(data, False)
             return
@@ -384,12 +383,13 @@ class SublimeConnection(floo_handler.FlooHandler):
         if not G.SPLIT_MODE:
             win.focus_view(view)
             swap_regions(view)
-            # Explicit summon by another user. Center the line.
+            # Use show instead of show_at_center to avoid scrolling/jumping lots in follow mode
+            f = view.show
             if summon:
-                view.show_at_center(regions[0])
-            # Avoid scrolling/jumping lots in follow mode
-            else:
-                view.show(regions[0])
+                # Explicit summon by another user. Center the line.
+                f = view.show_at_center
+            # Wait 10ms, as ST3 doesn't seem to scroll correctly on recently-loaded buffers
+            utils.set_timeout(lambda: f(regions[0]), 10)
             return
 
         focus_group = win.num_groups() - 1
