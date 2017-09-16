@@ -10,7 +10,7 @@ def main():
     if len(sys.argv) != 2:
         print('Usage: %s version' % sys.argv[0])
         versions = os.popen('git tag').read().split('\n')
-        versions = [v for v in versions if re.match("\\d\\.\\d\\.\\d", v)]
+        versions = [v for v in versions if re.match("\\d+\\.\\d+\\.\\d+", v)]
         versions.sort(key=StrictVersion)
         print(versions[-1])
         sys.exit()
