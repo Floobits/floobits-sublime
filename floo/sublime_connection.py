@@ -383,14 +383,11 @@ class SublimeConnection(floo_handler.FlooHandler):
         if not G.SPLIT_MODE:
             win.focus_view(view)
             swap_regions(view)
-            # Use show instead of show_at_center to avoid scrolling/jumping lots in follow mode
-            f = view.show
             if summon:
                 # Explicit summon by another user. Center the line.
-                f = view.show_at_center
-            # Wait 10ms, as ST3 doesn't seem to scroll correctly on recently-loaded buffers
-            utils.set_timeout(lambda: f(regions[0]), 10)
-            return
+                return view.show_at_center(regions[0])
+            # Use show instead of show_at_center to avoid scrolling/jumping lots in follow mode
+            return view.show(regions[0])
 
         focus_group = win.num_groups() - 1
         view_in_group = get_view_in_group(view.buffer_id(), focus_group)

@@ -219,7 +219,7 @@ class Listener(sublime_plugin.EventListener):
         cleanup()
 
     @if_connected
-    def on_modified(self, view, agent):
+    def on_modified(self, view, agent, activated=False, *args):
         buf = is_view_loaded(view)
         if not buf:
             return
@@ -238,11 +238,12 @@ class Listener(sublime_plugin.EventListener):
 
         G.VIEW_TO_HASH[view.buffer_id()] = view_md5
         msg.debug('changed view ', buf['path'], ' buf id ', buf['id'])
-        self.disable_follow_mode(2000)
+        if not activated:
+            self.disable_follow_mode(2000)
         agent.views_changed.append(('patch', view, buf))
 
     @if_connected
-    def on_selection_modified(self, view, agent, buf=None):
+    def on_selection_modified(self, view, agent):
         buf = is_view_loaded(view)
         if not buf or 'highlight' not in G.PERMS:
             return
@@ -274,7 +275,8 @@ class Listener(sublime_plugin.EventListener):
     @if_connected
     def on_activated(self, view, agent):
         buf = get_buf(view)
-        if buf:
-            msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
-            self.on_modified(view)
-            self.on_selection_modified(view)
+        if not buf:
+            return
+        msg.debug('activated view ', buf['path'], ' buf id ', buf['id'])
+        self.on_modified(view, agent, True)
+        self.on_selection_modified(view)
