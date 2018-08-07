@@ -52,6 +52,18 @@ def get_basic_auth(host):
     return basic_auth.decode('ascii').replace('\n', '')
 
 
+def get_ssl_context():
+    if hasattr(ssl, 'create_default_context'):
+        context = ssl.create_default_context()
+        context.check_hostname = False
+    else:
+        context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        context.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
+        context.set_default_verify_paths()
+        context.verify_mode = ssl.CERT_REQUIRED
+    return context
+
+
 class APIResponse():
     def __init__(self, r):
         self.body = None
@@ -125,7 +137,12 @@ def hit_url(host, url, data, method):
     cafile = os.path.join(G.BASE_DIR, 'floobits.pem')
     with open(cafile, 'wb') as cert_fd:
         cert_fd.write(cert.CA_CERT.encode('utf-8'))
-    return urlopen(r, timeout=10, cafile=cafile)
+    return urlopen(r, timeout=10, context=get_ssl_context())
+    # return urlopen(r, timeout=10, cafile=cafile)
+    # try:
+    #     return urlopen(r, timeout=10, context=get_ssl_context())
+    # except TypeError as e:
+    #     return urlopen
 
 
 def api_request(host, url, data=None, method=None):
@@ -139,7 +156,7 @@ def api_request(host, url, data=None, method=None):
         r = hit_url(host, url, data, method)
     except HTTPError as e:
         r = e
-    except URLError as e:
+    except (URLError, TypeError) as e:
         msg.warn('Error hitting url ', url, ': ', e)
         r = e
         if not PY2:

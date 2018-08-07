@@ -148,6 +148,8 @@ class FlooProtocol(base.BaseProtocol):
                 return self.reconnect()
         if self._secure:
             sock_debug('SSL-wrapping socket')
+            context = api.get_ssl_context()
+            # self._sock = context.wrap_socket(self._sock, do_handshake_on_connect=False)
             self._sock = ssl.wrap_socket(self._sock, ca_certs=self._cert_path, cert_reqs=ssl.CERT_REQUIRED, do_handshake_on_connect=False)
 
         self._q.clear()

@@ -1,8 +1,34 @@
+import time
+
 try:
     from ... import editor
 except ValueError:
     from floo import editor
 from .. import msg, event_emitter, shared as G, utils
+
+
+class Req(object):
+    def __init__(self, req_id, name='?', cb=None):
+        self.req_id = req_id
+        self.name = name
+        self.cb = cb
+        self.sent_at = time.time()
+        self.acked_at = None
+
+    def acked(self):
+        self.acked_at = time.time()
+
+    @property
+    def latency(self):
+        if self.acked_at:
+            return self.acked_at - self.sent_at
+        return -1
+
+    def __repr__(self):
+        latency = 'unknown'
+        if self.acked_at:
+            latency = '{:.0f}'.format(self.latency * 1000)
+        return 'req_id %s %s latency %s ms' % (self.req_id, self.name, latency)
 
 
 class BaseHandler(event_emitter.EventEmitter):
@@ -15,7 +41,6 @@ class BaseHandler(event_emitter.EventEmitter):
         # TODO: removeme?
         utils.reload_settings()
         self.req_ids = {}
-        self.cbs = {}
 
     def build_protocol(self, *args):
         self.proto = self.PROTOCOL(*args)
@@ -31,24 +56,24 @@ class BaseHandler(event_emitter.EventEmitter):
 
         name = d.get('name', '?')
         if name != "pong":
-            self.req_ids[req_id] = name
+            self.req_ids[req_id] = Req(req_id, d.get('name'), cb)
 
-        if cb:
-            self.cbs[req_id] = cb
         return req_id
 
     def on_data(self, name, data):
         req_id = data.get('res_id')
         if req_id is not None:
-            try:
+            req = self.req_ids.get(req_id)
+            if req:
+                req.acked()
+                msg.debug(req)
                 del self.req_ids[req_id]
-            except KeyError:
+                if req.cb:
+                    # TODO: squelch exceptions here?
+                    req.cb(data)
+            else:
                 msg.warn('No outstanding req_id ', req_id)
-            cb = self.cbs.get(req_id)
-            if cb:
-                del self.cbs[req_id]
-                # TODO: squelch exceptions here?
-                cb(data)
+
         handler = getattr(self, '_on_%s' % name, None)
         if handler:
             return handler(data)
