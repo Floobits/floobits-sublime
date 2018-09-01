@@ -125,6 +125,8 @@ def hit_url(host, url, data, method):
     cafile = os.path.join(G.BASE_DIR, 'floobits.pem')
     with open(cafile, 'wb') as cert_fd:
         cert_fd.write(cert.CA_CERT.encode('utf-8'))
+    if G.INSECURE_SSL:
+        cafile = None
     return urlopen(r, timeout=10, cafile=cafile)
 
 
