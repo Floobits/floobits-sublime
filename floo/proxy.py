@@ -81,6 +81,7 @@ def call_timeouts():
 def open_file(file):
     pass
 
+
 try:
     from .common import api, msg, shared as G, utils, reactor, event_emitter
     from .common.handlers import base
@@ -96,6 +97,7 @@ except (ImportError, ValueError):
 def editor_log(msg):
     print(msg)
     sys.stdout.flush()
+
 
 editor.name = name
 editor.ok_cancel_dialog = ok_cancel_dialog
@@ -120,6 +122,7 @@ def conn_log(action, item):
     if G.SOCK_DEBUG:
         msg.log(action, ': ', item)
     sys.stdout.flush()
+
 
 eventStream.on('to_floobits', lambda x: conn_log('to_floobits', x))
 eventStream.on('from_floobits', lambda x: conn_log('from_floobits', x))
@@ -302,6 +305,7 @@ def main():
         reactor.reactor.block()
     except KeyboardInterrupt:
         print('ciao')
+
 
 if __name__ == '__main__':
     main()

@@ -112,6 +112,7 @@ def plugin_loaded():
     G.AUTO_GENERATED_ACCOUNT = d.get('auto_generated_account', False)
     setup()
 
+
 # Sublime 2 has no way to know when plugin API is ready. Horrible hack here.
 if PY2:
     for i in range(0, 20):
