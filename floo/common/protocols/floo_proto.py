@@ -316,7 +316,7 @@ class FlooProtocol(base.BaseProtocol):
             # sock_debug('read data')
             return self._handle(buf)
 
-        # sock_debug('empty select')
+        sock_debug('empty select')
         self._empty_reads += 1
         if self._empty_reads > (3000 / G.TICK_TIME):
             msg.error('No data from sock.recv() {0} times.'.format(self._empty_reads))
