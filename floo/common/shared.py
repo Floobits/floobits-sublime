@@ -15,6 +15,7 @@ FLOOTTY_SAFE = True
 
 ALERT_ON_MSG = True
 LOG_TO_CONSOLE = False
+HEARTBEAT_TIMEOUT = 60
 
 BASE_DIR = os.path.expanduser(os.path.join('~', 'floobits'))
 

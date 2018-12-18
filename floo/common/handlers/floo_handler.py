@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import hashlib
 import base64
 import collections
@@ -658,6 +659,7 @@ class FlooHandler(base.BaseHandler):
         self.on_msg(data)
 
     def _on_ping(self, data):
+        self.last_ack_time = time.time()
         self.send({'name': 'pong'})
 
     @utils.inlined_callbacks
