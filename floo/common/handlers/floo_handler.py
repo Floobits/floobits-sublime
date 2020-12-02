@@ -414,6 +414,7 @@ class FlooHandler(base.BaseHandler):
             except Exception as e:
                 msg.debug('Error calculating md5 for ', buf['path'], ', ', str_e(e))
                 missing_bufs.append(buf)
+        editor.status_message('Comparing local files against workspace... done.')
         return changed_bufs, missing_bufs, new_files
 
     @utils.inlined_callbacks
