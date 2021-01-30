@@ -366,6 +366,15 @@ class FlooHandler(base.BaseHandler):
         cb()
 
     def _scan_dir(self, bufs, ig, read_only):
+        status_msg = 'Comparing local files against workspace...'
+        editor.status_message(status_msg)
+        update_status_msg = getattr(self, 'update_status_msg', None)
+        if update_status_msg:
+            try:
+                update_status_msg(self, status_msg)
+            except Exception as e:
+                pass
+
         changed_bufs = []
         missing_bufs = []
         new_files = set()
